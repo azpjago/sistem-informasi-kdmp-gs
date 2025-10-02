@@ -16,7 +16,7 @@ try {
     $stmt->execute();
 
     // Update saldo Bank BCA
-    $stmt = $conn->prepare("UPDATE rekening SET saldo_sekarang = ? WHERE nama_rekening = 'Bank BCA'");
+    $stmt = $conn->prepare("UPDATE rekening SET saldo_sekarang = ? WHERE nama_rekening = 'Bank MANDIRI'");
     $stmt->bind_param("d", $_POST['bca']);
     $stmt->execute();
 

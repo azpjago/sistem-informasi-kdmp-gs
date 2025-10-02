@@ -6,19 +6,22 @@ if ($conn->connect_error) {
 }
 
 // Mengambil data unik untuk dropdown filter
-$rws = $conn->query("SELECT DISTINCT rw FROM anggota WHERE rw IS NOT NULL AND rw != '' ORDER BY rw ASC");
-$rts = $conn->query("SELECT DISTINCT rt FROM anggota WHERE rt IS NOT NULL AND rt != '' ORDER BY rt ASC");
-
-// Mengambil nilai filter yang dipilih dari URL
-$selected_rw = $_GET['rw'] ?? '';
+$rws = $conn->query("SELECT DISTINCT rw FROM anggota WHERE rw IS NOT NULL AND rw != '' AND status_keanggotaan = 'Aktif' ORDER BY rw ASC");
+$rts = $conn->query("SELECT DISTINCT rt FROM anggota WHERE rt IS NOT NULL AND rt != '' AND status_keanggotaan = 'Aktif' ORDER BY rt ASC");$selected_rw = $_GET['rw'] ?? '';
 $selected_rt = $_GET['rt'] ?? '';
 $selected_status = $_GET['status'] ?? ''; // Mengambil nilai filter status
+$selected_status_keanggotaan = $_GET['status_keanggotaan'] ?? 'Aktif';
 
 // Membangun query dasar dengan filter RW dan RT
 $sql = "SELECT * FROM anggota WHERE 1=1";
 $params = [];
 $types = "";
 
+if (!empty($selected_status_keanggotaan)) {
+    $sql .= " AND status_keanggotaan = ?";
+    $params[] = $selected_status_keanggotaan;
+    $types .= "s";
+}
 if (!empty($selected_rw)) {
     $sql .= " AND rw = ?";
     $params[] = $selected_rw;
@@ -53,6 +56,7 @@ $anggota = $stmt->get_result();
     <div class="card-body">
         <form method="GET" action="">
             <input type="hidden" name="page" value="monitoring">
+            <input type="hidden" name="status_keanggotaan" value="Aktif">
             <div class="row g-3 align-items-end">
                 <div class="col-md-3">
                     <label for="rw" class="form-label">Filter Berdasarkan RW</label>
@@ -134,14 +138,17 @@ $anggota = $stmt->get_result();
                 $jatuh_tempo = new DateTime($row['tanggal_jatuh_tempo']);
                 $is_jatuh_tempo = ($jatuh_tempo < $tanggal_sekarang);
 
-                // Logika baru untuk memfilter baris berdasarkan status
-                $show_row = false;
-                if (empty($selected_status)) {
-                    $show_row = true;
-                } elseif ($selected_status == 'jatuh_tempo' && $is_jatuh_tempo) {
-                    $show_row = true;
-                } elseif ($selected_status == 'aktif' && !$is_jatuh_tempo) {
-                    $show_row = true;
+                $show_row = true; // Default tampilkan semua yang aktif dari database
+            
+                // Jika ada filter status yang dipilih
+                if (!empty($selected_status)) {
+                    $show_row = false; // Reset
+            
+                    if ($selected_status == 'jatuh_tempo' && $is_jatuh_tempo) {
+                        $show_row = true;
+                    } elseif ($selected_status == 'aktif' && !$is_jatuh_tempo) {
+                        $show_row = true;
+                    }
                 }
 
                 if ($show_row):

@@ -65,6 +65,7 @@
 </div>
 
 <script>
+// Di saldo_dashboard.php - tambahkan info hubungan
 function loadSaldoDashboard() {
     $.ajax({
         url: 'pages/ajax/get_saldo_data.php',
@@ -80,6 +81,20 @@ function loadSaldoDashboard() {
                 $('#saldoSimpanan').text('Rp ' + formatNumber(response.simpanan_anggota));
                 $('#saldoPenjualan').text('Rp ' + formatNumber(response.penjualan_sembako));
                 $('#saldoHibah').text('Rp ' + formatNumber(response.hibah));
+                
+                // Tampilkan hubungan antara komponen
+                $('#infoBreakdown').html(`
+                    <div class="alert alert-info mt-3">
+                        <small>
+                            <strong>Keterangan Hubungan:</strong><br>
+                            • Saldo Utama (Rp ${formatNumber(response.saldo_utama)}) = Total semua rekening<br>
+                            • Simpanan Anggota (Rp ${formatNumber(response.simpanan_anggota)}) = Total pembayaran lunas<br>
+                            • Penjualan Sembako (Rp ${formatNumber(response.penjualan_sembako)}) = Total penjualan terkirim<br>
+                            • Hibah (Rp ${formatNumber(response.hibah)}) = Total penerimaan hibah<br>
+                            • Selisih: Rp ${formatNumber(response.selisih)} (dana dari sumber lain)
+                        </small>
+                    </div>
+                `);
                 
                 // Update Per Rekening
                 let rekeningHtml = '';
