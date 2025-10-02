@@ -1,0 +1,126 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&display=swap');
+
+body {
+    margin: 0;
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(120deg, #84fab0, #8fd3f4);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: #333;
+}
+
+.login-container {
+    padding: 40px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+    width: 100%;
+    max-width: 400px;
+    text-align: center;
+}
+.main-wrapper {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    flex-grow: 1; /* Agar wrapper mengisi ruang yang tersedia */
+    width: 100%;
+}
+.header-text {
+    text-align: center;
+    margin-bottom: 30px; /* Jarak antara header dan form login */
+    color: #fff; /* Warna teks putih agar kontras dengan background */
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2); /* Sedikit bayangan pada teks */
+}
+
+.header-text h1 {
+    margin: 0;
+    font-size: 2.5em; /* Ukuran font lebih besar untuk judul utama */
+    font-weight: 600;
+    color: #ff0000;
+}
+
+.header-text p {
+    margin: 5px 0 0;
+    font-size: 1.2em; /* Ukuran font untuk sub judul */
+    font-weight: 400;
+}
+
+.login-form h2 {
+    margin-bottom: 25px;
+    color: #444;
+    font-weight: 600;
+}
+
+.input-group {
+    position: relative;
+    margin-bottom: 20px;
+}
+
+.input-group i {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #aaa;
+}
+
+.input-group input {
+    width: 100%;
+    padding: 12px 15px 12px 45px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 16px;
+    box-sizing: border-box;
+    transition: border-color 0.3s;
+}
+
+.input-group input:focus {
+    outline: none;
+    border-color: #84fab0;
+}
+
+#togglePassword {
+    right: 15px;
+    left: auto;
+    cursor: pointer;
+}
+
+.login-btn {
+    width: 100%;
+    padding: 12px;
+    border: none;
+    border-radius: 8px;
+    background-color: #2779ff;
+    color: white;
+    font-size: 16px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.2s;
+}
+
+.login-btn:hover {
+    background-color: #1a68e0;
+    transform: translateY(-2px);
+}
+
+.error-message {
+    background-color: #ffebee;
+    color: #c62828;
+    padding: 10px;
+    border-radius: 8px;
+    margin-bottom: 15px;
+    text-align: center;
+    font-size: 14px;
+}
+footer {
+    width: 100%;
+    text-align: center;
+    padding: 20px;
+    color: rgba(255, 255, 255, 0.8); /* Warna teks footer */
+    font-size: 0.9em;
+    margin-top: 30px; /* Jarak antara form login dan footer */
+    background: rgba(0,0,0,0.1); /* Background sedikit transparan */
+}

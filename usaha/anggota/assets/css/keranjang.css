@@ -1,0 +1,47 @@
+/* Style khusus untuk halaman keranjang */
+
+.cart-item {
+  border-radius: 12px;
+  transition: var(--transition);
+}
+
+.cart-item:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
+}
+
+.cart-item img {
+  height: 80px;
+  object-fit: cover;
+}
+
+.input-group {
+  width: 100px;
+}
+
+.input-group .btn {
+  padding: 0.25rem 0.5rem;
+}
+
+.input-group input {
+  padding: 0.25rem;
+}
+
+.cart-summary {
+  border-radius: 12px;
+  position: sticky;
+  bottom: 80px;
+  z-index: 99;
+  background-color: white;
+}
+
+/* Responsive adjustments */
+@media (max-width: 576px) {
+  .cart-item img {
+    height: 60px;
+  }
+  
+  .input-group {
+    width: 90px;
+  }
+}
