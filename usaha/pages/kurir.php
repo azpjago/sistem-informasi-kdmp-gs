@@ -1,5 +1,5 @@
 <?php
-// pages/kurir.php
+session_start();
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 
 // Handle delete

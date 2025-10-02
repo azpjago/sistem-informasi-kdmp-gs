@@ -23,7 +23,7 @@ date_default_timezone_set('Asia/Jakarta');
         <!-- SIDEBAR NAVIGATION -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h4>KDMPGS</h4>
+                <h4>KDMPGS - USAHA</h4>
             </div>
 
             <ul class="nav flex-column">

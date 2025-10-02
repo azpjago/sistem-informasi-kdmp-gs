@@ -102,7 +102,7 @@ while ($row = mysqli_fetch_assoc($grafik_query)) {
 }
 ?>
 
-<h4 class="mb-4">📊 Dashboard Usaha</h4>
+<h4 class="h3 fw-bold">📊 Dashboard Usaha</h4>
 
 <!-- Statistik Utama -->
 <div class="row mb-4">
