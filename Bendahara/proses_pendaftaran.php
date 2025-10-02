@@ -108,8 +108,21 @@ try {
         $id_transaksi = $prefix . '-' . str_pad($last_payment_id, 7, '0', STR_PAD_LEFT);
         
         $metode_pembayaran = $_POST['metode_pembayaran'] ?? 'cash';
-        
-        $stmt_pembayaran->bind_param('isssdsssss', $anggota_id, $id_transaksi, $data['jenis_simpanan'], $jenis_transaksi, $data['jumlah'], $nama, $bulan_periode_tanggal, $metode_pembayaran, $bukti_tunggal_path, $data['status']);
+        $bank_tujuan = ($metode_pembayaran === 'transfer') ? ($_POST['bank_tujuan'] ?? '') : null;
+
+        // Update query pembayaran
+        $stmt_pembayaran = $conn->prepare("INSERT INTO pembayaran (anggota_id, id_transaksi, jenis_simpanan, jenis_transaksi, jumlah, nama_anggota, bulan_periode, metode, bank_tujuan, bukti, status, tanggal_bayar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+
+        // Di loop pembayaran_data
+        foreach ($pembayaran_data as $data) {
+            $last_payment_id++;
+            $prefix = getTransactionPrefix($data['jenis_simpanan']);
+            $id_transaksi = $prefix . '-' . str_pad($last_payment_id, 7, '0', STR_PAD_LEFT);
+            
+            $stmt_pembayaran->bind_param('isssdssssss', $anggota_id, $id_transaksi, $data['jenis_simpanan'], $jenis_transaksi, $data['jumlah'], $nama, $bulan_periode_tanggal, $metode_pembayaran, $bank_tujuan, $bukti_tunggal_path, $data['status']);
+            if (!$stmt_pembayaran->execute()) throw new Exception("Gagal menyimpan " . $data['jenis_simpanan'] . ": " . $stmt_pembayaran->error);
+        }
+        //$stmt_pembayaran->bind_param('isssdsssss', $anggota_id, $id_transaksi, $data['jenis_simpanan'], $jenis_transaksi, $data['jumlah'], $nama, $bulan_periode_tanggal, $metode_pembayaran, $bukti_tunggal_path, $data['status']);
         if (!$stmt_pembayaran->execute()) throw new Exception("Gagal menyimpan " . $data['jenis_simpanan'] . ": " . $stmt_pembayaran->error);
     }
     

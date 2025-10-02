@@ -33,6 +33,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
     $anggota_id = intval($_POST['anggota_id']);
     $tanggal_bayar = date('Y-m-d H:i:s');
     $metode = $_POST['metode'];
+    $bank_tujuan = ($metode === 'transfer') ? ($_POST['bank_tujuan'] ?? '') : null;
     $bukti_path = null;
 
     // Validasi input
@@ -102,8 +103,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
 
     try {
         // 1. Insert ke tabel pembayaran
-        $stmt = $conn->prepare("INSERT INTO pembayaran (anggota_id, id_transaksi, jenis_simpanan, jenis_transaksi, jumlah, nama_anggota, tanggal_bayar, bulan_periode, metode, bukti, status) VALUES (?, ?, 'Simpanan Wajib', 'setor', ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->bind_param("isdssssss", $anggota_id, $id_transaksi, $jumlah, $nama_anggota, $tanggal_bayar,  $bulan_periode, $metode, $bukti_path, $status);
+        // Di update_pembayaran.php - setelah ambil $metode
+        $metode = $_POST['metode'];
+        $bank_tujuan = ($metode === 'transfer') ? ($_POST['bank_tujuan'] ?? '') : null;
+
+        // Update query insert
+        $stmt = $conn->prepare("INSERT INTO pembayaran (anggota_id, id_transaksi, jenis_simpanan, jenis_transaksi, jumlah, nama_anggota, tanggal_bayar, bulan_periode, metode, bank_tujuan, bukti, status) VALUES (?, ?, 'Simpanan Wajib', 'setor', ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("isdsssssss", $anggota_id, $id_transaksi, $jumlah, $nama_anggota, $tanggal_bayar, $bulan_periode, $metode, $bank_tujuan, $bukti_path, $status);
         $stmt->execute();
         $stmt->close();
 

@@ -31,7 +31,7 @@ if (isset($_POST['nonaktifkan_anggota'])) {
         $conn->query("INSERT INTO history_activity (user_id, user_type, activity_type, description, table_affected, record_id) 
                      VALUES ({$_SESSION['user_id']}, 'admin', 'anggota_nonaktif', '$log_description', 'anggota', $id_anggota)");
 
-        $success_message = "Anggota berhasil dinon-aktifkan. Simpanan pokok Rp 10.000 tetap disimpan.";
+        $success_message = "Anggota berhasil dinon-aktifkan.";
     } else {
         $error_message = "Gagal menon-aktifkan anggota: " . $conn->error;
     }

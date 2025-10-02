@@ -145,6 +145,15 @@ if (isset($_GET['no_anggota']) && !empty($_GET['no_anggota'])) {
                             <option value="transfer">Transfer</option>
                         </select>
                     </div>
+                    <div class="mb-3" id="bank_tujuan_sukarela_container" style="display:none;">
+                        <label for="bank_tujuan_sukarela" class="form-label">Bank Tujuan</label>
+                        <select class="form-select" id="bank_tujuan_sukarela" name="bank_tujuan">
+                            <option value="">-- Pilih Bank --</option>
+                            <option value="Bank BCA">Bank BCA</option>
+                            <option value="Bank BRI">Bank BRI</option>
+                            <option value="Bank BNI">Bank BNI</option>
+                        </select>
+                    </div>
 
                     <div class="mb-3">
                         <label for="bukti" class="form-label">Bukti Transaksi (Struk/Foto)</label>
@@ -171,15 +180,15 @@ if (isset($_GET['no_anggota']) && !empty($_GET['no_anggota'])) {
     </div>
 </div>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    const btnTransaksi = document.querySelectorAll('.btn-transaksi');
-    
-    btnTransaksi.forEach(btn => {
-        btn.addEventListener('click', function() {
-            const anggotaId = this.getAttribute('data-anggota-id');
-            const noAnggota = '<?= $anggota_info["no_anggota"] ?? "" ?>';
-            const namaAnggota = '<?= $anggota_info["nama"] ?? "" ?>';
-            const jenis = this.getAttribute('data-jenis'); // 'setor' atau 'tarik'
+    document.addEventListener('DOMContentLoaded', function () {
+        const btnTransaksi = document.querySelectorAll('.btn-transaksi');
+
+        btnTransaksi.forEach(btn => {
+            btn.addEventListener('click', function () {
+                const anggotaId = this.getAttribute('data-anggota-id');
+                const noAnggota = '<?= $anggota_info["no_anggota"] ?? "" ?>';
+                const namaAnggota = '<?= $anggota_info["nama"] ?? "" ?>';
+                const jenis = this.getAttribute('data-jenis'); // 'setor' atau 'tarik'
 
                 // Mengisi input hidden
                 document.getElementById('anggotaIdSukarela').value = anggotaId;
@@ -194,5 +203,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 modalTitle.textContent = jenis === 'setor' ? 'Form Setor Sukarela' : 'Form Tarik Sukarela';
             });
         });
+    });
+
+    // Di sukarela.php - tambah script ini
+    document.getElementById('metode').addEventListener('change', function() {
+        const bankContainer = document.getElementById('bank_tujuan_sukarela_container');
+        const bankSelect = document.getElementById('bank_tujuan_sukarela');
+        
+        if (this.value === 'transfer') {
+            bankContainer.style.display = 'block';
+            bankSelect.required = true;
+        } else {
+            bankContainer.style.display = 'none';
+            bankSelect.required = false;
+        }
     });
 </script>

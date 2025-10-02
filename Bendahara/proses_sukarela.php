@@ -18,6 +18,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
     $jenis_transaksi = trim($_POST['jenis_transaksi'] ?? '');
     $jumlah = (float) ($_POST['jumlah'] ?? 0);
     $metode = trim($_POST['metode'] ?? '');
+    $bank_tujuan = ($metode === 'transfer') ? ($_POST['bank_tujuan'] ?? '') : null;
     $keterangan = trim($_POST['keterangan'] ?? null);
     $tanggal_transaksi = $_POST['tanggal_transaksi'] . ' ' . date('H:i:s');
 
@@ -101,11 +102,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
         $status = ucfirst($jenis_transaksi) . " " . $jenis_simpanan . " oleh " . $nama_anggota . " tanggal " . date('d-m-Y', strtotime($tanggal_transaksi));
 
         $stmt_insert = $conn->prepare("INSERT INTO pembayaran 
-            (id_transaksi, anggota_id, nama_anggota, jenis_simpanan, jenis_transaksi, jumlah, bulan_periode, 
-             tanggal_bayar, metode, bukti, status, keterangan) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+    (id_transaksi, anggota_id, nama_anggota, jenis_simpanan, jenis_transaksi, jumlah, bulan_periode, 
+     tanggal_bayar, metode, bank_tujuan, bukti, status, keterangan) 
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
-        $stmt_insert->bind_param("sisssdssssss", $id_transaksi, $anggota_id, $nama_anggota, $jenis_simpanan, $jenis_transaksi, $jumlah, $bulan_periode, $tanggal_transaksi, $metode, $bukti_path, $status, $keterangan);
+        $stmt_insert->bind_param(
+            "sisssdsssssss",
+            $id_transaksi,
+            $anggota_id,
+            $nama_anggota,
+            $jenis_simpanan,
+            $jenis_transaksi,
+            $jumlah,
+            $bulan_periode,
+            $tanggal_transaksi,
+            $metode,
+            $bank_tujuan,
+            $bukti_path,
+            $status,
+            $keterangan
+        );
         if (!$stmt_insert->execute()) {
             throw new Exception("Gagal mencatat transaksi: " . $stmt_insert->error);
         }

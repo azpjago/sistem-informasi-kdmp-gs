@@ -190,20 +190,18 @@ $anggota = $stmt->get_result();
                             <a href="pages/detail_anggota.php?id=<?= $row['id'] ?>" target="_blank" class="btn btn-info btn-sm"
                                 title="Lihat Detail">Detail</a>
                             <?php if ($is_jatuh_tempo): ?>
-                                <a href="<?= $wa_link ?>" target="whatsapp_tab" class="btn btn-success btn-sm" title="Kirim WA">WA</a>
-<button type="button" class="btn btn-primary btn-sm update-bayar-btn"
-        data-bs-toggle="modal"
-        data-bs-target="#updateBayarModal"
-        data-id="<?= $row['id'] ?>"
-    data-no-anggota="<?= $row['no_anggota'] ?>"data-nama="<?= htmlspecialchars($row['nama']) ?>"
-    data-jumlah="<?= $row['simpanan_wajib'] ?>"
-    title="Update Pembayaran">
-    Update Bayar
-</button>
+                                <a href="<?= $wa_link ?>" target="whatsapp_tab" class="btn btn-success btn-sm"
+                                    title="Kirim WA">WA</a>
+                                <button type="button" class="btn btn-primary btn-sm update-bayar-btn" data-bs-toggle="modal"
+                                    data-bs-target="#updateBayarModal" data-id="<?= $row['id'] ?>"
+                                    data-no-anggota="<?= $row['no_anggota'] ?>" data-nama="<?= htmlspecialchars($row['nama']) ?>"
+                                    data-jumlah="<?= $row['simpanan_wajib'] ?>" title="Update Pembayaran">
+                                    Update Bayar
+                                </button>
                             <?php endif; ?>
                         </td>
                     </tr>
-                <?php
+                    <?php
                 endif; // Akhir dari if ($show_row)
             endwhile;
             ?>
@@ -225,18 +223,18 @@ $anggota = $stmt->get_result();
                     <div id="fase-1">
                         <h4>Langkah 1: Data Diri Anggota</h4>
                         <hr>
-                            <div class="row mb-4">
-        <div class="col-md-12">
-            <div class="form-group">
-                <label for="jenis_transaksi" class="form-label fw-bold">Jenis Transaksi</label>
-                <select class="form-control" id="jenis_transaksi" name="jenis_transaksi" required>
-                    <option value="">-- Pilih Jenis Transaksi --</option>
-                    <option value="setor" selected>Setor</option>
-                    <option value="tarik">Tarik</option>
-                </select>
-            </div>
-        </div>
-    </div>
+                        <div class="row mb-4">
+                            <div class="col-md-12">
+                                <div class="form-group">
+                                    <label for="jenis_transaksi" class="form-label fw-bold">Jenis Transaksi</label>
+                                    <select class="form-control" id="jenis_transaksi" name="jenis_transaksi" required>
+                                        <option value="">-- Pilih Jenis Transaksi --</option>
+                                        <option value="setor" selected>Setor</option>
+                                        <option value="tarik">Tarik</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="form-group mb-3"><label for="nama" class="form-label">Nama
@@ -381,7 +379,8 @@ $anggota = $stmt->get_result();
                             <div class="mb-3" id="field-sukarela" style="display:none;"><label for="amount_sukarela"
                                     class="form-label">Jumlah Simpanan Sukarela (Minimal Rp 5.000)</label><input
                                     type="number" class="form-control" id="amount_sukarela" name="amount_sukarela"
-                                    min="5000" placeholder="Masukkan jumlah"></div>
+                                    min="5000" placeholder="Masukkan jumlah">
+                                </div>
                         </div>
 
                         <div class="mb-3"><label for="metode_pembayaran" class="form-label fw-bold">Metode
@@ -390,7 +389,15 @@ $anggota = $stmt->get_result();
                                 <option value="cash">Cash</option>
                                 <option value="transfer">Transfer</option>
                             </select></div>
-
+                        <div class="mb-3" id="bank_tujuan_container" style="display:none;">
+                            <label for="bank_tujuan" class="form-label fw-bold">Bank Tujuan</label>
+                            <select class="form-select" id="bank_tujuan" name="bank_tujuan">
+                                <option value="">-- Pilih Bank --</option>
+                                <option value="Bank MANDIRI">Bank MANDIRI</option>
+                                <option value="Bank BRI">Bank BRI</option>
+                                <option value="Bank BNI">Bank BNI</option>
+                            </select>
+                        </div>
                         <div id="bukti-pembayaran-section">
                             <label class="form-label fw-bold">Bukti Pembayaran</label>
                             <div class="alert alert-info py-2">
@@ -467,14 +474,16 @@ $anggota = $stmt->get_result();
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="button" class="btn btn-default" id="tombolKembali" style="display:none;">Kembali</button>
+                    <button type="button" class="btn btn-default" id="tombolKembali"
+                        style="display:none;">Kembali</button>
                     <button type="button" class="btn btn-primary" id="tombolLanjut">Lanjutkan</button>
-                    <button type="submit" class="btn btn-success" id="tombolSimpan" style="display:none;">Simpan Pendaftaran</button>
+                    <button type="submit" class="btn btn-success" id="tombolSimpan" style="display:none;">Simpan
+                        Pendaftaran</button>
                 </div>
-                </form>
-                </div>
-                </div>
-                </div>
+            </form>
+        </div>
+    </div>
+</div>
 <!-- Modal Update Pembayaran -->
 <!-- monitoring.php -->
 <!-- Tambahkan modal update bayar -->
@@ -485,30 +494,30 @@ $anggota = $stmt->get_result();
                 <h5 class="modal-title" id="updateBayarModalLabel">Update Pembayaran Simpanan Wajib</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="formUpdateBayar" method="POST" enctype="multipart/form-data">
+            <form id="formUpdateBayar" method="POST" action="update_pembayaran.php" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" id="anggotaIdModal" name="anggota_id">
-                    
+
                     <div class="mb-3">
                         <label class="form-label">No. Anggota:</label>
                         <p class="fw-bold" id="noAnggotaModal"></p>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Nama Anggota:</label>
                         <p class="fw-bold" id="namaAnggotaModal"></p>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label class="form-label">Jumlah Simpanan Wajib:</label>
                         <p class="fw-bold" id="jumlahWajibModal"></p>
                     </div>
-                    
+
                     <div class="mb-3">
                         <label for="tanggal_bayar" class="form-label">Tanggal Bayar</label>
-                        <input type="date" class="form-control" id="tanggal_bayar" name="tanggal_bayar" value="<?= date('Y-m-d') ?>" required>
+                        <input type="date" class="form-control" id="tanggal_bayar" name="tanggal_bayar"
+                            value="<?= date('Y-m-d') ?>" required>
                     </div>
-                    
                     <div class="mb-3">
                         <label for="metode" class="form-label">Metode Pembayaran</label>
                         <select class="form-select" id="metode" name="metode" required>
@@ -517,7 +526,15 @@ $anggota = $stmt->get_result();
                             <option value="transfer">Transfer</option>
                         </select>
                     </div>
-                    
+                    <div class="mb-3" id="bank_tujuan_update_container" style="display:none;">
+                        <label for="bank_tujuan_update" class="form-label">Bank Tujuan</label>
+                        <select class="form-select" id="bank_tujuan_update" name="bank_tujuan">
+                            <option value="">-- Pilih Bank --</option>
+                            <option value="Bank MANDIRI">Bank MANDIRI</option>
+                            <option value="Bank BRI">Bank BRI</option>
+                            <option value="Bank BNI">Bank BNI</option>
+                        </select>
+                    </div>
                     <div class="mb-3">
                         <label for="bukti" class="form-label">Bukti Pembayaran</label>
                         <input type="file" class="form-control" id="bukti" name="bukti" accept="image/*" required>
