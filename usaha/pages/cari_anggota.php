@@ -20,13 +20,18 @@ $keyword = mysqli_real_escape_string($conn, $keyword);
 
 $query = "SELECT id, no_anggota, nama, no_hp, alamat 
           FROM anggota 
-          WHERE no_anggota LIKE '%$keyword%' 
-             OR nama LIKE '%$keyword%' 
-             OR no_hp LIKE '%$keyword%'
+          WHERE status_keanggotaan = 'Aktif'
+            AND (no_anggota LIKE ? 
+                 OR nama LIKE ? 
+                 OR no_hp LIKE ?)
           ORDER BY nama ASC
           LIMIT 10";
 
-$result = mysqli_query($conn, $query);
+$stmt = $conn->prepare($query);
+$search_term = "%$keyword%";
+$stmt->bind_param("sss", $search_term, $search_term, $search_term);
+$stmt->execute();
+$result = $stmt->get_result();
 $data = [];
 
 if ($result) {

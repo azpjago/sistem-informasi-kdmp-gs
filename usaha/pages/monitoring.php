@@ -759,7 +759,7 @@ function updateStatus(status) {
                         `;
                         });
                     } else {
-                        html = '<div class="text-muted p-2">Tidak ada anggota ditemukan</div>';
+                        html = '<div class="text-muted p-2">Tidak ada anggota ditemukan/Anggota sudah tidak Aktif</div>';
                     }
 
                     $('#hasilPencarian').html(html).show();
