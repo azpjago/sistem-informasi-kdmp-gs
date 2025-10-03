@@ -1,5 +1,5 @@
 <?php
-// get_saldo_data.php - WITH CASH/TRANSFER LOGIC
+// get_saldo_data.php - WITH CASH/TRANSFER LOGIC + TARIK SUKARELA
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 
 if ($conn->connect_error) {
@@ -21,22 +21,21 @@ try {
         $saldo_rekening = 0;
 
         // === SIMPANAN ANGGOTA ===
-
-        // Jika Kas Tunai: ambil semua pembayaran CASH
+        // SETOR simpanan (menambah saldo)
         if ($nama_rekening == 'Kas Tunai') {
             $result = $conn->query("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
                 FROM pembayaran 
-                WHERE (status_bayar = 'Lunas') 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'setor'
                 AND metode = 'cash'
             ");
-        }
-        // Jika Bank: ambil pembayaran TRANSFER dengan bank_tujuan yang sesuai
-        else {
+        } else {
             $result = $conn->query("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
                 FROM pembayaran 
-                WHERE (status_bayar = 'Lunas') 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'setor'
                 AND metode = 'transfer' 
                 AND bank_tujuan = '$nama_rekening'
             ");
@@ -44,9 +43,29 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
-        // === PENJUALAN SEMBAKO ===
+        // === TARIK SUKARELA === (mengurangi saldo)
+        if ($nama_rekening == 'Kas Tunai') {
+            $result = $conn->query("
+                SELECT COALESCE(SUM(jumlah), 0) as total 
+                FROM pembayaran 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'tarik'
+                AND metode = 'cash'
+            ");
+        } else {
+            $result = $conn->query("
+                SELECT COALESCE(SUM(jumlah), 0) as total 
+                FROM pembayaran 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'tarik'
+                AND metode = 'transfer' 
+                AND bank_tujuan = '$nama_rekening'
+            ");
+        }
+        $data = $result->fetch_assoc();
+        $saldo_rekening -= (float) $data['total']; // DIKURANGI karena tarik
 
-        // Jika Kas Tunai: ambil semua penjualan dengan metode TUNAI
+        // === PENJUALAN SEMBAKO ===
         if ($nama_rekening == 'Kas Tunai') {
             $result = $conn->query("
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
@@ -55,9 +74,7 @@ try {
                 WHERE p.status = 'Terkirim' 
                 AND p.metode = 'Tunai'
             ");
-        }
-        // Jika Bank: ambil penjualan TRANSFER dengan bank_tujuan yang sesuai
-        else {
+        } else {
             $result = $conn->query("
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
                 FROM pemesanan_detail pd 
@@ -71,8 +88,6 @@ try {
         $saldo_rekening += (float) $data['total'];
 
         // === HIBAH ===
-
-        // Jika Kas Tunai: ambil hibah CASH
         if ($nama_rekening == 'Kas Tunai') {
             $result = $conn->query("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
@@ -80,9 +95,7 @@ try {
                 WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
                 AND metode = 'cash'
             ");
-        }
-        // Jika Bank: ambil hibah TRANSFER dengan bank_tujuan yang sesuai
-        else {
+        } else {
             $result = $conn->query("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
                 FROM pembayaran 
@@ -107,14 +120,25 @@ try {
 
     // 2. BREAKDOWN PER SUMBER (total semua rekening)
 
-    // Simpanan Anggota - semua metode
+    // Simpanan Anggota - SETOR saja (semua metode)
     $result = $conn->query("
         SELECT COALESCE(SUM(jumlah), 0) as total 
         FROM pembayaran 
-        WHERE status_bayar = 'Lunas' OR status = 'Lunas'
+        WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+        AND jenis_transaksi = 'setor'
     ");
     $simpanan_data = $result->fetch_assoc();
     $saldo_simpanan = (float) $simpanan_data['total'];
+
+    // TARIK SUKARELA - total penarikan (semua metode)
+    $result = $conn->query("
+        SELECT COALESCE(SUM(jumlah), 0) as total 
+        FROM pembayaran 
+        WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+        AND jenis_transaksi = 'tarik'
+    ");
+    $tarik_data = $result->fetch_assoc();
+    $saldo_tarik = (float) $tarik_data['total'];
 
     // Penjualan Sembako - semua metode
     $result = $conn->query("
@@ -130,10 +154,13 @@ try {
     $result = $conn->query("
         SELECT COALESCE(SUM(jumlah), 0) as total 
         FROM pembayaran 
-        WHERE jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%'
+        WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
     ");
     $hibah_data = $result->fetch_assoc();
     $saldo_hibah = (float) $hibah_data['total'];
+
+    // Hitung selisih
+    $selisih = $saldo_utama - ($saldo_simpanan + $saldo_penjualan + $saldo_hibah - $saldo_tarik);
 
     echo json_encode([
         'status' => 'success',
@@ -141,6 +168,8 @@ try {
         'simpanan_anggota' => $saldo_simpanan,
         'penjualan_sembako' => $saldo_penjualan,
         'hibah' => $saldo_hibah,
+        'tarik_sukarela' => $saldo_tarik,
+        'selisih' => $selisih,
         'rekening' => $rekening,
         'last_update' => date('d/m/Y H:i:s')
     ]);
