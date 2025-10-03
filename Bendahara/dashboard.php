@@ -81,7 +81,8 @@ date_default_timezone_set('Asia/Jakarta');
                 'nota',
                 'set_saldo_awal',
                 'saldo_dashboard',
-                'pengeluaran'
+                'pengeluaran',
+                'saldo_helper'
             ];
 
             if (in_array($page, $allowed_pages) && file_exists("pages/" . $page . ".php")) {
