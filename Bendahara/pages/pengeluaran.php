@@ -1,5 +1,7 @@
 <?php
 // pages/pengeluaran.php
+require_once 'saldo_helper.php';
+
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -27,42 +29,6 @@ $pengeluaran_result = $conn->query("
         </button>
     </div>
 
-    <!-- Card Form Filter (opsional) -->
-    <div class="card mb-4">
-        <div class="card-header">
-            <strong>Filter Pengeluaran</strong>
-        </div>
-        <div class="card-body">
-            <form method="GET" action="">
-                <input type="hidden" name="page" value="pengeluaran">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-3">
-                        <label for="filter_status" class="form-label">Status</label>
-                        <select name="status" id="filter_status" class="form-select">
-                            <option value="">Semua Status</option>
-                            <option value="draft">Draft</option>
-                            <option value="approved">Approved</option>
-                            <option value="rejected">Rejected</option>
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <label for="filter_kategori" class="form-label">Kategori</label>
-                        <select name="kategori" id="filter_kategori" class="form-select">
-                            <option value="">Semua Kategori</option>
-                            <?php while ($kategori = $kategori_result->fetch_assoc()): ?>
-                                <option value="<?= $kategori['id'] ?>"><?= htmlspecialchars($kategori['nama_kategori']) ?></option>
-                            <?php endwhile; ?>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <button type="submit" class="btn btn-primary">Terapkan Filter</button>
-                        <a href="?page=pengeluaran" class="btn btn-secondary">Reset</a>
-                    </div>
-                </div>
-            </form>
-        </div>
-    </div>
-
     <!-- Tabel Daftar Pengeluaran -->
     <div class="card">
         <div class="card-header">
@@ -84,46 +50,46 @@ $pengeluaran_result = $conn->query("
                         </tr>
                     </thead>
                     <tbody>
-                        <?php while ($pengeluaran = $pengeluaran_result->fetch_assoc()): 
+                        <?php while ($pengeluaran = $pengeluaran_result->fetch_assoc()):
                             $status_badge = [
                                 'draft' => 'bg-warning',
-                                'approved' => 'bg-success', 
+                                'approved' => 'bg-success',
                                 'rejected' => 'bg-danger'
                             ][$pengeluaran['status']] ?? 'bg-secondary';
-                        ?>
-                            <tr>
-                                <td class="text-center"><?= date('d/m/Y', strtotime($pengeluaran['tanggal'])) ?></td>
-                                <td><?= htmlspecialchars($pengeluaran['nama_kategori'] ?? '-') ?></td>
-                                <td><?= htmlspecialchars($pengeluaran['keterangan']) ?></td>
-                                <td class="text-end">Rp <?= number_format($pengeluaran['jumlah'], 0, ',', '.') ?></td>
-                                <td><?= htmlspecialchars($pengeluaran['nama_rekening'] ?? '-') ?></td>
-                                <td class="text-center">
-                                    <span class="badge <?= $status_badge ?>">
-                                        <?= ucfirst($pengeluaran['status']) ?>
-                                    </span>
-                                </td>
-                                <td class="text-center">
-                                    <?php if ($pengeluaran['bukti_file']): ?>
-                                        <a href="<?= $pengeluaran['bukti_file'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                            <i class="fas fa-eye"></i> Lihat
-                                        </a>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                                <td class="text-center">
-                                    <?php if ($pengeluaran['status'] == 'draft'): ?>
-                                        <button class="btn btn-sm btn-warning edit-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
-                                            <i class="fas fa-edit"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-danger hapus-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
-                                            <i class="fas fa-trash"></i>
-                                        </button>
-                                    <?php else: ?>
-                                        <span class="text-muted">-</span>
-                                    <?php endif; ?>
-                                </td>
-                            </tr>
+                            ?>
+                                <tr>
+                                    <td class="text-center"><?= date('d/m/Y', strtotime($pengeluaran['tanggal'])) ?></td>
+                                    <td><?= htmlspecialchars($pengeluaran['nama_kategori'] ?? '-') ?></td>
+                                    <td><?= htmlspecialchars($pengeluaran['keterangan']) ?></td>
+                                    <td class="text-end">Rp <?= number_format($pengeluaran['jumlah'], 0, ',', '.') ?></td>
+                                    <td><?= htmlspecialchars($pengeluaran['nama_rekening'] ?? '-') ?></td>
+                                    <td class="text-center">
+                                        <span class="badge <?= $status_badge ?>">
+                                            <?= ucfirst($pengeluaran['status']) ?>
+                                        </span>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($pengeluaran['bukti_file']): ?>
+                                                <a href="<?= $pengeluaran['bukti_file'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
+                                                    <i class="fas fa-eye"></i> Lihat
+                                                </a>
+                                        <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php if ($pengeluaran['status'] == 'draft'): ?>
+                                                <button class="btn btn-sm btn-warning edit-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
+                                                    <i class="fas fa-edit"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger hapus-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
+                                                    <i class="fas fa-trash"></i>
+                                                </button>
+                                        <?php else: ?>
+                                                <span class="text-muted">-</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
                         <?php endwhile; ?>
                     </tbody>
                 </table>
@@ -155,10 +121,10 @@ $pengeluaran_result = $conn->query("
                                 <label for="kategori_id" class="form-label">Kategori Pengeluaran</label>
                                 <select class="form-select" id="kategori_id" name="kategori_id" required>
                                     <option value="">-- Pilih Kategori --</option>
-                                    <?php 
+                                    <?php
                                     mysqli_data_seek($kategori_result, 0);
                                     while ($kategori = $kategori_result->fetch_assoc()): ?>
-                                        <option value="<?= $kategori['id'] ?>"><?= htmlspecialchars($kategori['nama_kategori']) ?></option>
+                                            <option value="<?= $kategori['id'] ?>"><?= htmlspecialchars($kategori['nama_kategori']) ?></option>
                                     <?php endwhile; ?>
                                 </select>
                             </div>
@@ -184,15 +150,18 @@ $pengeluaran_result = $conn->query("
                                 <label for="rekening_id" class="form-label">Sumber Dana</label>
                                 <select class="form-select" id="rekening_id" name="rekening_id" required>
                                     <option value="">-- Pilih Rekening --</option>
-                                    <?php 
+                                    <?php
                                     mysqli_data_seek($rekening_result, 0);
-                                    while ($rekening = $rekening_result->fetch_assoc()): ?>
-                                        <option value="<?= $rekening['id'] ?>">
-                                            <?= htmlspecialchars($rekening['nama_rekening']) ?> 
-                                            (Saldo: Rp <?= number_format($rekening['saldo_sekarang'], 0, ',', '.') ?>)
-                                        </option>
+                                    while ($rekening = $rekening_result->fetch_assoc()):
+                                        $saldo_real = getSaldoRealTime($rekening['id']);
+                                        ?>
+                                            <option value="<?= $rekening['id'] ?>" data-saldo="<?= $saldo_real ?>">
+                                                <?= htmlspecialchars($rekening['nama_rekening']) ?> 
+                                                (Saldo: Rp <?= number_format($saldo_real, 0, ',', '.') ?>)
+                                            </option>
                                     <?php endwhile; ?>
                                 </select>
+                                <small class="text-muted" id="saldoInfo"></small>
                             </div>
                         </div>
                     </div>
@@ -236,9 +205,47 @@ $(document).ready(function() {
         });
     }
 
+    // Update info saldo ketika pilih rekening
+    $('#rekening_id').on('change', function() {
+        const selectedOption = $(this).find('option:selected');
+        const saldo = selectedOption.data('saldo') || 0;
+        const jumlah = $('#jumlah').val() || 0;
+        
+        $('#saldoInfo').text(`Saldo tersedia: Rp ${saldo.toLocaleString('id-ID')}`);
+        
+        if (parseFloat(jumlah) > saldo) {
+            $('#saldoInfo').addClass('text-danger').removeClass('text-success');
+        } else {
+            $('#saldoInfo').addClass('text-success').removeClass('text-danger');
+        }
+    });
+
+    // Validasi jumlah vs saldo
+    $('#jumlah').on('input', function() {
+        const selectedOption = $('#rekening_id').find('option:selected');
+        const saldo = selectedOption.data('saldo') || 0;
+        const jumlah = $(this).val() || 0;
+        
+        if (parseFloat(jumlah) > saldo) {
+            $('#saldoInfo').text(`Saldo tidak cukup! Kebutuhan: Rp ${jumlah.toLocaleString('id-ID')}, Tersedia: Rp ${saldo.toLocaleString('id-ID')}`)
+                .addClass('text-danger').removeClass('text-success');
+        } else {
+            $('#saldoInfo').text(`Saldo mencukupi`).addClass('text-success').removeClass('text-danger');
+        }
+    });
+
     // Handle form submit
     $('#formPengeluaran').on('submit', function(e) {
         e.preventDefault();
+        
+        const selectedOption = $('#rekening_id').find('option:selected');
+        const saldo = selectedOption.data('saldo') || 0;
+        const jumlah = $('#jumlah').val();
+        
+        if (parseFloat(jumlah) > saldo) {
+            alert('Saldo tidak mencukupi! Silakan pilih rekening lain atau kurangi jumlah.');
+            return false;
+        }
         
         const formData = new FormData(this);
         formData.append('action', 'tambah_pengeluaran');

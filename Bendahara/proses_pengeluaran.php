@@ -2,35 +2,37 @@
 // proses_pengeluaran.php
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
+require_once 'saldo_helper.php';
 
 // Function untuk handle upload file
-function handleUpload($file, $folder, $prefix = '') {
+function handleUpload($file, $folder, $prefix = '')
+{
     if (!$file || $file['error'] !== UPLOAD_ERR_OK) {
         return ['error' => 'File tidak valid. Code: ' . ($file['error'] ?? 'N/A')];
     }
-    
+
     if ($file['size'] > 5 * 1024 * 1024) {
         return ['error' => 'Ukuran file maksimal 5MB.'];
     }
-    
+
     if (!is_dir($folder) && !mkdir($folder, 0777, true)) {
         return ['error' => 'Gagal membuat direktori.'];
     }
-    
+
     $extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
     $allowed_extensions = ['jpg', 'jpeg', 'png', 'pdf'];
-    
+
     if (!in_array($extension, $allowed_extensions)) {
         return ['error' => 'Format file tidak didukung. Gunakan JPG, PNG, atau PDF.'];
     }
-    
+
     $fileName = ($prefix ? $prefix . '_' : '') . uniqid() . '_' . time() . '.' . $extension;
     $targetPath = $folder . '/' . $fileName;
-    
+
     if (move_uploaded_file($file['tmp_name'], $targetPath)) {
         return ['success' => true, 'path' => $targetPath];
     }
-    
+
     return ['error' => 'Gagal memindahkan file. Periksa izin folder.'];
 }
 
@@ -58,6 +60,12 @@ try {
             throw new Exception("Bukti pengeluaran wajib diupload.");
         }
 
+        // Cek saldo real-time
+        $saldo_real = getSaldoRealTime($rekening_id);
+        if ($saldo_real < $jumlah) {
+            throw new Exception("Saldo tidak mencukupi. Saldo real-time: Rp " . number_format($saldo_real, 0, ',', '.'));
+        }
+
         // Upload bukti file
         $upload_result = handleUpload($_FILES['bukti_file'], 'bukti_pengeluaran', 'pengeluaran');
         if (isset($upload_result['error'])) {
@@ -65,37 +73,35 @@ try {
         }
         $bukti_path = $upload_result['path'];
 
-        // Cek saldo rekening
-        $stmt_saldo = $conn->prepare("SELECT saldo_sekarang FROM rekening WHERE id = ?");
-        $stmt_saldo->bind_param("i", $rekening_id);
-        $stmt_saldo->execute();
-        $saldo_result = $stmt_saldo->get_result();
-        
-        if ($saldo_result->num_rows === 0) {
-            throw new Exception("Rekening tidak ditemukan.");
-        }
-        
-        $saldo = $saldo_result->fetch_assoc()['saldo_sekarang'];
-        if ($saldo < $jumlah) {
-            throw new Exception("Saldo tidak mencukupi. Saldo tersedia: Rp " . number_format($saldo, 0, ',', '.'));
-        }
+        $conn->begin_transaction();
 
-        // Insert pengeluaran
-        $stmt = $conn->prepare("INSERT INTO pengeluaran 
-            (tanggal, kategori_id, keterangan, jumlah, rekening_id, bukti_file, created_by, status) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')");
-        
-        $user_id = 1; // Ganti dengan ID user yang login
-        $stmt->bind_param("sisdisi", $tanggal, $kategori_id, $keterangan, $jumlah, $rekening_id, $bukti_path, $user_id);
-        
-        if (!$stmt->execute()) {
-            throw new Exception("Gagal menyimpan pengeluaran: " . $stmt->error);
-        }
+        try {
+            // Insert pengeluaran
+            $stmt = $conn->prepare("INSERT INTO pengeluaran 
+                (tanggal, kategori_id, keterangan, jumlah, rekening_id, bukti_file, created_by, status) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, 'draft')");
 
-        echo json_encode([
-            'status' => 'success',
-            'message' => 'Pengeluaran berhasil disimpan dan menunggu approval!'
-        ]);
+            $user_id = 1; // Ganti dengan ID user yang login
+            $stmt->bind_param("sisdisi", $tanggal, $kategori_id, $keterangan, $jumlah, $rekening_id, $bukti_path, $user_id);
+
+            if (!$stmt->execute()) {
+                throw new Exception("Gagal menyimpan pengeluaran: " . $stmt->error);
+            }
+
+            // BARU: Update saldo rekening (kurangi karena pengeluaran)
+            updateSaldoRekening($rekening_id, $jumlah, 'kurang');
+
+            $conn->commit();
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => 'Pengeluaran berhasil disimpan dan menunggu approval!'
+            ]);
+
+        } catch (Exception $e) {
+            $conn->rollback();
+            throw $e;
+        }
 
     } else {
         throw new Exception("Action tidak valid.");
@@ -107,6 +113,7 @@ try {
         'message' => $e->getMessage()
     ]);
 } finally {
-    if (isset($conn)) $conn->close();
+    if (isset($conn))
+        $conn->close();
 }
 ?>
