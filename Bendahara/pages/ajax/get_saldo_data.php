@@ -6,6 +6,7 @@ if ($conn->connect_error) {
     echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
     exit;
 }
+date_default_timezone_set('Asia/Jakarta');
 
 header('Content-Type: application/json');
 
