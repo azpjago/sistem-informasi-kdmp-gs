@@ -21,7 +21,7 @@
 
     <!-- BREAKDOWN PER SUMBER -->
     <div class="row mb-4">
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <h6 class="card-title">Simpanan Anggota</h6>
@@ -29,7 +29,7 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <h6 class="card-title">Penjualan Sembako</h6>
@@ -37,12 +37,29 @@
                 </div>
             </div>
         </div>
-        <div class="col-md-4 mb-3">
+        <div class="col-md-3 mb-3">
             <div class="card h-100">
                 <div class="card-body text-center">
                     <h6 class="card-title">Hibah</h6>
                     <h4 class="text-warning" id="saldoHibah">Rp 0</h4>
                 </div>
+            </div>
+        </div>
+        <div class="col-md-3 mb-3">
+            <div class="card h-100">
+                <div class="card-body text-center">
+                    <h6 class="card-title">Tarik Sukarela</h6>
+                    <h4 class="text-danger" id="saldoTarik">Rp 0</h4>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- INFO BREAKDOWN -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div id="infoBreakdown">
+                <!-- Info hubungan akan dimuat di sini -->
             </div>
         </div>
     </div>
@@ -65,25 +82,26 @@
 </div>
 
 <script>
-// Di saldo_dashboard.php - tambahkan info hubungan
-function loadSaldoDashboard() {
-    $.ajax({
-        url: 'pages/ajax/get_saldo_data.php',
-        type: 'GET',
-        dataType: 'json',
-        success: function(response) {
-            if(response.status === 'success') {
-                // Update Saldo Utama
-                $('#saldoUtama').text('Rp ' + formatNumber(response.saldo_utama));
-                $('#lastUpdate').text(response.last_update);
-                
-                // Update Per Sumber
-                $('#saldoSimpanan').text('Rp ' + formatNumber(response.simpanan_anggota));
-                $('#saldoPenjualan').text('Rp ' + formatNumber(response.penjualan_sembako));
-                $('#saldoHibah').text('Rp ' + formatNumber(response.hibah));
-                
-                // Tampilkan hubungan antara komponen
-                $('#infoBreakdown').html(`
+    function loadSaldoDashboard() {
+        $.ajax({
+            url: 'pages/ajax/get_saldo_data.php',
+            type: 'GET',
+            dataType: 'json',
+            success: function (response) {
+                if (response.status === 'success') {
+                    // Update Saldo Utama
+                    $('#saldoUtama').text('Rp ' + formatNumber(response.saldo_utama));
+                    $('#lastUpdate').text(response.last_update);
+
+                    // Update Per Sumber
+                    $('#saldoSimpanan').text('Rp ' + formatNumber(response.simpanan_anggota));
+                    $('#saldoPenjualan').text('Rp ' + formatNumber(response.penjualan_sembako));
+                    $('#saldoHibah').text('Rp ' + formatNumber(response.hibah));
+                    $('#saldoTarik').text('Rp ' + formatNumber(response.tarik_sukarela || 0));
+
+                    // Tampilkan hubungan antara komponen
+                    const selisih = response.selisih || 0;
+                    $('#infoBreakdown').html(`
                     <div class="alert alert-info mt-3">
                         <small>
                             <strong>Keterangan Hubungan:</strong><br>
@@ -91,15 +109,16 @@ function loadSaldoDashboard() {
                             • Simpanan Anggota (Rp ${formatNumber(response.simpanan_anggota)}) = Total pembayaran lunas<br>
                             • Penjualan Sembako (Rp ${formatNumber(response.penjualan_sembako)}) = Total penjualan terkirim<br>
                             • Hibah (Rp ${formatNumber(response.hibah)}) = Total penerimaan hibah<br>
-                            • Selisih: Rp ${formatNumber(response.selisih)} (dana dari sumber lain)
+                            • Tarik Sukarela (Rp ${formatNumber(response.tarik_sukarela || 0)}) = Total penarikan sukarela<br>
+                            • Selisih: Rp ${formatNumber(selisih)} (dana dari sumber lain)
                         </small>
                     </div>
                 `);
-                
-                // Update Per Rekening
-                let rekeningHtml = '';
-                response.rekening.forEach(function(rek) {
-                    rekeningHtml += `
+
+                    // Update Per Rekening
+                    let rekeningHtml = '';
+                    response.rekening.forEach(function (rek) {
+                        rekeningHtml += `
                     <div class="col-md-3 mb-3">
                         <div class="card">
                             <div class="card-body">
@@ -111,23 +130,33 @@ function loadSaldoDashboard() {
                             </div>
                         </div>
                     </div>`;
-                });
-                $('#rekeningSaldo').html(rekeningHtml);
+                    });
+                    $('#rekeningSaldo').html(rekeningHtml);
+                }
+            },
+            error: function (xhr, status, error) {
+                console.error('Error loading saldo data:', error);
+                alert('Error loading saldo data. Please try again.');
             }
-        }
+        });
+    }
+
+    function formatNumber(num) {
+        if (!num) return '0';
+        return new Intl.NumberFormat('id-ID').format(num);
+    }
+
+    function refreshSaldo() {
+        loadSaldoDashboard();
+        // Tampilkan loading indicator
+        $('#saldoUtama').html('<span class="spinner-border spinner-border-sm"></span> Loading...');
+    }
+
+    // Load pertama kali
+    $(document).ready(function () {
+        loadSaldoDashboard();
+
+        // Auto refresh setiap 30 detik
+        setInterval(loadSaldoDashboard, 30000);
     });
-}
-
-function formatNumber(num) {
-    return new Intl.NumberFormat('id-ID').format(num);
-}
-
-function refreshSaldo() {
-    loadSaldoDashboard();
-}
-
-// Load pertama kali
-$(document).ready(function() {
-    loadSaldoDashboard();
-});
 </script>
