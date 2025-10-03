@@ -129,7 +129,7 @@ date_default_timezone_set('Asia/Jakarta');
                                 <h5 class="card-text ${rek.jenis === 'kas' ? 'text-success' : 'text-primary'}">
                                     Rp ${formatNumber(rek.saldo_sekarang)}
                                 </h5>
-                                <small class="text-muted">${rek.nomor_rekening || 'Tunai'}</small>
+                                <small class="text-muted">${rek.nomor_rekening || 'cash'}</small>
                             </div>
                         </div>
                     </div>`;

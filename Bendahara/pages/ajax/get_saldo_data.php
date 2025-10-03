@@ -73,7 +73,7 @@ try {
                 FROM pemesanan_detail pd 
                 INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
                 WHERE p.status = 'Terkirim' 
-                AND p.metode = 'Tunai'
+                AND p.metode = 'cash'
             ");
         } else {
             $result = $conn->query("
@@ -81,7 +81,7 @@ try {
                 FROM pemesanan_detail pd 
                 INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
                 WHERE p.status = 'Terkirim' 
-                AND p.metode = 'Transfer'
+                AND p.metode = 'transfer'
                 AND p.bank_tujuan = '$nama_rekening'
             ");
         }
