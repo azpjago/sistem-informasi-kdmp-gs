@@ -27,7 +27,7 @@ try {
             $result = $conn->query("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
                 FROM pembayaran 
-                WHERE (status_bayar = 'Lunas' OR status = 'Lunas') 
+                WHERE (status_bayar = 'Lunas') 
                 AND metode = 'cash'
             ");
         }
@@ -36,7 +36,7 @@ try {
             $result = $conn->query("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
                 FROM pembayaran 
-                WHERE (status_bayar = 'Lunas' OR status = 'Lunas') 
+                WHERE (status_bayar = 'Lunas') 
                 AND metode = 'transfer' 
                 AND bank_tujuan = '$nama_rekening'
             ");
@@ -52,9 +52,8 @@ try {
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
                 FROM pemesanan_detail pd 
                 INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
-                INNER JOIN pembayaran_pemesanan pp ON p.id_pemesanan = pp.id_pemesanan
                 WHERE p.status = 'Terkirim' 
-                AND pp.metode_pembayaran = 'Tunai'
+                AND p.metode = 'Tunai'
             ");
         }
         // Jika Bank: ambil penjualan TRANSFER dengan bank_tujuan yang sesuai
@@ -63,9 +62,8 @@ try {
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
                 FROM pemesanan_detail pd 
                 INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
-                INNER JOIN pembayaran_pemesanan pp ON p.id_pemesanan = pp.id_pemesanan
                 WHERE p.status = 'Terkirim' 
-                AND pp.metode_pembayaran = 'Transfer'
+                AND p.metode = 'Transfer'
                 AND p.bank_tujuan = '$nama_rekening'
             ");
         }

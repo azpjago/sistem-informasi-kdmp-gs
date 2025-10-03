@@ -149,7 +149,7 @@ if (isset($_GET['no_anggota']) && !empty($_GET['no_anggota'])) {
                         <label for="bank_tujuan_sukarela" class="form-label">Bank Tujuan</label>
                         <select class="form-select" id="bank_tujuan_sukarela" name="bank_tujuan">
                             <option value="">-- Pilih Bank --</option>
-                            <option value="Bank BCA">Bank BCA</option>
+                            <option value="Bank MANDIRI">Bank MANDIRI</option>
                             <option value="Bank BRI">Bank BRI</option>
                             <option value="Bank BNI">Bank BNI</option>
                         </select>
