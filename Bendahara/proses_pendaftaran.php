@@ -2,7 +2,6 @@
 // proses_pendaftaran.php (VERSI PERBAIKAN - FIX DUPLICATE LOOP)
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
-require_once 'saldo_helper.php';
 function handleUpload($file, $folder, $prefix = '')
 {
     if (!$file || $file['error'] !== UPLOAD_ERR_OK)
@@ -148,25 +147,6 @@ try {
 
         if (!$stmt_pembayaran->execute()) {
         throw new Exception("Gagal menyimpan " . $data['jenis_simpanan'] . ": " . $stmt_pembayaran->error);
-    }
-    
-    // BARU: Update saldo rekening setelah pembayaran berhasil
-    if ($metode_pembayaran === 'cash') {
-        // Cari ID rekening Kas Tunai
-        $result_kas = $conn->query("SELECT id FROM rekening WHERE nama_rekening = 'Kas Tunai'");
-        $kas_id = $result_kas->fetch_assoc()['id'];
-        updateSaldoRekening($kas_id, $data['jumlah'], 'tambah');
-    } else if ($metode_pembayaran === 'transfer' && $bank_tujuan) {
-        // Cari ID rekening berdasarkan bank_tujuan
-        $stmt_bank = $conn->prepare("SELECT id FROM rekening WHERE nama_rekening = ?");
-        $stmt_bank->bind_param("s", $bank_tujuan);
-        $stmt_bank->execute();
-        $bank_id = $stmt_bank->get_result()->fetch_assoc()['id'];
-        $stmt_bank->close();
-        
-        if ($bank_id) {
-            updateSaldoRekening($bank_id, $data['jumlah'], 'tambah');
-        }
     }
 }
 
