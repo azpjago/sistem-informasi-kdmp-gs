@@ -42,6 +42,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="?page=pengeluaran" class="nav-link">
+                        <i class="fas fa-money-bill-transfer"></i>
+                        <span>Appr. Pengeluaran</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="?page=monitoring_pemesanan" class="nav-link">
                         <i class="fas fa-shopping-cart"></i>
                         <span>Monitoring Pemesanan</span>
@@ -90,6 +96,7 @@
                 'dashboard_utama',
                 'data_anggota',
                 'laporan_keuangan',
+                'pengeluaran',
                 'monitoring_pemesanan',
                 'approval_pinjaman',
                 'laporan_strategis',

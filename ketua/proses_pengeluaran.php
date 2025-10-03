@@ -15,7 +15,6 @@ function handleUpload($file, $folder, $prefix = '')
         return ['error' => 'Ukuran file maksimal 5MB.'];
     }
 
-    // Buat folder jika belum ada
     if (!is_dir($folder) && !mkdir($folder, 0777, true)) {
         return ['error' => 'Gagal membuat direktori.'];
     }
@@ -150,7 +149,7 @@ try {
         }
 
         // Upload bukti file
-        $upload_result = handleUpload($_FILES['bukti_file'], 'uploads/pengeluaran', 'pengeluaran');
+        $upload_result = handleUpload($_FILES['bukti_file'], 'bukti_pengeluaran', 'pengeluaran');
         if (isset($upload_result['error'])) {
             throw new Exception($upload_result['error']);
         }
