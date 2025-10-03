@@ -30,7 +30,7 @@
 
                         <div class="row mb-3">
                             <div class="col-md-6">
-                                <label class="form-label">Bank BCA</label>
+                                <label class="form-label">Bank MANDIRI</label>
                                 <div class="input-group">
                                     <span class="input-group-text">Rp</span>
                                     <input type="number" class="form-control" name="saldo_bca" 

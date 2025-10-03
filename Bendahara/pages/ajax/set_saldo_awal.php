@@ -1,5 +1,5 @@
 <?php
-// set_saldo_awal.php
+// set_saldo_awal.php - WITH CASH/TRANSFER LOGIC
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 
 if ($conn->connect_error) {
@@ -10,29 +10,55 @@ if ($conn->connect_error) {
 header('Content-Type: application/json');
 
 try {
-    // Update saldo Kas Tunai
-    $stmt = $conn->prepare("UPDATE rekening SET saldo_sekarang = ? WHERE nama_rekening = 'Kas Tunai'");
-    $stmt->bind_param("d", $_POST['kas']);
-    $stmt->execute();
-
-    // Update saldo Bank BCA
-    $stmt = $conn->prepare("UPDATE rekening SET saldo_sekarang = ? WHERE nama_rekening = 'Bank MANDIRI'");
-    $stmt->bind_param("d", $_POST['bca']);
-    $stmt->execute();
-
-    // Update saldo Bank BRI  
-    $stmt = $conn->prepare("UPDATE rekening SET saldo_sekarang = ? WHERE nama_rekening = 'Bank BRI'");
-    $stmt->bind_param("d", $_POST['bri']);
-    $stmt->execute();
-
-    // Update saldo Bank BNI
-    $stmt = $conn->prepare("UPDATE rekening SET saldo_sekarang = ? WHERE nama_rekening = 'Bank BNI'");
-    $stmt->bind_param("d", $_POST['bni']);
-    $stmt->execute();
-
+    $created_by = 1; // admin
+    
+    // Set Saldo Kas Tunai - pakai metode CASH
+    if ($_POST['kas'] > 0) {
+        $stmt = $conn->prepare("
+            INSERT INTO pembayaran 
+            (anggota_id, jenis_simpanan, jumlah, metode, bank_tujuan, status_bayar, keterangan, created_by) 
+            VALUES (0, 'saldo_awal', ?, 'cash', 'Kas Tunai', 'Lunas', 'Set Saldo Awal - Kas Tunai', ?)
+        ");
+        $stmt->bind_param("di", $_POST['kas'], $created_by);
+        $stmt->execute();
+    }
+    
+    // Set Saldo Bank MANDIRI - pakai metode TRANSFER
+    if ($_POST['mandiri'] > 0) {
+        $stmt = $conn->prepare("
+            INSERT INTO pembayaran 
+            (anggota_id, jenis_simpanan, jumlah, metode, bank_tujuan, status_bayar, keterangan, created_by) 
+            VALUES (0, 'saldo_awal', ?, 'transfer', 'Bank MANDIRI', 'Lunas', 'Set Saldo Awal - Bank MANDIRI', ?)
+        ");
+        $stmt->bind_param("di", $_POST['mandiri'], $created_by);
+        $stmt->execute();
+    }
+    
+    // Set Saldo Bank BRI - pakai metode TRANSFER
+    if ($_POST['bri'] > 0) {
+        $stmt = $conn->prepare("
+            INSERT INTO pembayaran 
+            (anggota_id, jenis_simpanan, jumlah, metode, bank_tujuan, status_bayar, keterangan, created_by) 
+            VALUES (0, 'saldo_awal', ?, 'transfer', 'Bank BRI', 'Lunas', 'Set Saldo Awal - Bank BRI', ?)
+        ");
+        $stmt->bind_param("di", $_POST['bri'], $created_by);
+        $stmt->execute();
+    }
+    
+    // Set Saldo Bank BNI - pakai metode TRANSFER
+    if ($_POST['bni'] > 0) {
+        $stmt = $conn->prepare("
+            INSERT INTO pembayaran 
+            (anggota_id, jenis_simpanan, jumlah, metode, bank_tujuan, status_bayar, keterangan, created_by) 
+            VALUES (0, 'saldo_awal', ?, 'transfer', 'Bank BNI', 'Lunas', 'Set Saldo Awal - Bank BNI', ?)
+        ");
+        $stmt->bind_param("di", $_POST['bni'], $created_by);
+        $stmt->execute();
+    }
+    
     echo json_encode([
-        'status' => 'success',
-        'message' => 'Saldo awal berhasil disimpan!'
+        'status' => 'success', 
+        'message' => 'Saldo awal berhasil diset dengan logika cash/transfer!'
     ]);
 
 } catch (Exception $e) {
