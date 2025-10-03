@@ -51,7 +51,7 @@ date_default_timezone_set('Asia/Jakarta');
                 <li class="nav-item"><a href="?page=saldo_dashboard" class="nav-link"><i
                             class="fas fa-money-bill-wave"></i>
                         <span>Saldo</span></a></li>
-                <li class="nav-item"><a href="?page=pengeluaran" class="nav-link"><i class="fas fa-money-bill-wave"></i>
+                <li class="nav-item"><a href="?page=pengeluaran" class="nav-link"><i class="fas fa-money-bill-transfer"></i>
                         <span>Pengeluaran</span></a></li>
                 <li class="nav-item logout-item"><a href="../logout.php" class="nav-link"><i
                             class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
@@ -229,7 +229,7 @@ date_default_timezone_set('Asia/Jakarta');
             });
 
             // Di bagian JavaScript form pendaftaran
-            $('#metode_pembayaran').on('change', function() {
+            $('#metode_pembayaran').on('change', function () {
                 if ($(this).val() === 'transfer') {
                     $('#bank_tujuan_container').show();
                     $('#bank_tujuan').prop('required', true);
@@ -240,7 +240,7 @@ date_default_timezone_set('Asia/Jakarta');
             });
 
             // Di bagian JavaScript update bayar
-            $('#metode').on('change', function() {
+            $('#metode').on('change', function () {
                 if ($(this).val() === 'transfer') {
                     $('#bank_tujuan_update_container').show();
                     $('#bank_tujuan_update').prop('required', true);
@@ -517,7 +517,7 @@ date_default_timezone_set('Asia/Jakarta');
                 const form = this;
 
                 // Tambahkan semua input text, select, textarea secara eksplisit
-                const textInputs = ['jenis_transaksi', 'nama', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nik', 'npwp', 'alamat', 'agama', 'rw', 'rt', 'no_hp', 'pekerjaan', 'simpanan_wajib', 'tanggal_join', 'metode_pembayaran','bank_tujuan'];
+                const textInputs = ['jenis_transaksi', 'nama', 'jenis_kelamin', 'tempat_lahir', 'tanggal_lahir', 'nik', 'npwp', 'alamat', 'agama', 'rw', 'rt', 'no_hp', 'pekerjaan', 'simpanan_wajib', 'tanggal_join', 'metode_pembayaran', 'bank_tujuan'];
 
                 textInputs.forEach(function (name) {
                     const element = form.elements[name];
