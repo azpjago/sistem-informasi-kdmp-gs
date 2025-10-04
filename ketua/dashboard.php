@@ -100,8 +100,7 @@
                 'monitoring_pemesanan',
                 'approval_pinjaman',
                 'laporan_strategis',
-                'pengaturan_sistem',
-                'export_anggota'
+                'pengaturan_sistem'
             ];
 
             if (in_array($page, $allowed_pages) && file_exists("pages/" . $page . ".php")) {

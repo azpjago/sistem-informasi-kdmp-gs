@@ -105,7 +105,7 @@ $result = $stmt->get_result();
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
         <h1 class="h3 fw-bold">Data Anggota 👨🏻‍🦱👩🏻‍🦱</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
-            <a href="?page=export_anggota" class="btn btn-sm btn-success me-2">
+            <a href="pages/export_anggota.php" class="btn btn-sm btn-success me-2">
                 <i class="fas fa-file-excel me-1"></i> Export Excel
             </a>
         </div>

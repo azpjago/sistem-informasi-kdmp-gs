@@ -1,5 +1,5 @@
 <?php
-// export_anggota_excel.php
+// export_anggota_simple.php
 session_start();
 
 // Cek role user - hanya ketua yang bisa akses
@@ -8,17 +8,12 @@ if ($_SESSION['role'] !== 'ketua') {
     exit;
 }
 
-require 'vendor/autoload.php'; // Jika menggunakan PhpSpreadsheet
-
-use PhpOffice\PhpSpreadsheet\Spreadsheet;
-use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
-
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
-// KUERI PERBAIKAN: Hitung total simpanan dari pembayaran, bukan dari field saldo_total
+// KUERI PERBAIKAN: Hitung total simpanan dari pembayaran
 $query = "
     SELECT 
         a.id,
@@ -29,7 +24,7 @@ $query = "
         COALESCE((
             SELECT SUM(p.jumlah) 
             FROM pembayaran p 
-            WHERE p.anggota_id = a.no_anggota 
+            WHERE p.anggota_id = a.id 
             AND (p.status_bayar = 'Lunas' OR p.status = 'Lunas')
             AND p.jenis_transaksi = 'setor'
             AND p.jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib', 'Simpanan Sukarela')
@@ -37,7 +32,7 @@ $query = "
         COALESCE((
             SELECT SUM(p.jumlah) 
             FROM pembayaran p 
-            WHERE p.no_anggota = a.id 
+            WHERE p.anggota_id = a.id 
             AND (p.status_bayar = 'Lunas' OR p.status = 'Lunas')
             AND p.jenis_transaksi = 'tarik'
         ), 0) as total_tarikan,
@@ -61,46 +56,19 @@ $query = "
 
 $result = $conn->query($query);
 
-// Create new Spreadsheet object
-$spreadsheet = new Spreadsheet();
-$sheet = $spreadsheet->getActiveSheet();
+// Set headers for CSV/Excel
+$filename = 'data_anggota_koperasi_' . date('Y-m-d_H-i-s') . '.csv';
 
-// Set document properties
-$spreadsheet->getProperties()
-    ->setCreator('KDMPGS System')
-    ->setLastModifiedBy('KDMPGS System')
-    ->setTitle('Data Anggota Koperasi')
-    ->setSubject('Data Anggota')
-    ->setDescription('Export data anggota koperasi');
+header('Content-Type: text/csv; charset=utf-8');
+header('Content-Disposition: attachment; filename="' . $filename . '"');
 
-// Set header style
-$headerStyle = [
-    'font' => [
-        'bold' => true,
-        'color' => ['rgb' => 'FFFFFF']
-    ],
-    'fill' => [
-        'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
-        'startColor' => ['rgb' => '2C3E50']
-    ],
-    'borders' => [
-        'allBorders' => [
-            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
-        ]
-    ]
-];
+$output = fopen('php://output', 'w');
 
-// Set data style
-$dataStyle = [
-    'borders' => [
-        'allBorders' => [
-            'borderStyle' => \PhpOffice\PhpSpreadsheet\Style\Border::BORDER_THIN
-        ]
-    ]
-];
+// Add BOM for UTF-8
+fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
 
-// Set column headers
-$headers = [
+// Headers
+fputcsv($output, [
     'No Anggota',
     'Nama Lengkap',
     'Jenis Kelamin',
@@ -109,73 +77,23 @@ $headers = [
     'Total Simpanan',
     'Total Tarikan',
     'Saldo Aktual'
-];
+]);
 
-$sheet->fromArray($headers, null, 'A1');
-$sheet->getStyle('A1:H1')->applyFromArray($headerStyle);
-
-// Add data
-$row = 2;
-$total_simpanan = 0;
-$total_tarikan = 0;
-$total_saldo = 0;
-
+// Data
 while ($anggota = $result->fetch_assoc()) {
-    $sheet->setCellValue('A' . $row, $anggota['no_anggota']);
-    $sheet->setCellValue('B' . $row, $anggota['nama']);
-    $sheet->setCellValue('C' . $row, $anggota['jenis_kelamin']);
-    $sheet->setCellValue('D' . $row, $anggota['no_hp']);
-    $sheet->setCellValue('E' . $row, $anggota['status_keanggotaan']);
-    $sheet->setCellValue('F' . $row, $anggota['total_simpanan']);
-    $sheet->setCellValue('G' . $row, $anggota['total_tarikan']);
-    $sheet->setCellValue('H' . $row, $anggota['saldo_aktual']);
-
-    $total_simpanan += $anggota['total_simpanan'];
-    $total_tarikan += $anggota['total_tarikan'];
-    $total_saldo += $anggota['saldo_aktual'];
-
-    $row++;
+    fputcsv($output, [
+        $anggota['id'],
+        $anggota['nama'],
+        $anggota['jenis_kelamin'],
+        $anggota['no_hp'],
+        $anggota['status_keanggotaan'],
+        $anggota['total_simpanan'],
+        $anggota['total_tarikan'],
+        $anggota['saldo_aktual']
+    ]);
 }
 
-// Add summary row
-$sheet->setCellValue('E' . $row, 'TOTAL:');
-$sheet->setCellValue('F' . $row, $total_simpanan);
-$sheet->setCellValue('G' . $row, $total_tarikan);
-$sheet->setCellValue('H' . $row, $total_saldo);
-
-$sheet->getStyle('E' . $row . ':H' . $row)->applyFromArray($headerStyle);
-
-// Set column widths
-$sheet->getColumnDimension('A')->setWidth(15);
-$sheet->getColumnDimension('B')->setWidth(25);
-$sheet->getColumnDimension('C')->setWidth(15);
-$sheet->getColumnDimension('D')->setWidth(15);
-$sheet->getColumnDimension('E')->setWidth(20);
-$sheet->getColumnDimension('F')->setWidth(15);
-$sheet->getColumnDimension('G')->setWidth(15);
-$sheet->getColumnDimension('H')->setWidth(15);
-
-// Format currency columns
-$sheet->getStyle('F2:H' . $row)
-    ->getNumberFormat()
-    ->setFormatCode('#,##0');
-
-// Apply data style to all cells
-$sheet->getStyle('A1:H' . $row)->applyFromArray($dataStyle);
-
-// Set auto filter
-$sheet->setAutoFilter('A1:H' . ($row - 1));
-
-// Set file name and headers
-$filename = 'data_anggota_koperasi_' . date('Y-m-d_H-i-s') . '.xlsx';
-
-header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
-header('Content-Disposition: attachment;filename="' . $filename . '"');
-header('Cache-Control: max-age=0');
-
-$writer = new Xlsx($spreadsheet);
-$writer->save('php://output');
-
+fclose($output);
 $conn->close();
 exit;
 ?>
