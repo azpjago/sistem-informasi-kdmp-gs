@@ -103,9 +103,9 @@ $result = $stmt->get_result();
     <!-- Header -->
     <div
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h3 fw-bold">Data Anggota</h1>
+        <h1 class="h3 fw-bold">Data Anggota 👨🏻‍🦱👩🏻‍🦱</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
-            <a href="?page=data_anggota&export=excel" class="btn btn-sm btn-success me-2">
+            <a href="?page=export_anggota" class="btn btn-sm btn-success me-2">
                 <i class="fas fa-file-excel me-1"></i> Export Excel
             </a>
         </div>
@@ -225,10 +225,19 @@ $result = $stmt->get_result();
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-muted mb-2">Total Simpanan</h6>
+                            <h6 class="card-title text-muted mb-2">Total Simpanan Anggota Aktif</h6>
                             <h4 class="fw-bold text-info mb-0">
                                 Rp <?php
-                                $simpanan_result = $conn->query("SELECT SUM(saldo_total) as total FROM anggota WHERE status_keanggotaan = 'Aktif'");
+                                // KUERI PERBAIKAN: Hitung dari pembayaran, bukan field saldo_total
+                                $simpanan_result = $conn->query("
+                                    SELECT COALESCE(SUM(p.jumlah), 0) as total 
+                                    FROM pembayaran p 
+                                    INNER JOIN anggota a ON p.anggota_id = a.id 
+                                    WHERE (p.status_bayar = 'Lunas' OR p.status = 'Lunas')
+                                    AND p.jenis_transaksi = 'setor'
+                                    AND p.jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib', 'Simpanan Sukarela')
+                                    AND a.status_keanggotaan = 'Aktif'
+                                ");
                                 echo number_format($simpanan_result->fetch_assoc()['total'] ?? 0, 0, ',', '.');
                                 ?>
                             </h4>
@@ -380,14 +389,16 @@ $result = $stmt->get_result();
                                     </div>
                                     <!-- Modal Non-Aktifkan -->
                                     <!-- Modal Non-Aktifkan -->
-<?php if ($row['status_keanggotaan'] == 'Aktif'): ?>
+                                    <?php if ($row['status_keanggotaan'] == 'Aktif'): ?>
                                         <div class="modal fade" id="nonaktifModal<?php echo $row['id']; ?>" tabindex="-1">
                                             <div class="modal-dialog">
                                                 <div class="modal-content">
                                                     <div class="modal-header">
-                                                        <h5 class="modal-title text-warning"><i class="fas fa-exclamation-triangle me-2"></i>Non-Aktifkan
+                                                        <h5 class="modal-title text-warning"><i
+                                                                class="fas fa-exclamation-triangle me-2"></i>Non-Aktifkan
                                                             Anggota</h5>
-                                                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                                        <button type="button" class="btn-close"
+                                                            data-bs-dismiss="modal"></button>
                                                     </div>
                                                     <div class="modal-body">
                                                         <p>Apakah Anda yakin ingin menon-aktifkan anggota berikut?</p>
@@ -395,19 +406,22 @@ $result = $stmt->get_result();
                                                             <strong><?php echo $row['nama']; ?></strong><br>
                                                             <small><?php echo $row['no_anggota']; ?></small>
                                                         </div>
-                                    
+
                                                         <div class="border rounded p-3 bg-light">
                                                             <h6 class="text-danger">Dampak Non-Aktifasi:</h6>
                                                             <ul class="small mb-0">
                                                                 <li>Status diubah menjadi <strong>Non-Aktif</strong></li>
                                                                 <li><strong>Simpanan Pokok: Rp
-                                                                        <?php echo number_format($row['simpanan_pokok'] ?? 10000, 0, ',', '.'); ?></strong> -
+                                                                        <?php echo number_format($row['simpanan_pokok'] ?? 10000, 0, ',', '.'); ?></strong>
+                                                                    -
                                                                     Tetap disimpan</li>
                                                                 <li><strong>Simpanan Wajib: Rp
-                                                                        <?php echo number_format($row['simpanan_wajib'], 0, ',', '.'); ?></strong> - Direset ke
+                                                                        <?php echo number_format($row['simpanan_wajib'], 0, ',', '.'); ?></strong>
+                                                                    - Direset ke
                                                                     0</li>
                                                                 <li><strong>Simpanan Sukarela: Rp
-                                                                        <?php echo number_format($row['saldo_sukarela'], 0, ',', '.'); ?></strong> - Direset ke
+                                                                        <?php echo number_format($row['saldo_sukarela'], 0, ',', '.'); ?></strong>
+                                                                    - Direset ke
                                                                     0</li>
                                                                 <li>Total simpanan akan menjadi <strong>Rp. 0 ,-</li>
                                                             </ul>
@@ -415,12 +429,15 @@ $result = $stmt->get_result();
                                                     </div>
                                                     <div class="modal-footer">
                                                         <form method="POST" style="display: inline;">
-                                                            <input type="hidden" name="id_anggota" value="<?php echo $row['id']; ?>">
-                                                            <button type="submit" name="nonaktifkan_anggota" class="btn btn-warning">
+                                                            <input type="hidden" name="id_anggota"
+                                                                value="<?php echo $row['id']; ?>">
+                                                            <button type="submit" name="nonaktifkan_anggota"
+                                                                class="btn btn-warning">
                                                                 <i class="fas fa-user-times me-1"></i> Ya, Non-Aktifkan
                                                             </button>
                                                         </form>
-                                                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
+                                                        <button type="button" class="btn btn-secondary"
+                                                            data-bs-dismiss="modal">Batal</button>
                                                     </div>
                                                 </div>
                                             </div>

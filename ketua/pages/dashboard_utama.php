@@ -33,7 +33,7 @@ $pendapatan_bulan_ini = $result->fetch_assoc()['total'] ?? 0;
     <!-- Header -->
     <div
         class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h3 fw-bold">Dashboard Ketua</h1>
+        <h1 class="h3 fw-bold">Dashboard Ketua 📊</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
             <span class="text-muted me-3"><?php echo date('d F Y'); ?></span>
             <button type="button" class="btn btn-sm btn-outline-primary">
@@ -67,8 +67,21 @@ $pendapatan_bulan_ini = $result->fetch_assoc()['total'] ?? 0;
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
                             <h6 class="card-title text-muted mb-2">Total Simpanan</h6>
-                            <h3 class="fw-bold text-success mb-0">Rp
-                                <?php echo number_format($total_simpanan, 0, ',', '.'); ?></h3>
+                            <h3 class="fw-bold text-success mb-0">
+                                Rp <?php
+                                // KUERI PERBAIKAN: Hitung dari pembayaran, bukan field saldo_total
+                                $simpanan_result = $conn->query("
+                                    SELECT COALESCE(SUM(p.jumlah), 0) as total 
+                                    FROM pembayaran p 
+                                    INNER JOIN anggota a ON p.anggota_id = a.id 
+                                    WHERE (p.status_bayar = 'Lunas' OR p.status = 'Lunas')
+                                    AND p.jenis_transaksi = 'setor'
+                                    AND p.jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib', 'Simpanan Sukarela')
+                                    AND a.status_keanggotaan = 'Aktif'
+                                ");
+                                echo number_format($simpanan_result->fetch_assoc()['total'] ?? 0, 0, ',', '.');
+                                ?>
+                            </h3>
                             <small class="text-muted">Saldo total anggota</small>
                         </div>
                         <div class="statistic-icon bg-success bg-opacity-10 rounded-circle p-3">
