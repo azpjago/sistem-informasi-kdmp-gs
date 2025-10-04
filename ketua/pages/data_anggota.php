@@ -388,7 +388,6 @@ $result = $stmt->get_result();
                                         </div>
                                     </div>
                                     <!-- Modal Non-Aktifkan -->
-                                    <!-- Modal Non-Aktifkan -->
                                     <?php if ($row['status_keanggotaan'] == 'Aktif'): ?>
                                         <div class="modal fade" id="nonaktifModal<?php echo $row['id']; ?>" tabindex="-1">
                                             <div class="modal-dialog">

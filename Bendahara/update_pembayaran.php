@@ -1,7 +1,12 @@
 <?php
-// update_pembayaran.php
+// update_pembayaran.php (DENGAN LOG HISTORY)
+session_start();
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
+
+// Include history log
+require_once 'Bendahara/functions/history_log.php';
+
 error_log('Received anggota_id: ' . $_POST['anggota_id']);
 error_log('POST data: ' . print_r($_POST, true));
 
@@ -98,19 +103,19 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
     // Status pembayaran
     $status = " Pembayaran Simpanan wajib " . $nama_bulan[$bulan] . " " . $tahun;
 
+    // Get user info for logging
+    $user_id = $_SESSION['id'] ?? 0;
+    $user_role = $_SESSION['role'] ?? 'bendahara';
+
     // Mulai transaksi
     $conn->begin_transaction();
 
     try {
         // 1. Insert ke tabel pembayaran
-        // Di update_pembayaran.php - setelah ambil $metode
-        $metode = $_POST['metode'];
-        $bank_tujuan = ($metode === 'transfer') ? ($_POST['bank_tujuan'] ?? '') : null;
-
-        // Update query insert
         $stmt = $conn->prepare("INSERT INTO pembayaran (anggota_id, id_transaksi, jenis_simpanan, jenis_transaksi, jumlah, nama_anggota, tanggal_bayar, bulan_periode, metode, bank_tujuan, bukti, status) VALUES (?, ?, 'Simpanan Wajib', 'setor', ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->bind_param("isdsssssss", $anggota_id, $id_transaksi, $jumlah, $nama_anggota, $tanggal_bayar, $bulan_periode, $metode, $bank_tujuan, $bukti_path, $status);
         $stmt->execute();
+        $pembayaran_id = $conn->insert_id;
         $stmt->close();
 
         // 2. Update tanggal jatuh tempo di tabel anggota (+1 bulan)
@@ -119,17 +124,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
         $stmt_update->execute();
         $stmt_update->close();
 
-        // 3. (BARU) Tambahkan jumlah simpanan wajib ke saldo_total
-        // Kode ini mengambil nilai dari variabel $jumlah (yang berisi nilai simpanan_wajib)
-        // dan menambahkannya ke nilai saldo_total yang sudah ada.
+        // 3. Tambahkan jumlah simpanan wajib ke saldo_total
         $stmt_saldo = $conn->prepare("UPDATE anggota SET saldo_total = saldo_total + ? WHERE id = ?");
-        $stmt_saldo->bind_param("di", $jumlah, $anggota_id); // 'd' untuk double/decimal, 'i' untuk integer
+        $stmt_saldo->bind_param("di", $jumlah, $anggota_id);
         $stmt_saldo->execute();
         $stmt_saldo->close();
+
+        // LOG HISTORY: Pembayaran simpanan wajib
+        log_pembayaran_activity(
+            $pembayaran_id,
+            'create',
+            "Pembayaran simpanan wajib $nama_bulan[$bulan] $tahun sebesar Rp " . number_format($jumlah, 0, ',', '.') . " oleh $nama_anggota ($no_anggota)",
+            $user_role
+        );
+
+        // LOG HISTORY: Update anggota
+        log_anggota_activity(
+            $anggota_id,
+            'update',
+            "Memperbarui tanggal jatuh tempo dan menambah saldo total sebesar Rp " . number_format($jumlah, 0, ',', '.'),
+            $user_role
+        );
+
         $conn->commit();
+
+        // LOG HISTORY: Success final
+        log_pembayaran_activity(
+            $pembayaran_id,
+            'complete',
+            "Pembayaran simpanan wajib $nama_anggota ($no_anggota) berhasil diproses",
+            $user_role
+        );
+
         echo json_encode(['status' => 'success', 'message' => 'Pembayaran berhasil disimpan!']);
 
     } catch (Exception $e) {
+        // LOG HISTORY: Error
+        if (isset($pembayaran_id)) {
+            log_pembayaran_activity(
+                $pembayaran_id,
+                'error',
+                "Error pembayaran: " . $e->getMessage(),
+                $user_role
+            );
+        }
+
         $conn->rollback();
         echo json_encode(['status' => 'error', 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
     }

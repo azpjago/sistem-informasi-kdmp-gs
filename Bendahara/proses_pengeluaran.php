@@ -4,6 +4,9 @@ session_start();
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
 
+// Include history log
+require_once 'Bendahara/functions/history_log.php';
+
 // Function untuk handle upload file
 function handleUpload($file, $folder, $prefix = '')
 {
@@ -63,6 +66,10 @@ function hitungSaldoKasTunai()
             -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Kas Tunai
             (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
              WHERE status = 'approved' AND sumber_dana = 'Kas Tunai')
+            -
+            -- PENGURANGAN: Pinjaman yang sudah APPROVED dari Kas Tunai
+            (SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman 
+             WHERE status = 'approved' AND sumber_dana = 'Kas Tunai')
         ) as saldo_kas
     ");
     $data = $result->fetch_assoc();
@@ -96,6 +103,10 @@ function hitungSaldoBank($nama_bank)
             -
             -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Bank tersebut
             (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE status = 'approved' AND sumber_dana = '$nama_bank')
+            -
+            -- PENGURANGAN: Pinjaman yang sudah APPROVED dari Bank tersebut
+            (SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman 
              WHERE status = 'approved' AND sumber_dana = '$nama_bank')
         ) as saldo_bank
     ");
@@ -150,7 +161,7 @@ try {
         }
 
         // Upload bukti file
-        $upload_result = handleUpload($_FILES['bukti_file'], 'uploads/pengeluaran', 'pengeluaran');
+        $upload_result = handleUpload($_FILES['bukti_file'], '../uploads/pengeluaran', 'pengeluaran');
         if (isset($upload_result['error'])) {
             throw new Exception($upload_result['error']);
         }
@@ -170,8 +181,15 @@ try {
                 throw new Exception("Gagal menyimpan pengajuan pengeluaran: " . $stmt->error);
             }
 
-            // CATATAN: Saldo TIDAK dikurangi di sini, karena masih menunggu approval
-            // Saldo akan otomatis berkurang di perhitungan real-time setelah status 'approved'
+            $pengeluaran_id = $conn->insert_id;
+
+            // LOG HISTORY: Pengajuan pengeluaran baru
+            log_pengeluaran_activity(
+                $pengeluaran_id,
+                'create',
+                "Mengajukan pengeluaran baru: $keterangan sebesar Rp " . number_format($jumlah, 0, ',', '.') . " dari $sumber_dana",
+                $user_role
+            );
 
             $conn->commit();
 
@@ -201,7 +219,7 @@ try {
 
         // Ambil data pengeluaran yang akan di-update
         $result = $conn->query("
-            SELECT jumlah, sumber_dana, status 
+            SELECT jumlah, sumber_dana, status, keterangan 
             FROM pengeluaran 
             WHERE id = $pengeluaran_id AND status = 'pending'
         ");
@@ -211,6 +229,7 @@ try {
         }
 
         $pengeluaran = $result->fetch_assoc();
+        $old_status = $pengeluaran['status'];
 
         // Validasi saldo jika status approved
         if ($status === 'approved') {
@@ -236,8 +255,24 @@ try {
                 throw new Exception('Gagal update status: ' . $stmt->error);
             }
 
-            // CATATAN: Tidak perlu update saldo manual
-            // Saldo otomatis berkurang di perhitungan real-time karena status sudah 'approved'
+            // LOG HISTORY: Perubahan status pengeluaran
+            log_status_change(
+                'pengeluaran',
+                $pengeluaran_id,
+                $old_status,
+                $status,
+                $user_role
+            );
+
+            // LOG HISTORY: Detail approval/rejection
+            $action_text = $status === 'approved' ? 'Menyetujui' : 'Menolak';
+            $reason_text = $reason ? " dengan alasan: $reason" : "";
+            log_pengeluaran_activity(
+                $pengeluaran_id,
+                'status_change',
+                "$action_text pengeluaran: {$pengeluaran['keterangan']} sebesar Rp " . number_format($pengeluaran['jumlah'], 0, ',', '.') . $reason_text,
+                $user_role
+            );
 
             $conn->commit();
 
@@ -257,6 +292,16 @@ try {
     }
 
 } catch (Exception $e) {
+    // LOG HISTORY: Error
+    if (isset($pengeluaran_id)) {
+        log_pengeluaran_activity(
+            $pengeluaran_id,
+            'error',
+            "Error: " . $e->getMessage(),
+            $user_role ?? 'system'
+        );
+    }
+
     echo json_encode([
         'status' => 'error',
         'message' => $e->getMessage()

@@ -1,7 +1,12 @@
 <?php
-// proses_pendaftaran.php (VERSI PERBAIKAN - FIX DUPLICATE LOOP)
+// proses_pendaftaran.php (VERSI PERBAIKAN - DENGAN LOG HISTORY)
+session_start();
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
+
+// Include history log
+require_once 'Bendahra/functions/history_log.php';
+
 function handleUpload($file, $folder, $prefix = '')
 {
     if (!$file || $file['error'] !== UPLOAD_ERR_OK)
@@ -100,6 +105,16 @@ try {
         throw new Exception("Gagal menyimpan data anggota: " . $stmt_anggota->error);
     $anggota_id = $conn->insert_id;
 
+    // LOG HISTORY: Pendaftaran anggota baru
+    $user_id = $_SESSION['id'] ?? 0;
+    $user_role = $_SESSION['role'] ?? 'bendahara';
+    log_anggota_activity(
+        $anggota_id,
+        'create',
+        "Mendaftarkan anggota baru: $nama ($no_anggota) dengan simpanan pokok Rp " . number_format($simpanan_pokok, 0, ',', '.') . ", wajib Rp " . number_format($simpanan_wajib_amount, 0, ',', '.') . ", sukarela Rp " . number_format($saldo_sukarela, 0, ',', '.'),
+        $user_role
+    );
+
     // Upload bukti pembayaran
     $bukti_tunggal_path = (isset($_FILES['bukti_tunggal']) && $_FILES['bukti_tunggal']['error'] == 0) ? (handleUpload($_FILES['bukti_tunggal'], 'bukti_bayar', 'bukti_tunggal_' . $no_anggota)['path'] ?? null) : null;
 
@@ -146,14 +161,43 @@ try {
         );
 
         if (!$stmt_pembayaran->execute()) {
-        throw new Exception("Gagal menyimpan " . $data['jenis_simpanan'] . ": " . $stmt_pembayaran->error);
+            throw new Exception("Gagal menyimpan " . $data['jenis_simpanan'] . ": " . $stmt_pembayaran->error);
+        }
+
+        $pembayaran_id = $conn->insert_id;
+
+        // LOG HISTORY: Pembayaran simpanan
+        log_pembayaran_activity(
+            $pembayaran_id,
+            'create',
+            "Mencatat pembayaran $data[jenis_simpanan] sebesar Rp " . number_format($data['jumlah'], 0, ',', '.') . " untuk anggota $nama ($no_anggota)",
+            $user_role
+        );
     }
-}
 
     $conn->commit();
+
+    // LOG HISTORY: Success final
+    log_anggota_activity(
+        $anggota_id,
+        'complete',
+        "Pendaftaran anggota $nama ($no_anggota) berhasil diselesaikan dengan total simpanan Rp " . number_format($saldo_total, 0, ',', '.'),
+        $user_role
+    );
+
     echo json_encode(['status' => 'success', 'message' => 'Pendaftaran anggota ' . $no_anggota . ' berhasil!']);
 
 } catch (Exception $e) {
+    // LOG HISTORY: Error
+    if (isset($anggota_id)) {
+        log_anggota_activity(
+            $anggota_id,
+            'error',
+            "Error pendaftaran: " . $e->getMessage(),
+            $user_role ?? 'system'
+        );
+    }
+
     if (isset($conn))
         $conn->rollback();
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

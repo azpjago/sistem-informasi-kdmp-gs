@@ -208,12 +208,14 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                                                     <i class="fas fa-trash"></i>
                                                 </button>
                                         <?php elseif ($can_approve): ?>
-                                                <button class="btn btn-sm btn-success approve-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
+                                            <div class="btn-group">
+                                                <button type="button" class="btn btn-sm btn-outline-success approve-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
                                                     <i class="fas fa-check"></i> Setujui
                                                 </button>
-                                                <button class="btn btn-sm btn-danger reject-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
+                                                <button type="button" class="btn btn-sm btn-outline-danger reject-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
                                                     <i class="fas fa-times"></i> Tolak
                                                 </button>
+                                        </div>
                                         <?php else: ?>
                                                 <span class="text-muted">-</span>
                                         <?php endif; ?>
@@ -391,7 +393,7 @@ $(document).ready(function() {
         formData.append('action', 'ajukan_pengeluaran');
 
         $.ajax({
-            url: 'proses_pengeluaran.php',
+            url: 'pages/proses/proses_pengeluaran.php',
             type: 'POST',
             data: formData,
             processData: false,
@@ -430,7 +432,7 @@ $(document).ready(function() {
 
     function updateStatusPengeluaran(id, status, reason = '') {
         $.ajax({
-            url: 'proses_pengeluaran.php',
+            url: 'pages/proses/proses_pengeluaran.php',
             type: 'POST',
             data: {
                 action: 'update_status',
