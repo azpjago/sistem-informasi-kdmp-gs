@@ -39,6 +39,8 @@ date_default_timezone_set('Asia/Jakarta');
                         <span>History</span></a></li>
                 <li class="nav-item"><a href="?page=kurir" class="nav-link"><i class="fas fa-users"></i>
                         <span>Kurir</span></a></li>
+                <li class="nav-item"><a href="?page=pinjaman" class="nav-link"><i class="fas fa-edit"></i>
+                        <span>Ajukan Pinjaman</span></a></li>
                 <li class="nav-item"><a href="?page=laporan" class="nav-link"><i class="fas fa-file-text"></i>
                         <span>Laporan</span></a></li>
                 <li class="nav-item"><a href="?page=history" class="nav-link"><i class="fas fa-window-restore"></i>
@@ -60,7 +62,7 @@ date_default_timezone_set('Asia/Jakarta');
         <div class="content-wrapper">
             <?php
             $page = $_GET['page'] ?? "dashboard_utama";
-            $allowed_pages = ['dashboard_utama', 'monitoring', 'produk', 'history', 'pengiriman', 'laporan', 'kurir', 'selesai'];
+            $allowed_pages = ['dashboard_utama', 'monitoring', 'produk', 'history', 'pengiriman', 'laporan', 'kurir', 'selesai', 'pinjaman'];
 
             if (in_array($page, $allowed_pages) && file_exists("pages/" . $page . ".php")) {
                 include "pages/" . $page . ".php";
