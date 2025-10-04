@@ -50,7 +50,35 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
-        // === 2. TARIK SUKARELA === (mengurangi saldo)
+        // === 2. SIMPANAN SUKARELA (SETOR) ===
+        if ($nama_rekening == 'Kas Tunai') {
+            $stmt = $conn->prepare("
+                SELECT COALESCE(SUM(jumlah), 0) as total 
+                FROM pembayaran 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'setor'
+                AND metode = 'cash'
+                AND jenis_simpanan = 'Simpanan Sukarela'
+            ");
+            $stmt->execute();
+        } else {
+            $stmt = $conn->prepare("
+                SELECT COALESCE(SUM(jumlah), 0) as total 
+                FROM pembayaran 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'setor'
+                AND metode = 'transfer' 
+                AND bank_tujuan = ?
+                AND jenis_simpanan = 'Simpanan Sukarela'
+            ");
+            $stmt->bind_param("s", $nama_rekening);
+            $stmt->execute();
+        }
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $saldo_rekening += (float) $data['total'];
+
+        // === 3. TARIK SUKARELA === (mengurangi saldo)
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
@@ -76,7 +104,7 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening -= (float) $data['total'];
 
-        // === 3. PENJUALAN SEMBAKO ===
+        // === 4. PENJUALAN SEMBAKO ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
@@ -102,7 +130,7 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
-        // === 4. HIBAH ===
+        // === 5. HIBAH ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
@@ -126,7 +154,7 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
-        // === 5. PENGELUARAN APPROVED === (mengurangi saldo)
+        // === 6. PENGELUARAN APPROVED === (mengurangi saldo)
         $stmt = $conn->prepare("
             SELECT COALESCE(SUM(jumlah), 0) as total 
             FROM pengeluaran 
@@ -138,7 +166,7 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening -= (float) $data['total'];
 
-        // === 6. PINJAMAN APPROVED === (mengurangi saldo) - YANG INI SAJA!
+        // === 7. PINJAMAN APPROVED === (mengurangi saldo)
         $stmt = $conn->prepare("
             SELECT COALESCE(SUM(jumlah_pinjaman), 0) as total 
             FROM pinjaman 
@@ -150,6 +178,30 @@ try {
         $result = $stmt->get_result();
         $data = $result->fetch_assoc();
         $saldo_rekening -= (float) $data['total'];
+
+        // === 8. CICILAN PINJAMAN === (menambah saldo)
+        if ($nama_rekening == 'Kas Tunai') {
+            $stmt = $conn->prepare("
+                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
+                FROM cicilan 
+                WHERE status = 'Lunas'
+                AND metode = 'cash'
+            ");
+            $stmt->execute();
+        } else {
+            $stmt = $conn->prepare("
+                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
+                FROM cicilan 
+                WHERE status = 'Lunas'
+                AND metode = 'transfer'
+                AND bank_tujuan = ?
+            ");
+            $stmt->bind_param("s", $nama_rekening);
+            $stmt->execute();
+        }
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $saldo_rekening += (float) $data['total'];
 
         // Simpan data rekening
         $rekening[] = [
@@ -163,27 +215,30 @@ try {
     }
 
     // Hitung breakdown untuk informasi
-    $saldo_simpanan = hitungTotalSimpanan($conn);
-    $saldo_sukarela = hitungSimpananSukarela($conn);
+    $saldo_simpanan_pokok_wajib = hitungTotalSimpananPokokWajib($conn);
+    $saldo_simpanan_sukarela = hitungSimpananSukarela($conn);
     $saldo_tarik = hitungTarikSukarela($conn);
     $saldo_penjualan = hitungPenjualanSembako($conn);
     $saldo_hibah = hitungHibah($conn);
-
-    // Hitung total pinjaman approved (untuk informasi)
+    $total_pengeluaran = hitungTotalPengeluaran($conn);
     $total_pinjaman = hitungTotalPinjamanApproved($conn);
+    $total_angsuran = hitungTotalCicilan($conn);
 
-    $dana_operasional = $saldo_simpanan + $saldo_penjualan + $saldo_hibah - $saldo_tarik - $total_pinjaman;
+    // Hitung dana operasional
+    $dana_operasional = $saldo_simpanan_pokok_wajib + $saldo_simpanan_sukarela + $saldo_penjualan + $saldo_hibah + $total_angsuran - $saldo_tarik - $total_pengeluaran - $total_pinjaman;
     $selisih = $saldo_utama - $dana_operasional;
 
     echo json_encode([
         'status' => 'success',
         'saldo_utama' => $saldo_utama,
-        'simpanan_anggota' => $saldo_simpanan,
-        'simpanan_sukarela' => $saldo_sukarela,
+        'simpanan_pokok_wajib' => $saldo_simpanan_pokok_wajib,
+        'simpanan_sukarela' => $saldo_simpanan_sukarela,
         'penjualan_sembako' => $saldo_penjualan,
         'hibah' => $saldo_hibah,
         'tarik_sukarela' => $saldo_tarik,
-        'total_pinjaman_approved' => $total_pinjaman, // BARU - untuk informasi
+        'total_pengeluaran' => $total_pengeluaran,
+        'total_pinjaman_approved' => $total_pinjaman,
+        'total_angsuran' => $total_angsuran,
         'selisih' => $selisih,
         'dana_operasional' => $dana_operasional,
         'rekening' => $rekening,
@@ -210,7 +265,7 @@ function getNomorRekening($nama_rekening)
 }
 
 // Fungsi-fungsi tambahan untuk breakdown
-function hitungTotalSimpanan($conn)
+function hitungTotalSimpananPokokWajib($conn)
 {
     $stmt = $conn->prepare("
         SELECT COALESCE(SUM(jumlah), 0) as total 
@@ -281,13 +336,38 @@ function hitungHibah($conn)
     return (float) $data['total'];
 }
 
-// FUNGSI BARU: Hitung total pinjaman yang approved
+function hitungTotalPengeluaran($conn)
+{
+    $stmt = $conn->prepare("
+        SELECT COALESCE(SUM(jumlah), 0) as total 
+        FROM pengeluaran 
+        WHERE status = 'approved'
+    ");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    return (float) $data['total'];
+}
+
 function hitungTotalPinjamanApproved($conn)
 {
     $stmt = $conn->prepare("
         SELECT COALESCE(SUM(jumlah_pinjaman), 0) as total 
         FROM pinjaman 
         WHERE status = 'approved'
+    ");
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    return (float) $data['total'];
+}
+
+function hitungTotalCicilan($conn)
+{
+    $stmt = $conn->prepare("
+        SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
+        FROM cicilan 
+        WHERE status = 'Lunas'
     ");
     $stmt->execute();
     $result = $stmt->get_result();
