@@ -1,5 +1,5 @@
 <?php
-// get_saldo_data.php - FIXED: SIMPANAN SUKARELA TIDAK MASUK SALDO REKENING
+// get_saldo_data.php - PASTIKAN SUDAH KURANGI PENGELUARAN APPROVED
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 
 if ($conn->connect_error) {
@@ -11,7 +11,7 @@ date_default_timezone_set('Asia/Jakarta');
 header('Content-Type: application/json');
 
 try {
-    // 1. HITUNG SALDO PER REKENING DARI TRANSAKSI (TANPA SIMPANAN SUKARELA)
+    // 1. HITUNG SALDO PER REKENING DARI TRANSAKSI (SUDAH KURANGI PENGELUARAN APPROVED)
 
     // Daftar rekening yang ada
     $rekening_list = ['Kas Tunai', 'Bank MANDIRI', 'Bank BRI', 'Bank BNI'];
@@ -30,7 +30,7 @@ try {
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
                 AND jenis_transaksi = 'setor'
                 AND metode = 'cash'
-                AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')  -- HANYA POKOK & WAJIB
+                AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')
             ");
         } else {
             // BANK: ambil dari pembayaran dengan metode transfer ke bank tertentu (HANYA POKOK & WAJIB)
@@ -41,13 +41,13 @@ try {
                 AND jenis_transaksi = 'setor'
                 AND metode = 'transfer' 
                 AND bank_tujuan = '$nama_rekening'
-                AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')  -- HANYA POKOK & WAJIB
+                AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')
             ");
         }
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
-        // === TARIK SUKARELA === (mengurangi saldo) - INI MASUK PERHITUNGAN
+        // === TARIK SUKARELA === (mengurangi saldo)
         if ($nama_rekening == 'Kas Tunai') {
             $result = $conn->query("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
@@ -71,7 +71,6 @@ try {
 
         // === PENJUALAN SEMBAKO ===
         if ($nama_rekening == 'Kas Tunai') {
-            // KAS TUNAI: ambil penjualan dengan metode Tunai
             $result = $conn->query("
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
                 FROM pemesanan_detail pd 
@@ -80,7 +79,6 @@ try {
                 AND p.metode = 'cash'
             ");
         } else {
-            // BANK: ambil penjualan dengan metode Transfer ke bank tertentu
             $result = $conn->query("
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
                 FROM pemesanan_detail pd 
@@ -113,6 +111,15 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
+        // === PENGELUARAN APPROVED === (mengurangi saldo) - TAMBAHAN INI
+        $result = $conn->query("
+            SELECT COALESCE(SUM(jumlah), 0) as total 
+            FROM pengeluaran 
+            WHERE status = 'approved' AND sumber_dana = '$nama_rekening'
+        ");
+        $data = $result->fetch_assoc();
+        $saldo_rekening -= (float) $data['total'];
+
         // Simpan data rekening
         $rekening[] = [
             'nama_rekening' => $nama_rekening,
@@ -123,6 +130,7 @@ try {
 
         $saldo_utama += $saldo_rekening;
     }
+
 
     // 2. BREAKDOWN PER SUMBER (untuk informasi)
 

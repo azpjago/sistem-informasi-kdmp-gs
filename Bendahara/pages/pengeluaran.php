@@ -6,7 +6,8 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 error_log("SESSION DATA: " . print_r($_SESSION, true));
-// FUNGSI HITUNG SALDO REAL-TIME
+
+// FUNGSI HITUNG SALDO REAL-TIME - DIPERBAIKI: SUDAH KURANGI PENGELUARAN APPROVED
 function hitungSaldoKasTunai() {
     global $conn;
     $result = $conn->query("
@@ -31,6 +32,10 @@ function hitungSaldoKasTunai() {
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'tarik' AND metode = 'cash')
+            -
+            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Kas Tunai - TAMBAHAN INI
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE status = 'approved' AND sumber_dana = 'Kas Tunai')
         ) as saldo_kas
     ");
     $data = $result->fetch_assoc();
@@ -64,11 +69,16 @@ function hitungSaldoBank($nama_bank) {
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'tarik' AND metode = 'transfer' 
              AND bank_tujuan = '$nama_bank')
+            -
+            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Bank tersebut - TAMBAHAN INI
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE status = 'approved' AND sumber_dana = '$nama_bank')
         ) as saldo_bank
     ");
     $data = $result->fetch_assoc();
     return $data['saldo_bank'] ?? 0;
 }
+
 // Cek role user
 $user_role = $_SESSION['role'] ?? '';
 $is_ketua = ($user_role === 'ketua');
@@ -80,28 +90,29 @@ $kategori_result = $conn->query("SELECT * FROM kategori_pengeluaran ORDER BY nam
 // Query pengeluaran berdasarkan role
 if ($is_ketua) {
     $pengeluaran_result = $conn->query("
-        SELECT p.*, k.nama_kategori
+        SELECT p.*, k.nama_kategori, pn.nama as created_by_name
         FROM pengeluaran p
         LEFT JOIN kategori_pengeluaran k ON p.kategori_id = k.id
+        LEFT JOIN pengurus pn ON p.created_by = pn.id
         ORDER BY p.tanggal DESC, p.created_at DESC
     ");
 } else {
     $pengeluaran_result = $conn->query("
-        SELECT p.*, k.nama_kategori
+        SELECT p.*, k.nama_kategori, pn.nama as created_by_name
         FROM pengeluaran p
         LEFT JOIN kategori_pengeluaran k ON p.kategori_id = k.id
+        LEFT JOIN pengurus pn ON p.created_by = pn.id
         WHERE p.created_by = '" . ($_SESSION['id'] ?? 0) . "' OR p.status = 'approved'
         ORDER BY p.tanggal DESC, p.created_at DESC
     ");
 }
 
-// Hitung saldo real-time
+// Hitung saldo real-time - SEKARANG SUDAH PERHITUNGKAN PENGELUARAN APPROVED
 $saldo_kas = hitungSaldoKasTunai();
 $saldo_mandiri = hitungSaldoBank('Bank MANDIRI');
 $saldo_bri = hitungSaldoBank('Bank BRI');
 $saldo_bni = hitungSaldoBank('Bank BNI');
 ?>
-
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>💸 Manajemen Pengeluaran</h2>
