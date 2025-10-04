@@ -225,7 +225,7 @@ $result = $stmt->get_result();
                 <div class="card-body">
                     <div class="d-flex justify-content-between align-items-center">
                         <div>
-                            <h6 class="card-title text-muted mb-2">Total Simpanan Anggota Aktif</h6>
+                            <h6 class="card-title text-muted mb-2">Total Simpanan</h6>
                             <h4 class="fw-bold text-info mb-0">
                                 Rp <?php
                                 // KUERI PERBAIKAN: Hitung dari pembayaran, bukan field saldo_total
@@ -300,7 +300,7 @@ $result = $stmt->get_result();
                                             <i class="fas fa-eye"></i>
                                         </button>
                                         <?php if ($row['status_keanggotaan'] == 'Aktif'): ?>
-                                            <button type="button" class="btn btn-sm btn-outline-warning" data-bs-toggle="modal"
+                                            <button type="button" class="btn btn-sm btn-outline-danger" data-bs-toggle="modal"
                                                 data-bs-target="#nonaktifModal<?php echo $row['id']; ?>">
                                                 <i class="fas fa-user-times"></i>
                                             </button>

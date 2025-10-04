@@ -50,7 +50,7 @@
                 <li class="nav-item">
                     <a href="?page=monitoring_pemesanan" class="nav-link">
                         <i class="fas fa-shopping-cart"></i>
-                        <span>Monitoring Pemesanan</span>
+                        <span>M. Pemesanan</span>
                     </a>
                 </li>
                 <li class="nav-item">
