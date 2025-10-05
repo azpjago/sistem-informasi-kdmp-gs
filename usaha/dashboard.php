@@ -36,15 +36,13 @@ date_default_timezone_set('Asia/Jakarta');
                 <li class="nav-item"><a href="?page=pengiriman" class="nav-link"><i class="fas fa-truck"></i>
                         <span>Pengiriman</span></a></li>
                 <li class="nav-item"><a href="?page=selesai" class="nav-link"><i class="fas fa-history"></i>
-                        <span>History</span></a></li>
+                        <span>History Pesanan</span></a></li>
                 <li class="nav-item"><a href="?page=kurir" class="nav-link"><i class="fas fa-users"></i>
                         <span>Kurir</span></a></li>
                 <li class="nav-item"><a href="?page=pinjaman" class="nav-link"><i class="fas fa-edit"></i>
                         <span>Ajukan Pinjaman</span></a></li>
                 <li class="nav-item"><a href="?page=laporan" class="nav-link"><i class="fas fa-file-text"></i>
                         <span>Laporan</span></a></li>
-                <li class="nav-item"><a href="?page=history" class="nav-link"><i class="fas fa-window-restore"></i>
-                        <span>Log</span></a></li>
                 <li class="nav-item logout-item"><a href="../logout.php" class="nav-link"><i
                             class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
             </ul>

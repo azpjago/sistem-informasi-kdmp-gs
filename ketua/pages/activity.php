@@ -1,5 +1,6 @@
 <?php
 // Koneksi database
+session_start();
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Koneksi database gagal: " . $conn->connect_error);
@@ -203,7 +204,7 @@ $users = $users_result ? mysqli_fetch_all($users_result, MYSQLI_ASSOC) : [];
         }
 
         .card-header {
-            background-color: #048b26ff;
+            background-color: #3352ffff;
             color: white;
             border-radius: 8px 8px 0 0 !important;
             font-weight: 600;

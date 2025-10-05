@@ -104,4 +104,3 @@ function log_login_empty_fields()
     $description = "Attempt login dengan field kosong";
     return log_activity(0, 'unknown', 'login_failed', $description, 'pengurus', 0);
 }
-?>

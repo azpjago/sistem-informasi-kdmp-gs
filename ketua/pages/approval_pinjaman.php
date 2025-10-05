@@ -1,8 +1,8 @@
-<?php
+﻿<?php
 session_start();
 
 // Cek role ketua
-if ($_SESSION['role'] !== 'ketua') {
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ketua') {
     header('Location: ../index.php');
     exit;
 }

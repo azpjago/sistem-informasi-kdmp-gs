@@ -21,7 +21,6 @@
             <div class="sidebar-header">
                 <h4>KDMPGS - KETUA</h4>
             </div>
-
             <ul class="nav flex-column">
                 <li class="nav-item">
                     <a href="?page=dashboard_utama" class="nav-link">
@@ -66,6 +65,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a href="?page=activity" class="nav-link">
+                        <i class="fas fa-history"></i>
+                        <span>Activity</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a href="?page=pengaturan_sistem" class="nav-link">
                         <i class="fas fa-cogs"></i>
                         <span>Pengaturan Sistem</span>
@@ -83,8 +88,8 @@
                 <div class="user-avatar">
                     <i class="fas fa-user-tie"></i>
                 </div>
-                <div class="user-name"><?php echo $_SESSION['username'] ?? 'Ketua'; ?></div>
-                <div class="user-role"><?php echo $_SESSION['role'] ?? 'Ketua'; ?></div>
+                <div class="user-name"><?php echo $_SESSION['username'] ?? 'ketua'; ?></div>
+                <div class="user-role"><?php echo $_SESSION['role'] ?? 'ketua'; ?></div>
             </div>
         </div>
 
@@ -97,6 +102,7 @@
                 'data_anggota',
                 'laporan_keuangan',
                 'pengeluaran',
+                'activity',
                 'monitoring_pemesanan',
                 'approval_pinjaman',
                 'laporan_strategis',
@@ -106,8 +112,7 @@
             if (in_array($page, $allowed_pages) && file_exists("pages/" . $page . ".php")) {
                 include "pages/" . $page . ".php";
             } else {
-                echo "<div class='alert alert-danger'>Halaman tidak ditemukan.</div>";
-                include "pages/dashboard_utama.php";
+                echo "Halaman tidak ditemukan.";
             }
             ?>
         </div>

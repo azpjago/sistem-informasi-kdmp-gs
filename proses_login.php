@@ -40,7 +40,6 @@ if ($user = mysqli_fetch_assoc($result)) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
-        $_SESSION['nama'] = $user['nama'];
         $_SESSION['is_logged_in'] = true;
 
         // LOG: Login berhasil
@@ -60,7 +59,6 @@ if ($user = mysqli_fetch_assoc($result)) {
                 header("Location: ketua/dashboard.php");
                 break;
             case 'usaha':
-                // PENTING: Pastikan nama folder Anda adalah 'wk_bid_usaha' (menggunakan underscore)
                 header("Location: usaha/dashboard.php");
                 break;
             case 'sekretaris':
