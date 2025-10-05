@@ -1,8 +1,8 @@
 <?php
-// pages/simpan_pesanan_manual.php (VERSION WITH METHOD & BANK)
+// pages/simpan_pesanan_manual.php (VERSION WITH IMPROVED HISTORY LOG)
 
 session_start();
-include 'functions/history_log.php';
+require_once 'functions/history_log.php';
 
 if (ob_get_length())
     ob_clean();
@@ -32,7 +32,7 @@ try {
     $no_hp = $_POST['no_hp_pemesan'] ?? '';
     $tanggal_pesan = $_POST['tanggal_pesan'] ?? '';
     $total_harga = $_POST['total_harga'] ?? 0;
-    $metode = $_POST['metode'] ?? 'Tunai';
+    $metode = $_POST['metode'] ?? 'cash';
     $bank_tujuan = $_POST['bank_tujuan'] ?? '';
     $items = isset($_POST['items']) ? json_decode($_POST['items'], true) : [];
 
@@ -42,8 +42,25 @@ try {
     }
 
     // Validasi metode transfer
-    if ($metode === 'Transfer' && empty($bank_tujuan)) {
+    if ($metode === 'transfer' && empty($bank_tujuan)) {
         throw new Exception('Bank tujuan harus dipilih untuk metode transfer');
+    }
+
+    // Ambil info anggota untuk log
+    $query_anggota = "SELECT nama, no_anggota FROM anggota WHERE id = ?";
+    $stmt_anggota = mysqli_prepare($conn, $query_anggota);
+    mysqli_stmt_bind_param($stmt_anggota, 'i', $id_anggota);
+    mysqli_stmt_execute($stmt_anggota);
+    $result_anggota = mysqli_stmt_get_result($stmt_anggota);
+    $anggota_data = mysqli_fetch_assoc($result_anggota);
+    $nama_anggota = $anggota_data['nama'] ?? 'Unknown';
+    $no_anggota = $anggota_data['no_anggota'] ?? 'Unknown';
+
+    // Hitung jumlah item dan produk
+    $total_items = 0;
+    $total_produk = count($items);
+    foreach ($items as $item) {
+        $total_items += ($item['qty'] ?? 0);
     }
 
     // Mulai transaction
@@ -65,23 +82,27 @@ try {
     $id_pemesanan = mysqli_insert_id($conn);
 
     // 2. Insert items ke tabel pemesanan_detail
+    $produk_list = [];
     foreach ($items as $item) {
         $id_produk = $item['id_produk'] ?? 0;
         $harga = $item['harga'] ?? 0;
         $qty = $item['qty'] ?? 0;
         $satuan_input = $item['satuan'] ?? '';
 
-        // Ambil satuan dari database produk
-        $query_satuan = "SELECT satuan FROM produk WHERE id_produk = ?";
-        $stmt_satuan = mysqli_prepare($conn, $query_satuan);
-        mysqli_stmt_bind_param($stmt_satuan, 'i', $id_produk);
-        mysqli_stmt_execute($stmt_satuan);
-        $result_satuan = mysqli_stmt_get_result($stmt_satuan);
-        $produk_data = mysqli_fetch_assoc($result_satuan);
+        // Ambil info produk untuk log
+        $query_produk = "SELECT nama_produk, satuan FROM produk WHERE id_produk = ?";
+        $stmt_produk = mysqli_prepare($conn, $query_produk);
+        mysqli_stmt_bind_param($stmt_produk, 'i', $id_produk);
+        mysqli_stmt_execute($stmt_produk);
+        $result_produk = mysqli_stmt_get_result($stmt_produk);
+        $produk_data = mysqli_fetch_assoc($result_produk);
 
-        // Gunakan satuan dari database, fallback ke input
+        $nama_produk = $produk_data['nama_produk'] ?? 'Unknown Product';
         $satuan = $produk_data['satuan'] ?? $satuan_input;
         $subtotal = $harga * $qty;
+
+        // Simpan untuk log
+        $produk_list[] = "$nama_produk ($qty $satuan)";
 
         $query_detail = "INSERT INTO pemesanan_detail (id_pemesanan, id_produk, jumlah, satuan, harga_satuan, subtotal)
                      VALUES (?, ?, ?, ?, ?, ?)";
@@ -97,22 +118,58 @@ try {
     // Commit transaction
     mysqli_commit($conn);
 
-    // HISTORY LOG
-    $description = "Input pesanan manual #$id_pemesanan - Status: Menunggu - Metode: $metode" . ($metode === 'Transfer' ? " - Bank: $bank_tujuan" : "");
-    $user_id = $_SESSION['id'] ?? 0;
-    log_activity($user_id, 'pengurus', 'order_create_manual', $description, 'pemesanan', $id_pemesanan);
+    // ================== HISTORY LOG - IMPROVED ==================
+
+    // Siapkan deskripsi detail untuk log
+    $produk_text = implode(', ', array_slice($produk_list, 0, 3)); // Ambil 3 produk pertama
+    if (count($produk_list) > 3) {
+        $produk_text .= ' dan ' . (count($produk_list) - 3) . ' produk lainnya';
+    }
+
+    $metode_text = ($metode === 'transfer') ? "Transfer ($bank_tujuan)" : "Cash";
+
+    $log_description = "Input pesanan manual #$id_pemesanan - " .
+        "Anggota: $nama_anggota ($no_anggota) - " .
+        "Total: Rp " . number_format($total_harga, 0, ',', '.') . " - " .
+        "Metode: $metode_text - " .
+        "Items: $total_produk produk ($total_items item) - " .
+        "Produk: $produk_text";
+
+    // Log menggunakan fungsi khusus pemesanan
+    $log_result = log_pesanan_manual_activity(
+        $id_pemesanan,
+        $log_description
+    );
+
+    // Debug log untuk memastikan history tercatat
+    error_log("HISTORY LOG - Pesanan Manual #$id_pemesanan: " . ($log_result ? "SUCCESS (ID: $log_result)" : "FAILED"));
 
     echo json_encode([
         'success' => true,
         'message' => 'Pesanan berhasil disimpan (Status: Menunggu)',
         'id_pemesanan' => $id_pemesanan,
         'metode' => $metode,
-        'bank_tujuan' => $bank_tujuan
+        'bank_tujuan' => $bank_tujuan,
+        'log_id' => $log_result // Untuk debugging
     ]);
 
 } catch (Exception $e) {
+    // HISTORY LOG: Error
+    if (isset($id_pemesanan)) {
+        log_pemesanan_activity(
+            $id_pemesanan,
+            'error',
+            "Error input pesanan manual: " . $e->getMessage()
+        );
+    } else {
+        // Log error tanpa id_pemesanan
+        $user_id = $_SESSION['id'] ?? 0;
+        log_activity($user_id, 'pengurus', 'error', "Error input pesanan manual: " . $e->getMessage(), 'pemesanan', null);
+    }
+
     if (isset($conn) && mysqli_thread_id($conn))
         mysqli_rollback($conn);
+
     log_error($e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 } finally {
