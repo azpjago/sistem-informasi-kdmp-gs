@@ -7,6 +7,9 @@ if ($_SESSION['role'] !== 'ketua') {
     exit;
 }
 
+// Include file history log
+require_once 'functions/history_log.php';
+
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -22,24 +25,51 @@ if ($_POST['action'] ?? '' === 'update_status') {
         $conn->begin_transaction();
 
         try {
+            // Ambil data pinjaman untuk log
+            $pinjaman_data = $conn->query("
+                SELECT p.*, a.no_anggota, a.nama as nama_anggota 
+                FROM pinjaman p 
+                LEFT JOIN anggota a ON p.id_anggota = a.id 
+                WHERE p.id_pinjaman = $id_pinjaman
+            ")->fetch_assoc();
+
             // Update status pinjaman
             $stmt = $conn->prepare("
                 UPDATE pinjaman 
                 SET status = ?, approved_by = ?, tanggal_approve = NOW(), catatan_approval = ?
                 WHERE id_pinjaman = ? AND status = 'pending'
             ");
-            $ketua = 1;
-            $stmt->bind_param("sisi", $status, $ketua, $catatan, $id_pinjaman);
+            $ketua_id = $_SESSION['user_id'] ?? 1;
+            $stmt->bind_param("sisi", $status, $ketua_id, $catatan, $id_pinjaman);
 
             if ($stmt->execute() && $stmt->affected_rows > 0) {
 
-                // Jika APPROVED, generate jadwal cicilan
+                // LOG: Approval atau Rejection Pinjaman
                 if ($status === 'approved') {
+                    log_approval_pinjaman(
+                        $id_pinjaman, 
+                        $pinjaman_data['no_anggota'], 
+                        $pinjaman_data['nama_anggota'],
+                        'ketua'
+                    );
+                    
+                    // Jika APPROVED, generate jadwal cicilan
                     generateJadwalCicilan($conn, $id_pinjaman);
+                    
+                    $success = "Pinjaman berhasil disetujui dan jadwal cicilan telah dibuat.";
+                } else {
+                    log_rejection_pinjaman(
+                        $id_pinjaman, 
+                        $pinjaman_data['no_anggota'], 
+                        $pinjaman_data['nama_anggota'],
+                        $catatan,
+                        'ketua'
+                    );
+                    
+                    $success = "Pinjaman berhasil ditolak.";
                 }
 
                 $conn->commit();
-                $success = "Pinjaman berhasil " . ($status === 'approved' ? 'disetujui' : 'ditolak');
             } else {
                 throw new Exception("Gagal update status. Mungkin sudah diproses sebelumnya.");
             }
@@ -156,7 +186,6 @@ foreach ($stats as $stat) {
 }
 ?>
 
-<!-- HTML CODE TETAP SAMA -->
 <!DOCTYPE html>
 <html lang="id">
 
@@ -193,6 +222,17 @@ foreach ($stats as $stat) {
         .stat-rejected {
             border-left-color: #dc3545;
         }
+        
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+        
+        .action-buttons .btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+        }
     </style>
 </head>
 
@@ -224,15 +264,15 @@ foreach ($stats as $stat) {
         <!-- Statistics -->
         <div class="row mb-4">
             <div class="col-xl-2 col-md-4 col-6 mb-3">
-                <div class="card stat-card bg-light">
+                <div class="card stat-card bg-light stat-pending">
                     <div class="card-body text-center p-3">
-                        <h4 class="fw-bold text-primary mb-1"><?= $stat_counts['pending'] ?? 0 ?></h4>
+                        <h4 class="fw-bold text-warning mb-1"><?= $stat_counts['pending'] ?? 0 ?></h4>
                         <small class="text-muted">Menunggu Approval</small>
                     </div>
                 </div>
             </div>
             <div class="col-xl-2 col-md-4 col-6 mb-3">
-                <div class="card stat-card bg-light">
+                <div class="card stat-card bg-light stat-approved">
                     <div class="card-body text-center p-3">
                         <h4 class="fw-bold text-success mb-1"><?= $stat_counts['approved'] ?? 0 ?></h4>
                         <small class="text-muted">Disetujui</small>
@@ -240,7 +280,7 @@ foreach ($stats as $stat) {
                 </div>
             </div>
             <div class="col-xl-2 col-md-4 col-6 mb-3">
-                <div class="card stat-card bg-light">
+                <div class="card stat-card bg-light stat-rejected">
                     <div class="card-body text-center p-3">
                         <h4 class="fw-bold text-danger mb-1"><?= $stat_counts['rejected'] ?? 0 ?></h4>
                         <small class="text-muted">Ditolak</small>
@@ -260,6 +300,14 @@ foreach ($stats as $stat) {
                     <div class="card-body text-center p-3">
                         <h4 class="fw-bold text-dark mb-1"><?= $stat_counts['lunas'] ?? 0 ?></h4>
                         <small class="text-muted">Lunas</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-xl-2 col-md-4 col-6 mb-3">
+                <div class="card stat-card bg-light">
+                    <div class="card-body text-center p-3">
+                        <h4 class="fw-bold text-primary mb-1"><?= array_sum($stat_counts) ?></h4>
+                        <small class="text-muted">Total Pinjaman</small>
                     </div>
                 </div>
             </div>
@@ -350,20 +398,25 @@ foreach ($stats as $stat) {
                                         </span>
                                     </td>
                                     <td>
-                                        <button class="btn btn-sm btn-outline-primary view-detail"
-                                            data-id="<?= $pinjaman['id_pinjaman'] ?>">
-                                            <i class="fas fa-eye"></i> Detail
-                                        </button>
-                                        <?php if ($pinjaman['status'] == 'pending'): ?>
-                                            <button class="btn btn-sm btn-success approve-pinjaman"
-                                                data-id="<?= $pinjaman['id_pinjaman'] ?>">
-                                                <i class="fas fa-check"></i> Setujui
+                                        <div class="action-buttons">
+                                            <button class="btn btn-sm btn-outline-primary view-detail"
+                                                data-id="<?= $pinjaman['id_pinjaman'] ?>"
+                                                title="Lihat Detail">
+                                                <i class="fas fa-eye"></i>
                                             </button>
-                                            <button class="btn btn-sm btn-danger reject-pinjaman"
-                                                data-id="<?= $pinjaman['id_pinjaman'] ?>">
-                                                <i class="fas fa-times"></i> Tolak
-                                            </button>
-                                        <?php endif; ?>
+                                            <?php if ($pinjaman['status'] == 'pending'): ?>
+                                                <button class="btn btn-sm btn-success approve-pinjaman"
+                                                    data-id="<?= $pinjaman['id_pinjaman'] ?>"
+                                                    title="Setujui Pinjaman">
+                                                    <i class="fas fa-check"></i>
+                                                </button>
+                                                <button class="btn btn-sm btn-danger reject-pinjaman"
+                                                    data-id="<?= $pinjaman['id_pinjaman'] ?>"
+                                                    title="Tolak Pinjaman">
+                                                    <i class="fas fa-times"></i>
+                                                </button>
+                                            <?php endif; ?>
+                                        </div>
                                     </td>
                                 </tr>
                             <?php endwhile; ?>
@@ -427,6 +480,7 @@ foreach ($stats as $stat) {
             </div>
         </div>
     </div>
+
     <script>
         // View detail modal
         document.querySelectorAll('.view-detail').forEach(btn => {
@@ -436,13 +490,13 @@ foreach ($stats as $stat) {
 
                 // Show loading
                 detailContent.innerHTML = `
-            <div class="text-center py-4">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
-                </div>
-                <p class="mt-2 text-muted">Memuat detail pinjaman...</p>
-            </div>
-        `;
+                    <div class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Memuat detail pinjaman...</p>
+                    </div>
+                `;
 
                 // Show modal first
                 const modal = new bootstrap.Modal(document.getElementById('detailModal'));
@@ -462,16 +516,16 @@ foreach ($stats as $stat) {
                     .catch(error => {
                         console.error('Error loading detail:', error);
                         detailContent.innerHTML = `
-                    <div class="alert alert-danger">
-                        <i class="fas fa-exclamation-triangle me-2"></i>
-                        Gagal memuat detail pinjaman. Error: ${error.message}
-                    </div>
-                `;
+                            <div class="alert alert-danger">
+                                <i class="fas fa-exclamation-triangle me-2"></i>
+                                Gagal memuat detail pinjaman. Error: ${error.message}
+                            </div>
+                        `;
                     });
             });
         });
 
-        // Approval process (tetap sama)
+        // Approval process
         document.querySelectorAll('.approve-pinjaman').forEach(btn => {
             btn.addEventListener('click', function () {
                 const id = this.getAttribute('data-id');
@@ -479,12 +533,12 @@ foreach ($stats as $stat) {
                 document.getElementById('approvalStatus').value = 'approved';
                 document.getElementById('approvalModalTitle').textContent = 'Setujui Pinjaman';
                 document.getElementById('approvalMessage').innerHTML = `
-            <div class="alert alert-info">
-                <i class="fas fa-info-circle me-2"></i>
-                Anda akan menyetujui pengajuan pinjaman ini. 
-                Sistem akan secara otomatis membuat jadwal cicilan.
-            </div>
-        `;
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        Anda akan menyetujui pengajuan pinjaman ini. 
+                        Sistem akan secara otomatis membuat jadwal cicilan.
+                    </div>
+                `;
                 new bootstrap.Modal(document.getElementById('approvalModal')).show();
             });
         });
@@ -496,13 +550,31 @@ foreach ($stats as $stat) {
                 document.getElementById('approvalStatus').value = 'rejected';
                 document.getElementById('approvalModalTitle').textContent = 'Tolak Pinjaman';
                 document.getElementById('approvalMessage').innerHTML = `
-            <div class="alert alert-warning">
-                <i class="fas fa-exclamation-triangle me-2"></i>
-                Anda akan menolak pengajuan pinjaman ini.
-            </div>
-        `;
+                    <div class="alert alert-warning">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Anda akan menolak pengajuan pinjaman ini.
+                        <br><small class="mt-1">Silakan berikan alasan penolakan pada kolom catatan.</small>
+                    </div>
+                `;
                 new bootstrap.Modal(document.getElementById('approvalModal')).show();
             });
+        });
+
+        // Handle form submission
+        document.getElementById('approvalForm').addEventListener('submit', function(e) {
+            const status = document.getElementById('approvalStatus').value;
+            const catatan = document.querySelector('textarea[name="catatan"]').value;
+            
+            if (status === 'rejected' && catatan.trim() === '') {
+                e.preventDefault();
+                alert('Harap berikan alasan penolakan pada kolom catatan.');
+                return;
+            }
+            
+            // Show loading state
+            const submitBtn = this.querySelector('button[type="submit"]');
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Memproses...';
+            submitBtn.disabled = true;
         });
     </script>
 </body>

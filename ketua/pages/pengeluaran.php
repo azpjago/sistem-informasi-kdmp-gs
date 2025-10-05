@@ -1,11 +1,50 @@
 <?php
 session_start();
 
+// Include file history log
+require_once 'functions/history_log.php';
+
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 error_log("SESSION DATA: " . print_r($_SESSION, true));
+
+// Fungsi untuk log pengeluaran langsung dari sini
+function logPengeluaran($action, $pengeluaran_id, $keterangan, $jumlah, $sumber_dana, $alasan = '')
+{
+    switch ($action) {
+        case 'pengajuan':
+            log_pengajuan_pengeluaran($pengeluaran_id, $keterangan, $jumlah, $sumber_dana);
+            break;
+        case 'approval':
+            log_approval_pengeluaran($pengeluaran_id, $keterangan, $jumlah, $sumber_dana);
+            break;
+        case 'rejection':
+            log_rejection_pengeluaran($pengeluaran_id, $keterangan, $jumlah, $sumber_dana, $alasan);
+            break;
+        case 'edit':
+            log_edit_pengeluaran($pengeluaran_id, $keterangan, $jumlah, $sumber_dana);
+            break;
+        case 'hapus':
+            log_hapus_pengeluaran($pengeluaran_id, $keterangan, $jumlah, $sumber_dana);
+            break;
+    }
+}
+
+// Handle log history requests
+if (isset($_POST['log_action'])) {
+    $action = $_POST['log_action'];
+    $pengeluaran_id = $_POST['pengeluaran_id'] ?? 0;
+    $keterangan = $_POST['keterangan'] ?? '';
+    $jumlah = $_POST['jumlah'] ?? 0;
+    $sumber_dana = $_POST['sumber_dana'] ?? '';
+    $alasan = $_POST['alasan'] ?? '';
+    
+    logPengeluaran($action, $pengeluaran_id, $keterangan, $jumlah, $sumber_dana, $alasan);
+    echo "Log berhasil";
+    exit;
+}
 
 // FUNGSI HITUNG SALDO REAL-TIME - DIPERBAIKI: SUDAH KURANGI PENGELUARAN APPROVED
 function hitungSaldoKasTunai()
@@ -428,13 +467,15 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
             }
         }
 
-        // Handle form submit
+        // Handle form submit pengajuan pengeluaran
         $('#formPengeluaran').on('submit', function (e) {
             e.preventDefault();
 
             const selectedOption = $('#sumber_dana').find('option:selected');
             const saldo = selectedOption.data('saldo') || 0;
             const jumlah = $('#jumlah').val();
+            const keterangan = $('#keterangan').val();
+            const sumber_dana = $('#sumber_dana').val();
 
             if (parseFloat(jumlah) > saldo) {
                 alert('Saldo tidak mencukupi! Silakan pilih sumber dana lain atau kurangi jumlah.');
@@ -455,6 +496,16 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                     if (response.status === 'success') {
                         alert(response.message);
                         $('#modalPengeluaran').modal('hide');
+                        
+                        // Langsung panggil log history via AJAX
+                        $.post('<?= $_SERVER['PHP_SELF'] ?>', {
+                            log_action: 'pengajuan',
+                            pengeluaran_id: response.pengeluaran_id || 0,
+                            keterangan: keterangan,
+                            jumlah: jumlah,
+                            sumber_dana: sumber_dana
+                        });
+                        
                         location.reload();
                     } else {
                         alert('Error: ' + response.message);
@@ -469,20 +520,31 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
         // Handle approval oleh ketua
         $('.approve-pengeluaran').on('click', function () {
             const id = $(this).data('id');
+            const row = $(this).closest('tr');
+            const keterangan = row.find('td:nth-child(3)').text().trim();
+            const jumlah = row.find('td:nth-child(4)').text().replace('Rp ', '').replace(/\./g, '');
+            const sumber_dana = row.find('td:nth-child(5)').text().trim();
+            
             if (confirm('Setujui pengajuan pengeluaran ini?')) {
-                updateStatusPengeluaran(id, 'approved');
+                updateStatusPengeluaran(id, 'approved', '', keterangan, jumlah, sumber_dana);
             }
         });
 
+        // Handle rejection oleh ketua
         $('.reject-pengeluaran').on('click', function () {
             const id = $(this).data('id');
+            const row = $(this).closest('tr');
+            const keterangan = row.find('td:nth-child(3)').text().trim();
+            const jumlah = row.find('td:nth-child(4)').text().replace('Rp ', '').replace(/\./g, '');
+            const sumber_dana = row.find('td:nth-child(5)').text().trim();
+            
             const reason = prompt('Alasan penolakan:');
             if (reason !== null) {
-                updateStatusPengeluaran(id, 'rejected', reason);
+                updateStatusPengeluaran(id, 'rejected', reason, keterangan, jumlah, sumber_dana);
             }
         });
 
-        function updateStatusPengeluaran(id, status, reason = '') {
+        function updateStatusPengeluaran(id, status, reason = '', keterangan = '', jumlah = '', sumber_dana = '') {
             $.ajax({
                 url: 'pages/proses/proses_pengeluaran.php',
                 type: 'POST',
@@ -496,6 +558,27 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                 success: function (response) {
                     if (response.status === 'success') {
                         alert(response.message);
+                        
+                        // Langsung panggil log history via AJAX
+                        if (status === 'approved') {
+                            $.post('<?= $_SERVER['PHP_SELF'] ?>', {
+                                log_action: 'approval',
+                                pengeluaran_id: id,
+                                keterangan: keterangan,
+                                jumlah: jumlah,
+                                sumber_dana: sumber_dana
+                            });
+                        } else if (status === 'rejected') {
+                            $.post('<?= $_SERVER['PHP_SELF'] ?>', {
+                                log_action: 'rejection',
+                                pengeluaran_id: id,
+                                keterangan: keterangan,
+                                jumlah: jumlah,
+                                sumber_dana: sumber_dana,
+                                alasan: reason
+                            });
+                        }
+                        
                         location.reload();
                     } else {
                         alert('Error: ' + response.message);
@@ -510,6 +593,20 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
         // Handle edit pengeluaran
         $('.edit-pengeluaran').on('click', function () {
             const id = $(this).data('id');
+            const row = $(this).closest('tr');
+            const keterangan = row.find('td:nth-child(3)').text().trim();
+            const jumlah = row.find('td:nth-child(4)').text().replace('Rp ', '').replace(/\./g, '');
+            const sumber_dana = row.find('td:nth-child(5)').text().trim();
+            
+            // Langsung panggil log history via AJAX
+            $.post('<?= $_SERVER['PHP_SELF'] ?>', {
+                log_action: 'edit',
+                pengeluaran_id: id,
+                keterangan: keterangan,
+                jumlah: jumlah,
+                sumber_dana: sumber_dana
+            });
+            
             alert('Fitur edit pengeluaran dengan ID: ' + id);
             // Implementasi edit sesuai kebutuhan
         });
@@ -517,9 +614,23 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
         // Handle hapus pengeluaran
         $('.hapus-pengeluaran').on('click', function () {
             const id = $(this).data('id');
+            const row = $(this).closest('tr');
+            const keterangan = row.find('td:nth-child(3)').text().trim();
+            const jumlah = row.find('td:nth-child(4)').text().replace('Rp ', '').replace(/\./g, '');
+            const sumber_dana = row.find('td:nth-child(5)').text().trim();
+            
             if (confirm('Hapus pengajuan pengeluaran ini?')) {
-                // Implementasi hapus sesuai kebutuhan
+                // Langsung panggil log history via AJAX
+                $.post('<?= $_SERVER['PHP_SELF'] ?>', {
+                    log_action: 'hapus',
+                    pengeluaran_id: id,
+                    keterangan: keterangan,
+                    jumlah: jumlah,
+                    sumber_dana: sumber_dana
+                });
+                
                 alert('Fitur hapus pengeluaran dengan ID: ' + id);
+                // Implementasi hapus sesuai kebutuhan
             }
         });
     });
