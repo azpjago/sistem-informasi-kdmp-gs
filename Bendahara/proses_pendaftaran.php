@@ -5,7 +5,7 @@ header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
 
 // Include history log
-require_once 'Bendahra/functions/history_log.php';
+require_once 'functions/history_log.php';
 
 function handleUpload($file, $folder, $prefix = '')
 {
@@ -39,6 +39,11 @@ function getTransactionPrefix($jenis_simpanan)
 
 try {
     // Ambil semua data dari POST
+    error_log("Data POST: " . print_r($_POST, true));
+    error_log("Data FILES: " . print_r($_FILES, true));
+
+    // Debug: Session info
+    error_log("Session data: " . print_r($_SESSION, true));
     $nama = trim($_POST['nama'] ?? '');
     $jenis_kelamin = trim($_POST['jenis_kelamin'] ?? '');
     $tempat_lahir = trim($_POST['tempat_lahir'] ?? '');

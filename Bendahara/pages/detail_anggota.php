@@ -17,8 +17,6 @@ if ($result->num_rows > 0) {
 } else {
   die("Data anggota dengan ID " . $anggota_id . " tidak ditemukan.");
 }
-$stmt->close();
-$conn->close();
 
 $tanggal_bergabung = new DateTime($anggota['tanggal_join']);
 $tanggal_sekarang = new DateTime('now');
@@ -40,6 +38,115 @@ $folder_foto = '../';
 $foto_path = $folder_foto . $anggota['foto_diri'];
 $foto_default = '../uploads/foto_anggota/default-avatar.png';
 $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $foto_path : $foto_default;
+
+// FUNGSI HITUNG SALDO REAL-TIME - SAMA SEPERTI DI PENGELUARAN.PHP
+function hitungSaldoKasTunai($conn)
+{
+  $result = $conn->query("
+        SELECT (
+            -- Simpanan Anggota (cash)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'setor' AND metode = 'cash'
+             AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
+            +
+            -- Simpanan Sukarela (cash)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'setor' AND metode = 'cash'
+             AND jenis_simpanan = 'Simpanan Sukarela')
+            +
+            -- Penjualan (Tunai)
+            (SELECT COALESCE(SUM(pd.subtotal), 0) FROM pemesanan_detail pd 
+             INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
+             WHERE p.status = 'Terkirim' AND p.metode = 'cash')
+            +
+            -- Hibah (cash)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
+             AND metode = 'cash')
+            +
+            -- Cicilan (cash)
+            (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
+             WHERE status = 'Lunas' AND metode = 'cash')
+            -
+            -- Tarik Sukarela (cash)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'tarik' AND metode = 'cash')
+            -
+            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Kas Tunai
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE status = 'approved' AND sumber_dana = 'Kas Tunai')
+            -
+            -- PENGURANGAN: Pinjaman yang sudah APPROVED dari Kas Tunai
+            (SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman 
+             WHERE status = 'approved' AND sumber_dana = 'Kas Tunai')
+        ) as saldo_kas
+    ");
+  $data = $result->fetch_assoc();
+  return $data['saldo_kas'] ?? 0;
+}
+
+function hitungSaldoBank($conn, $nama_bank)
+{
+  $result = $conn->query("
+        SELECT (
+            -- Simpanan Anggota (transfer ke bank tertentu)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'setor' AND metode = 'transfer' 
+             AND bank_tujuan = '$nama_bank'
+             AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
+            +
+            -- Simpanan Sukarela (transfer ke bank tertentu)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'setor' AND metode = 'transfer' 
+             AND bank_tujuan = '$nama_bank'
+             AND jenis_simpanan = 'Simpanan Sukarela')
+            +
+            -- Penjualan (Transfer ke bank tertentu)
+            (SELECT COALESCE(SUM(pd.subtotal), 0) FROM pemesanan_detail pd 
+             INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
+             WHERE p.status = 'Terkirim' AND p.metode = 'transfer'
+             AND p.bank_tujuan = '$nama_bank')
+            +
+            -- Hibah (transfer ke bank tertentu)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
+             AND metode = 'transfer' AND bank_tujuan = '$nama_bank')
+            +
+            -- Cicilan (transfer ke bank tertentu)
+            (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
+             WHERE status = 'Lunas' AND metode = 'transfer' AND bank_tujuan = '$nama_bank')
+            -
+            -- Tarik Sukarela (transfer dari bank tertentu)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'tarik' AND metode = 'transfer' 
+             AND bank_tujuan = '$nama_bank')
+            -
+            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Bank tersebut
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE status = 'approved' AND sumber_dana = '$nama_bank')
+            -
+            -- PENGURANGAN: Pinjaman yang sudah APPROVED dari Bank tersebut
+            (SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman 
+             WHERE status = 'approved' AND sumber_dana = '$nama_bank')
+        ) as saldo_bank
+    ");
+  $data = $result->fetch_assoc();
+  return $data['saldo_bank'] ?? 0;
+}
+
+// Hitung saldo real-time - SAMA SEPERTI DI PENGELUARAN.PHP
+$saldo_kas = hitungSaldoKasTunai($conn);
+$saldo_mandiri = hitungSaldoBank($conn, 'Bank MANDIRI');
+$saldo_bri = hitungSaldoBank($conn, 'Bank BRI');
+$saldo_bni = hitungSaldoBank($conn, 'Bank BNI');
+
+$conn->close();
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -262,7 +369,7 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
     aria-hidden="true">
     <div class="modal-dialog">
       <div class="modal-content">
-        <form action="/kdmpgs%20-%20v2/bendahara/proses_ubah_simpanan.php" method="POST" id="formUbahSimpanan"
+        <form action="proses_ubah_simpanan.php" method="POST" id="formUbahSimpanan"
           enctype="multipart/form-data">
           <div class="modal-header">
             <h5 class="modal-title">Ubah Simpanan Wajib</h5>
@@ -347,44 +454,19 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // === FUNGSI UNTUK MENGAMBIL DATA SALDO DARI DATABASE ===
-    function loadSaldoData(metode, bankTujuan = '') {
-      const infoSaldoContent = document.getElementById('infoSaldoContent');
-
-      // Tampilkan loading
-      infoSaldoContent.innerHTML = `
-        <div class="text-center">
-          <div class="spinner-border spinner-border-sm" role="status">
-            <span class="visually-hidden">Loading...</span>
-          </div>
-          Memuat data saldo...
-        </div>
-      `;
-
-      // AJAX request ke endpoint get_saldo_data.php
-      fetch('/pages/ajax/get_saldo_data.php')
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            displaySaldoInfo(data.data, metode, bankTujuan);
-          } else {
-            infoSaldoContent.innerHTML = `<div class="text-danger">Error: ${data.message}</div>`;
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          infoSaldoContent.innerHTML = `<div class="text-danger">Gagal memuat data saldo</div>`;
-        });
-    }
-
     // === FUNGSI UNTUK MENAMPILKAN INFORMASI SALDO ===
-    function displaySaldoInfo(saldoData, metode, bankTujuan) {
+    function displaySaldoInfo(metode, bankTujuan = '') {
       const infoSaldoContent = document.getElementById('infoSaldoContent');
       let html = '';
 
+      // Data saldo dari PHP (sudah dihitung di server dengan fungsi sama seperti pengeluaran.php)
+      const saldoKas = <?= $saldo_kas ?>;
+      const saldoMandiri = <?= $saldo_mandiri ?>;
+      const saldoBri = <?= $saldo_bri ?>;
+      const saldoBni = <?= $saldo_bni ?>;
+
       if (metode === 'cash') {
         // Tampilkan saldo kas tunai
-        const saldoKas = saldoData.saldo_kas || 0;
         html = `
           <div class="saldo-item">
             <strong>Kas Tunai:</strong> 
@@ -394,12 +476,19 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
       } else if (metode === 'transfer') {
         // Tampilkan semua saldo bank
         html = '<div class="saldo-list">';
-        saldoData.saldo_bank.forEach(bank => {
-          const isSelected = bank.nama_bank === bankTujuan;
+
+        const banks = [
+          { name: 'Bank MANDIRI', saldo: saldoMandiri },
+          { name: 'Bank BRI', saldo: saldoBri },
+          { name: 'Bank BNI', saldo: saldoBni }
+        ];
+
+        banks.forEach(bank => {
+          const isSelected = bank.name === bankTujuan;
           const highlight = isSelected ? 'text-primary fw-bold' : '';
           html += `
             <div class="saldo-item ${highlight}">
-              <strong>${bank.nama_bank}:</strong> 
+              <strong>${bank.name}:</strong> 
               <span class="float-end">Rp ${formatRupiah(bank.saldo)}</span>
               ${isSelected ? ' ← Dipilih' : ''}
             </div>
@@ -411,13 +500,11 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
       infoSaldoContent.innerHTML = html;
 
       // Validasi kecukupan saldo setelah data dimuat
-      validasiKecukupanSaldo(saldoData);
+      validasiKecukupanSaldo(metode, bankTujuan);
     }
 
     // === FUNGSI VALIDASI KECUKUPAN SALDO ===
-    function validasiKecukupanSaldo(saldoData) {
-      const metode = document.getElementById('metodeInput').value;
-      const bankTujuan = document.getElementById('bankTujuanInput').value;
+    function validasiKecukupanSaldo(metode, bankTujuan) {
       const infoPerubahan = document.getElementById('info-perubahan');
 
       // Cek apakah ada kekurangan yang harus dibayar
@@ -435,11 +522,21 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
       if (jumlahKekurangan > 0) {
         let saldoTersedia = 0;
 
+        // Data saldo dari PHP
+        const saldoKas = <?= $saldo_kas ?>;
+        const saldoMandiri = <?= $saldo_mandiri ?>;
+        const saldoBri = <?= $saldo_bri ?>;
+        const saldoBni = <?= $saldo_bni ?>;
+
         if (metode === 'cash') {
-          saldoTersedia = saldoData.saldo_kas || 0;
+          saldoTersedia = saldoKas;
         } else if (metode === 'transfer' && bankTujuan) {
-          const bank = saldoData.saldo_bank.find(b => b.nama_bank === bankTujuan);
-          saldoTersedia = bank ? bank.saldo : 0;
+          switch (bankTujuan) {
+            case 'Bank MANDIRI': saldoTersedia = saldoMandiri; break;
+            case 'Bank BRI': saldoTersedia = saldoBri; break;
+            case 'Bank BNI': saldoTersedia = saldoBni; break;
+            default: saldoTersedia = 0;
+          }
         }
 
         if (saldoTersedia < jumlahKekurangan) {
@@ -491,13 +588,13 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
         bankContainer.style.display = 'block';
         bankInput.required = true;
         infoSaldoContainer.style.display = 'block';
-        loadSaldoData(metode);
+        displaySaldoInfo(metode);
       } else if (metode === 'cash') {
         bankContainer.style.display = 'none';
         bankInput.required = false;
         bankInput.value = '';
         infoSaldoContainer.style.display = 'block';
-        loadSaldoData(metode);
+        displaySaldoInfo(metode);
       } else {
         bankContainer.style.display = 'none';
         infoSaldoContainer.style.display = 'none';
@@ -508,7 +605,7 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
 
     document.getElementById('bankTujuanInput').addEventListener('change', function () {
       const metode = document.getElementById('metodeInput').value;
-      loadSaldoData(metode, this.value);
+      displaySaldoInfo(metode, this.value);
     });
 
     // === FUNGSI UNTUK PERHITUNGAN PERIODE ===
@@ -572,7 +669,7 @@ $gambar_profil = (!empty($anggota['foto_diri']) && file_exists($foto_path)) ? $f
         const metode = document.getElementById('metodeInput').value;
         const bankTujuan = document.getElementById('bankTujuanInput').value;
         if (metode) {
-          loadSaldoData(metode, bankTujuan);
+          displaySaldoInfo(metode, bankTujuan);
         }
       }
 

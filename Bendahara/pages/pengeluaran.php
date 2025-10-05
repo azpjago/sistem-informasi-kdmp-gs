@@ -18,6 +18,12 @@ function hitungSaldoKasTunai() {
              AND jenis_transaksi = 'setor' AND metode = 'cash'
              AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
             +
+            -- Simpanan Sukarela (cash)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'setor' AND metode = 'cash'
+             AND jenis_simpanan = 'Simpanan Sukarela')
+            +
             -- Penjualan (Tunai)
             (SELECT COALESCE(SUM(pd.subtotal), 0) FROM pemesanan_detail pd 
              INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
@@ -27,14 +33,22 @@ function hitungSaldoKasTunai() {
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
              AND metode = 'cash')
+            +
+            -- Cicilan (cash)
+            (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
+             WHERE status = 'Lunas' AND metode = 'cash')
             -
             -- Tarik Sukarela (cash)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'tarik' AND metode = 'cash')
             -
-            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Kas Tunai - TAMBAHAN INI
+            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Kas Tunai
             (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE status = 'approved' AND sumber_dana = 'Kas Tunai')
+            -
+            -- PENGURANGAN: Pinjaman yang sudah APPROVED dari Kas Tunai
+            (SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman 
              WHERE status = 'approved' AND sumber_dana = 'Kas Tunai')
         ) as saldo_kas
     ");
@@ -53,6 +67,13 @@ function hitungSaldoBank($nama_bank) {
              AND bank_tujuan = '$nama_bank'
              AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
             +
+            -- Simpanan Sukarela (transfer ke bank tertentu)
+            (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
+             WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+             AND jenis_transaksi = 'setor' AND metode = 'transfer' 
+             AND bank_tujuan = '$nama_bank'
+             AND jenis_simpanan = 'Simpanan Sukarela')
+            +
             -- Penjualan (Transfer ke bank tertentu)
             (SELECT COALESCE(SUM(pd.subtotal), 0) FROM pemesanan_detail pd 
              INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
@@ -63,6 +84,10 @@ function hitungSaldoBank($nama_bank) {
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
              AND metode = 'transfer' AND bank_tujuan = '$nama_bank')
+            +
+            -- Cicilan (transfer ke bank tertentu)
+            (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
+             WHERE status = 'Lunas' AND metode = 'transfer' AND bank_tujuan = '$nama_bank')
             -
             -- Tarik Sukarela (transfer dari bank tertentu)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
@@ -70,8 +95,12 @@ function hitungSaldoBank($nama_bank) {
              AND jenis_transaksi = 'tarik' AND metode = 'transfer' 
              AND bank_tujuan = '$nama_bank')
             -
-            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Bank tersebut - TAMBAHAN INI
+            -- PENGURANGAN: Pengeluaran yang sudah APPROVED dari Bank tersebut
             (SELECT COALESCE(SUM(jumlah), 0) FROM pengeluaran 
+             WHERE status = 'approved' AND sumber_dana = '$nama_bank')
+            -
+            -- PENGURANGAN: Pinjaman yang sudah APPROVED dari Bank tersebut
+            (SELECT COALESCE(SUM(jumlah_pinjaman), 0) FROM pinjaman 
              WHERE status = 'approved' AND sumber_dana = '$nama_bank')
         ) as saldo_bank
     ");
@@ -107,7 +136,7 @@ if ($is_ketua) {
     ");
 }
 
-// Hitung saldo real-time - SEKARANG SUDAH PERHITUNGKAN PENGELUARAN APPROVED
+// Hitung saldo real-time - SUDAH PERHITUNGKAN PENGELUARAN DAN PINJAMAN APPROVED
 $saldo_kas = hitungSaldoKasTunai();
 $saldo_mandiri = hitungSaldoBank('Bank MANDIRI');
 $saldo_bri = hitungSaldoBank('Bank BRI');
@@ -139,6 +168,42 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
             Anda hanya dapat melihat pengeluaran yang sudah disetujui.
         <?php endif; ?>
         <strong>Simpanan Sukarela tidak dapat digunakan untuk pengeluaran.</strong>
+    </div>
+
+    <!-- Info Saldo -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-light border-0">
+                <div class="card-body py-3">
+                    <h6 class="card-title text-muted mb-1">Kas Tunai</h6>
+                    <h5 class="card-text fw-bold text-success mb-0">Rp <?= number_format($saldo_kas, 0, ',', '.') ?></h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light border-0">
+                <div class="card-body py-3">
+                    <h6 class="card-title text-muted mb-1">Bank MANDIRI</h6>
+                    <h5 class="card-text fw-bold text-primary mb-0">Rp <?= number_format($saldo_mandiri, 0, ',', '.') ?></h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light border-0">
+                <div class="card-body py-3">
+                    <h6 class="card-title text-muted mb-1">Bank BRI</h6>
+                    <h5 class="card-text fw-bold text-primary mb-0">Rp <?= number_format($saldo_bri, 0, ',', '.') ?></h5>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-light border-0">
+                <div class="card-body py-3">
+                    <h6 class="card-title text-muted mb-1">Bank BNI</h6>
+                    <h5 class="card-text fw-bold text-primary mb-0">Rp <?= number_format($saldo_bni, 0, ',', '.') ?></h5>
+                </div>
+            </div>
+        </div>
     </div>
 
     <!-- Tabel Daftar Pengeluaran -->
@@ -235,6 +300,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="formPengeluaran" method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="ajukan_pengeluaran">
                 <div class="modal-body">
                     <div class="alert alert-warning">
                         <i class="fas fa-exclamation-triangle"></i>
@@ -318,7 +384,6 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
     </div>
 </div>
 <?php endif; ?>
-
 <script>
 $(document).ready(function() {
     // Inisialisasi DataTable
@@ -372,10 +437,12 @@ $(document).ready(function() {
         }
     }
 
-    // Handle form submit
+    // ========== PERBAIKAN UTAMA: Handle form submit ==========
     $('#formPengeluaran').on('submit', function(e) {
         e.preventDefault();
+        console.log('Form submitted');
         
+        // Validasi saldo
         const selectedOption = $('#sumber_dana').find('option:selected');
         const saldo = selectedOption.data('saldo') || 0;
         const jumlah = $('#jumlah').val();
@@ -385,28 +452,50 @@ $(document).ready(function() {
             return false;
         }
         
-        const formData = new FormData(this);
-        formData.append('action', 'ajukan_pengeluaran');
+        // Tampilkan loading
+        const submitBtn = $(this).find('button[type="submit"]');
+        const originalText = submitBtn.html();
+        submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Mengajukan...').prop('disabled', true);
 
-        $.ajax({
-            url: 'proses_pengeluaran.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    alert(response.message);
-                    $('#modalPengeluaran').modal('hide');
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
-                }
-            },
-            error: function() {
-                alert('Terjadi kesalahan server. Silakan coba lagi.');
+        // Method 1: Gunakan FormData dengan cara yang benar
+        const formElement = document.getElementById('formPengeluaran');
+        const formData = new FormData(formElement);
+        
+        // TAMBAHKAN ACTION secara eksplisit
+        formData.append('action', 'ajukan_pengeluaran');
+        
+        // Debug: lihat data yang dikirim
+        console.log('Data yang dikirim:');
+        for (let [key, value] of formData.entries()) {
+            console.log(key + ': ' + value);
+        }
+
+        // Kirim AJAX request
+        fetch('proses_pengeluaran.php', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => {
+            console.log('Response status:', response.status);
+            return response.json();
+        })
+        .then(data => {
+            console.log('Response data:', data);
+            if (data.status === 'success') {
+                alert(data.message);
+                $('#modalPengeluaran').modal('hide');
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan server. Silakan coba lagi.');
+        })
+        .finally(() => {
+            // Restore button
+            submitBtn.html(originalText).prop('disabled', false);
         });
     });
 
@@ -427,27 +516,26 @@ $(document).ready(function() {
     });
 
     function updateStatusPengeluaran(id, status, reason = '') {
-        $.ajax({
-            url: 'proses_pengeluaran.php',
-            type: 'POST',
-            data: {
-                action: 'update_status',
-                id: id,
-                status: status,
-                reason: reason
+        // Method 2: Untuk update status, gunakan URL parameter
+        fetch('proses_pengeluaran.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    alert(response.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
-                }
-            },
-            error: function() {
-                alert('Terjadi kesalahan server. Silakan coba lagi.');
+            body: `action=update_status&id=${id}&status=${status}&reason=${encodeURIComponent(reason)}`
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                alert(data.message);
+                location.reload();
+            } else {
+                alert('Error: ' + data.message);
             }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('Terjadi kesalahan server. Silakan coba lagi.');
         });
     }
 });

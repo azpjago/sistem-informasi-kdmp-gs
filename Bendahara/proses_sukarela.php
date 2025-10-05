@@ -2,6 +2,13 @@
 // SET header ke JSON. Ini wajib.
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
+
+// Start session dan include history log
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+require_once 'functions/history_log.php';
+
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     echo json_encode(['success' => false, 'message' => 'Koneksi database gagal.']);
@@ -20,6 +27,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
     $bank_tujuan = ($metode === 'transfer') ? ($_POST['bank_tujuan'] ?? '') : null;
     $keterangan = trim($_POST['keterangan'] ?? null);
     $tanggal_transaksi = $_POST['tanggal_transaksi'] . ' ' . date('H:i:s');
+
+    // Debug info
+    error_log("PROSES SUKARELA: Anggota ID = $anggota_id, Jenis = $jenis_transaksi, Jumlah = $jumlah");
 
     if (empty($jenis_transaksi) || empty($jenis_simpanan) || $jumlah <= 0) {
         echo json_encode(['success' => false, 'message' => 'Semua field wajib diisi dan jumlah harus positif.']);
@@ -124,13 +134,51 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
         if (!$stmt_insert->execute()) {
             throw new Exception("Gagal mencatat transaksi: " . $stmt_insert->error);
         }
+        
+        $pembayaran_id = $conn->insert_id;
         $stmt_insert->close();
+
+        // LOG HISTORY: Transaksi sukarela berhasil
+        $user_role = $_SESSION['role'] ?? 'bendahara';
+        $action_text = $jenis_transaksi === 'setor' ? 'Setor' : 'Tarik';
+        
+        $log_result = log_pembayaran_activity(
+            $pembayaran_id,
+            'create',
+            "$action_text simpanan sukarela sebesar Rp " . number_format($jumlah, 0, ',', '.') . " untuk anggota $nama_anggota ($no_anggota)",
+            $user_role
+        );
+        
+        if ($log_result) {
+            error_log("SUKSES: Log history sukarela berhasil dengan ID: $log_result");
+        } else {
+            error_log("GAGAL: Log history sukarela gagal");
+        }
+
+        // LOG HISTORY: Update saldo anggota
+        $log_anggota_result = log_anggota_activity(
+            $anggota_id,
+            'update',
+            "$action_text simpanan sukarela sebesar Rp " . number_format($jumlah, 0, ',', '.') . ". Saldo sukarela diperbarui",
+            $user_role
+        );
 
         $conn->commit();
         echo json_encode(['success' => true, 'message' => 'Transaksi berhasil diproses!']);
 
     } catch (Exception $e) {
         $conn->rollback();
+        
+        // LOG HISTORY: Error
+        if (isset($pembayaran_id)) {
+            log_pembayaran_activity(
+                $pembayaran_id,
+                'error',
+                "Error transaksi sukarela: " . $e->getMessage(),
+                $_SESSION['role'] ?? 'system'
+            );
+        }
+        
         echo json_encode(['success' => false, 'message' => 'Terjadi kesalahan: ' . $e->getMessage()]);
     } finally {
         $conn->close();

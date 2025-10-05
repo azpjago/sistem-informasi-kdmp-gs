@@ -36,9 +36,6 @@ $pendapatan_bulan_ini = $result->fetch_assoc()['total'] ?? 0;
         <h1 class="h3 fw-bold">Dashboard Ketua 📊</h1>
         <div class="btn-toolbar mb-2 mb-md-0">
             <span class="text-muted me-3"><?php echo date('d F Y'); ?></span>
-            <button type="button" class="btn btn-sm btn-outline-primary">
-                <i class="fas fa-download me-1"></i> Export
-            </button>
         </div>
     </div>
 

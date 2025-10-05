@@ -497,7 +497,6 @@ $anggota = $stmt->get_result();
             <form id="formUpdateBayar" method="POST" action="update_pembayaran.php" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" id="anggotaIdModal" name="anggota_id">
-
                     <div class="mb-3">
                         <label class="form-label">No. Anggota:</label>
                         <p class="fw-bold" id="noAnggotaModal"></p>

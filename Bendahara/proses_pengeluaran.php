@@ -1,11 +1,20 @@
 <?php
-// proses_pengeluaran.php
-session_start();
+// proses_pengeluaran.php - VERSION WITH DEBUGGING
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
+// Debug: Log semua data yang diterima
+error_log("=== PROSES PENGELUARAN DIMULAI ===");
+error_log("POST DATA: " . print_r($_POST, true));
+error_log("FILES DATA: " . print_r($_FILES, true));
+error_log("SESSION DATA: " . print_r($_SESSION, true));
+
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
 
 // Include history log
-require_once 'Bendahara/functions/history_log.php';
+require_once 'functions/history_log.php';
 
 // Function untuk handle upload file
 function handleUpload($file, $folder, $prefix = '')
@@ -133,7 +142,11 @@ try {
     $user_id = $_SESSION['id'] ?? 0;
     $user_role = $_SESSION['role'] ?? '';
 
+    error_log("ACTION: $action, USER ROLE: $user_role, USER ID: $user_id");
+
     if ($action === 'ajukan_pengeluaran') {
+        error_log("PROSES: Mengajukan pengeluaran");
+
         // Validasi role - hanya bendahara yang bisa ajukan
         if ($user_role !== 'bendahara') {
             throw new Exception('Hanya bendahara yang dapat mengajukan pengeluaran');
@@ -146,6 +159,8 @@ try {
         $jumlah = floatval($_POST['jumlah'] ?? 0);
         $sumber_dana = trim($_POST['sumber_dana'] ?? '');
 
+        error_log("DATA: Tanggal=$tanggal, Kategori=$kategori_id, Keterangan=$keterangan, Jumlah=$jumlah, Sumber=$sumber_dana");
+
         if (empty($tanggal) || $kategori_id <= 0 || empty($keterangan) || $jumlah <= 0 || empty($sumber_dana)) {
             throw new Exception("Semua field wajib diisi dengan benar.");
         }
@@ -156,6 +171,8 @@ try {
 
         // Cek saldo real-time berdasarkan sumber dana
         $saldo_real = getSaldoSumberDana($sumber_dana);
+        error_log("SALDO REAL: $sumber_dana = Rp " . number_format($saldo_real, 0, ',', '.'));
+
         if ($saldo_real < $jumlah) {
             throw new Exception("Saldo tidak mencukupi. Saldo $sumber_dana: Rp " . number_format($saldo_real, 0, ',', '.'));
         }
@@ -166,6 +183,7 @@ try {
             throw new Exception($upload_result['error']);
         }
         $bukti_path = $upload_result['path'];
+        error_log("BUKTI UPLOADED: $bukti_path");
 
         $conn->begin_transaction();
 
@@ -182,16 +200,25 @@ try {
             }
 
             $pengeluaran_id = $conn->insert_id;
+            error_log("PENGELUARAN ID: $pengeluaran_id");
 
             // LOG HISTORY: Pengajuan pengeluaran baru
-            log_pengeluaran_activity(
+            error_log("=== MEMULAI LOG HISTORY PENGELUARAN ===");
+            $log_result = log_pengeluaran_activity(
                 $pengeluaran_id,
                 'create',
                 "Mengajukan pengeluaran baru: $keterangan sebesar Rp " . number_format($jumlah, 0, ',', '.') . " dari $sumber_dana",
                 $user_role
             );
 
+            if ($log_result) {
+                error_log("SUKSES: Log history pengeluaran berhasil dengan ID: $log_result");
+            } else {
+                error_log("GAGAL: Log history pengeluaran gagal");
+            }
+
             $conn->commit();
+            error_log("=== TRANSAKSI COMMIT BERHASIL ===");
 
             echo json_encode([
                 'status' => 'success',
@@ -204,6 +231,8 @@ try {
         }
 
     } elseif ($action === 'update_status') {
+        error_log("PROSES: Update status pengeluaran");
+
         // Validasi role - hanya ketua yang bisa approve/reject
         if ($user_role !== 'ketua') {
             throw new Exception('Hanya ketua yang dapat menyetujui pengeluaran');
@@ -212,6 +241,8 @@ try {
         $pengeluaran_id = intval($_POST['id'] ?? 0);
         $status = $_POST['status'] ?? '';
         $reason = trim($_POST['reason'] ?? '');
+
+        error_log("UPDATE STATUS: ID=$pengeluaran_id, Status=$status, Reason=$reason");
 
         if ($pengeluaran_id <= 0 || !in_array($status, ['approved', 'rejected'])) {
             throw new Exception("Data tidak valid.");
@@ -230,10 +261,12 @@ try {
 
         $pengeluaran = $result->fetch_assoc();
         $old_status = $pengeluaran['status'];
+        error_log("DATA PENGELUARAN: Jumlah=" . $pengeluaran['jumlah'] . ", Sumber=" . $pengeluaran['sumber_dana'] . ", Old Status=$old_status");
 
         // Validasi saldo jika status approved
         if ($status === 'approved') {
             $saldo_tersedia = getSaldoSumberDana($pengeluaran['sumber_dana']);
+            error_log("SALDO TERSEDIA: " . $pengeluaran['sumber_dana'] . " = Rp " . number_format($saldo_tersedia, 0, ',', '.'));
 
             if ($pengeluaran['jumlah'] > $saldo_tersedia) {
                 throw new Exception("Saldo tidak mencukupi. Saldo {$pengeluaran['sumber_dana']}: Rp " . number_format($saldo_tersedia, 0, ',', '.'));
@@ -256,7 +289,8 @@ try {
             }
 
             // LOG HISTORY: Perubahan status pengeluaran
-            log_status_change(
+            error_log("=== MEMULAI LOG STATUS CHANGE ===");
+            $log_status_result = log_status_change(
                 'pengeluaran',
                 $pengeluaran_id,
                 $old_status,
@@ -264,19 +298,33 @@ try {
                 $user_role
             );
 
+            if ($log_status_result) {
+                error_log("SUKSES: Log status change berhasil dengan ID: $log_status_result");
+            } else {
+                error_log("GAGAL: Log status change gagal");
+            }
+
             // LOG HISTORY: Detail approval/rejection
-            $action_text = $status === 'approved' ? 'Menyetujui' : 'Menolak';
+            $action_text = $status === 'approved' ? 'approved' : 'rejected';
             $reason_text = $reason ? " dengan alasan: $reason" : "";
-            log_pengeluaran_activity(
+            error_log("=== MEMULAI LOG PENGELUARAN ACTIVITY ===");
+            $log_activity_result = log_pengeluaran_activity(
                 $pengeluaran_id,
                 'status_change',
                 "$action_text pengeluaran: {$pengeluaran['keterangan']} sebesar Rp " . number_format($pengeluaran['jumlah'], 0, ',', '.') . $reason_text,
                 $user_role
             );
 
-            $conn->commit();
+            if ($log_activity_result) {
+                error_log("SUKSES: Log pengeluaran activity berhasil dengan ID: $log_activity_result");
+            } else {
+                error_log("GAGAL: Log pengeluaran activity gagal");
+            }
 
-            $status_text = $status === 'approved' ? 'disetujui' : 'ditolak';
+            $conn->commit();
+            error_log("=== UPDATE STATUS COMMIT BERHASIL ===");
+
+            $status_text = $status === 'approved' ? 'approved' : 'rejected';
             echo json_encode([
                 'status' => 'success',
                 'message' => "Pengajuan pengeluaran berhasil $status_text"
@@ -288,10 +336,13 @@ try {
         }
 
     } else {
-        throw new Exception("Action tidak valid.");
+        error_log("ERROR: Action tidak valid - '$action'");
+        throw new Exception("Action tidak valid: '$action'");
     }
 
 } catch (Exception $e) {
+    error_log("=== ERROR TERJADI: " . $e->getMessage() . " ===");
+
     // LOG HISTORY: Error
     if (isset($pengeluaran_id)) {
         log_pengeluaran_activity(
@@ -310,4 +361,6 @@ try {
     if (isset($conn))
         $conn->close();
 }
+
+error_log("=== PROSES PENGELUARAN SELESAI ===");
 ?>

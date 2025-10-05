@@ -7,9 +7,9 @@ date_default_timezone_set('Asia/Jakarta');
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 // Include history log
-require_once 'Bendahara/functions/history_log.php';
+require_once 'functions/history_log.php';
 
-$DETAIL_URL = '/kdmpgs%20-%20v2/bendahara/pages/detail_anggota.php';
+$DETAIL_URL = 'detail_anggota.php';
 
 function alert_redirect(string $toUrl, string $message): void
 {

@@ -5,7 +5,7 @@ header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
 
 // Include history log
-require_once 'Bendahara/functions/history_log.php';
+require_once 'functions/history_log.php';
 
 error_log('Received anggota_id: ' . $_POST['anggota_id']);
 error_log('POST data: ' . print_r($_POST, true));
