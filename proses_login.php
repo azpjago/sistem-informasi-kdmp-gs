@@ -40,6 +40,7 @@ if ($user = mysqli_fetch_assoc($result)) {
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
+        $_SESSION['nama'] = $user['nama'];
         $_SESSION['is_logged_in'] = true;
 
         // LOG: Login berhasil

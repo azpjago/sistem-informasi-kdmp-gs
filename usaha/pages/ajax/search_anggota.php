@@ -1,32 +1,32 @@
 <?php
 session_start();
-if ($_SESSION['role'] !== 'usaha') exit;
-
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-header('Content-Type: application/json');
 
-$search = $conn->real_escape_string($_GET['search'] ?? '');
-
-if (strlen($search) < 2) {
-    echo json_encode([]);
-    exit;
+if ($conn->connect_error) {
+    die(json_encode([]));
 }
 
-// Search anggota
-$result = $conn->query("
+$search = $_GET['search'] ?? '';
+
+$stmt = $conn->prepare("
     SELECT id, no_anggota, nama 
     FROM anggota 
-    WHERE status_keanggotaan = 'Aktif'
-    AND (nama LIKE '%$search%' OR no_anggota LIKE '%$search%')
+    WHERE (nama LIKE ? OR no_anggota LIKE ?) 
+    AND status_keanggotaan = 'Aktif'
     ORDER BY nama
     LIMIT 10
 ");
+
+$searchTerm = "%$search%";
+$stmt->bind_param("ss", $searchTerm, $searchTerm);
+$stmt->execute();
+$result = $stmt->get_result();
 
 $anggota = [];
 while ($row = $result->fetch_assoc()) {
     $anggota[] = $row;
 }
 
+header('Content-Type: application/json');
 echo json_encode($anggota);
-$conn->close();
 ?>

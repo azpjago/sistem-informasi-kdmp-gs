@@ -1,14 +1,15 @@
 <?php
 session_start();
-if ($_SESSION['role'] !== 'usaha') exit;
-
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-header('Content-Type: application/json');
+
+if ($conn->connect_error) {
+    die(json_encode(['error' => 'Connection failed']));
+}
 
 $id_anggota = intval($_GET['id_anggota'] ?? 0);
 
-// Hitung total simpanan
-$result = $conn->query("
+// Hitung total simpanan anggota (Pokok + Wajib)
+$simpanan_result = $conn->query("
     SELECT COALESCE(SUM(jumlah), 0) as total_simpanan 
     FROM pembayaran 
     WHERE anggota_id = $id_anggota 
@@ -17,13 +18,15 @@ $result = $conn->query("
     AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')
 ");
 
-$data = $result->fetch_assoc();
-$max_pinjaman = $data['total_simpanan'] * 1.5;
+$simpanan_data = $simpanan_result->fetch_assoc();
+$total_simpanan = $simpanan_data['total_simpanan'];
 
+// Hitung max pinjaman (150% dari simpanan)
+$max_pinjaman = $total_simpanan * 1.5;
+
+header('Content-Type: application/json');
 echo json_encode([
-    'max_pinjaman' => $max_pinjaman,
-    'total_simpanan' => $data['total_simpanan']
+    'total_simpanan' => $total_simpanan,
+    'max_pinjaman' => $max_pinjaman
 ]);
-
-$conn->close();
 ?>

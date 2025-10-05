@@ -118,27 +118,24 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>💸 Manajemen Pengeluaran</h2>
-        
-        <!-- DEBUG: Tampilkan role untuk testing -->
-        <!-- <div class="alert alert-warning py-1">Role: <?= $user_role ?></div> -->
-        
+
         <?php if (in_array($user_role, ['bendahara', 'ketua', 'admin'])): ?>
-                <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPengeluaran">
-                    <i class="fas fa-plus"></i> Ajukan Pengeluaran
-                </button>
+            <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPengeluaran">
+                <i class="fas fa-plus"></i> Ajukan Pengeluaran
+            </button>
         <?php endif; ?>
     </div>
 
     <!-- Alert Info -->
     <div class="alert alert-info">
         <i class="fas fa-info-circle"></i>
-        <strong>Info:</strong> 
+        <strong>Info:</strong>
         <?php if ($is_ketua): ?>
-                Anda sebagai <strong>Ketua</strong> dapat menyetujui atau menolak pengajuan pengeluaran.
+            Anda sebagai <strong>Ketua</strong> dapat menyetujui atau menolak pengajuan pengeluaran.
         <?php elseif ($is_bendahara): ?>
-                Anda sebagai <strong>Bendahara</strong> dapat mengajukan pengeluaran. Pengajuan membutuhkan persetujuan Ketua.
+            Anda sebagai <strong>Bendahara</strong> dapat mengajukan pengeluaran. Pengajuan membutuhkan persetujuan Ketua.
         <?php else: ?>
-                Anda hanya dapat melihat pengeluaran yang sudah disetujui.
+            Anda hanya dapat melihat pengeluaran yang sudah disetujui.
         <?php endif; ?>
         <strong>Simpanan Sukarela tidak dapat digunakan untuk pengeluaran.</strong>
     </div>
@@ -150,18 +147,19 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
         </div>
         <div class="card-body">
             <div class="table-responsive">
-                <table id="tabelPengeluaran" class="table table-sm table-bordered table-striped align-middle">
+                <table id="tabelPengeluaran" class="table table-sm table-bordered table-striped align-middle"
+                    style="width:100%">
                     <thead class="table-dark text-center">
                         <tr>
-                            <th>Tanggal</th>
-                            <th>Kategori</th>
+                            <th width="100">Tanggal</th>
+                            <th width="120">Kategori</th>
                             <th>Keterangan</th>
-                            <th>Jumlah</th>
-                            <th>Sumber Dana</th>
-                            <th>Status</th>
-                            <th>Diajukan Oleh</th>
-                            <th>Bukti</th>
-                            <th>Aksi</th>
+                            <th width="120">Jumlah</th>
+                            <th width="120">Sumber Dana</th>
+                            <th width="100">Status</th>
+                            <th width="120">Diajukan Oleh</th>
+                            <th width="80">Bukti</th>
+                            <th width="150">Aksi</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -176,51 +174,61 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                             $can_edit = ($pengeluaran['status'] == 'draft' && $pengeluaran['created_by'] == ($_SESSION['id'] ?? 0));
                             $can_approve = ($is_ketua && $pengeluaran['status'] == 'pending');
                             ?>
-                                <tr>
-                                    <td class="text-center"><?= date('d/m/Y', strtotime($pengeluaran['tanggal'])) ?></td>
-                                    <td><?= htmlspecialchars($pengeluaran['nama_kategori'] ?? '-') ?></td>
-                                    <td><?= htmlspecialchars($pengeluaran['keterangan']) ?></td>
-                                    <td class="text-end">Rp <?= number_format($pengeluaran['jumlah'], 0, ',', '.') ?></td>
-                                    <td><?= htmlspecialchars($pengeluaran['sumber_dana'] ?? '-') ?></td>
-                                    <td class="text-center">
-                                        <span class="badge <?= $status_badge ?>">
-                                            <?= ucfirst($pengeluaran['status']) ?>
-                                        </span>
-                                    </td>
-                                    <td class="text-center">
-                                        <?= htmlspecialchars($pengeluaran['created_by_name'] ?? 'System') ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php if ($pengeluaran['bukti_file']): ?>
-                                                <a href="<?= $pengeluaran['bukti_file'] ?>" target="_blank" class="btn btn-sm btn-outline-primary">
-                                                    <i class="fas fa-eye"></i> Lihat
-                                                </a>
-                                        <?php else: ?>
-                                                <span class="text-muted">-</span>
-                                        <?php endif; ?>
-                                    </td>
-                                    <td class="text-center">
+                            <tr>
+                                <td class="text-center"><?= date('d/m/Y', strtotime($pengeluaran['tanggal'])) ?></td>
+                                <td><?= htmlspecialchars($pengeluaran['nama_kategori'] ?? '-') ?></td>
+                                <td>
+                                    <div class="text-truncate" style="max-width: 200px;"
+                                        title="<?= htmlspecialchars($pengeluaran['keterangan']) ?>">
+                                        <?= htmlspecialchars($pengeluaran['keterangan']) ?>
+                                    </div>
+                                </td>
+                                <td class="text-end">Rp <?= number_format($pengeluaran['jumlah'], 0, ',', '.') ?></td>
+                                <td><?= htmlspecialchars($pengeluaran['sumber_dana'] ?? '-') ?></td>
+                                <td class="text-center">
+                                    <span class="badge <?= $status_badge ?>">
+                                        <?= ucfirst($pengeluaran['status']) ?>
+                                    </span>
+                                </td>
+                                <td class="text-center">
+                                    <?= htmlspecialchars($pengeluaran['created_by_name'] ?? 'System') ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php if ($pengeluaran['bukti_file']): ?>
+                                        <a href="<?= $pengeluaran['bukti_file'] ?>" target="_blank"
+                                            class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-eye"></i>
+                                        </a>
+                                    <?php else: ?>
+                                        <span class="text-muted">-</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-center">
+                                    <div class="btn-group btn-group-sm" role="group">
                                         <?php if ($can_edit): ?>
-                                                <button class="btn btn-sm btn-warning edit-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
-                                                    <i class="fas fa-edit"></i>
-                                                </button>
-                                                <button class="btn btn-sm btn-danger hapus-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
+                                            <button class="btn btn-warning edit-pengeluaran" data-id="<?= $pengeluaran['id'] ?>"
+                                                title="Edit">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-danger hapus-pengeluaran" data-id="<?= $pengeluaran['id'] ?>"
+                                                title="Hapus">
+                                                <i class="fas fa-trash"></i>
+                                            </button>
                                         <?php elseif ($can_approve): ?>
-                                            <div class="btn-group">
-                                                <button type="button" class="btn btn-sm btn-outline-success approve-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
-                                                    <i class="fas fa-check"></i> Setujui
-                                                </button>
-                                                <button type="button" class="btn btn-sm btn-outline-danger reject-pengeluaran" data-id="<?= $pengeluaran['id'] ?>">
-                                                    <i class="fas fa-times"></i> Tolak
-                                                </button>
-                                        </div>
+                                            <button type="button" class="btn btn-success approve-pengeluaran"
+                                                data-id="<?= $pengeluaran['id'] ?>" title="Setujui">
+                                                <i class="fas fa-check"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-danger reject-pengeluaran"
+                                                data-id="<?= $pengeluaran['id'] ?>" title="Tolak">
+                                                <i class="fas fa-times"></i>
+                                            </button>
                                         <?php else: ?>
-                                                <span class="text-muted">-</span>
+                                            <span class="text-muted small">Tidak ada aksi</span>
                                         <?php endif; ?>
-                                    </td>
-                                </tr>
+                                    </div>
+                                </td>
+                            </tr>
                         <?php endwhile; ?>
                     </tbody>
                 </table>
@@ -242,7 +250,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                     <div class="modal-body">
                         <div class="alert alert-warning">
                             <i class="fas fa-exclamation-triangle"></i>
-                            <strong>Perhatian:</strong> Pengajuan pengeluaran membutuhkan persetujuan Ketua. 
+                            <strong>Perhatian:</strong> Pengajuan pengeluaran membutuhkan persetujuan Ketua.
                             Simpanan Sukarela <strong>tidak dapat</strong> digunakan untuk pengeluaran.
                         </div>
 
@@ -250,8 +258,8 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="tanggal" class="form-label">Tanggal Pengeluaran</label>
-                                    <input type="date" class="form-control" id="tanggal" name="tanggal" 
-                                           value="<?= date('Y-m-d') ?>" required>
+                                    <input type="date" class="form-control" id="tanggal" name="tanggal"
+                                        value="<?= date('Y-m-d') ?>" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -262,7 +270,8 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                                         <?php
                                         mysqli_data_seek($kategori_result, 0);
                                         while ($kategori = $kategori_result->fetch_assoc()): ?>
-                                                <option value="<?= $kategori['id'] ?>"><?= htmlspecialchars($kategori['nama_kategori']) ?></option>
+                                            <option value="<?= $kategori['id'] ?>">
+                                                <?= htmlspecialchars($kategori['nama_kategori']) ?></option>
                                         <?php endwhile; ?>
                                     </select>
                                 </div>
@@ -271,16 +280,16 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
 
                         <div class="mb-3">
                             <label for="keterangan" class="form-label">Keterangan</label>
-                            <textarea class="form-control" id="keterangan" name="keterangan" rows="2" 
-                                      placeholder="Deskripsi lengkap pengeluaran..." required></textarea>
+                            <textarea class="form-control" id="keterangan" name="keterangan" rows="2"
+                                placeholder="Deskripsi lengkap pengeluaran..." required></textarea>
                         </div>
 
                         <div class="row">
                             <div class="col-md-6">
                                 <div class="mb-3">
                                     <label for="jumlah" class="form-label">Jumlah (Rp)</label>
-                                    <input type="number" class="form-control" id="jumlah" name="jumlah" 
-                                           min="1000" step="1000" placeholder="Contoh: 50000" required>
+                                    <input type="number" class="form-control" id="jumlah" name="jumlah" min="1000"
+                                        step="1000" placeholder="Contoh: 50000" required>
                                 </div>
                             </div>
                             <div class="col-md-6">
@@ -308,8 +317,8 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
 
                         <div class="mb-3">
                             <label for="bukti_file" class="form-label">Bukti Pengeluaran</label>
-                            <input type="file" class="form-control" id="bukti_file" name="bukti_file" 
-                                   accept="image/*,.pdf" required>
+                            <input type="file" class="form-control" id="bukti_file" name="bukti_file" accept="image/*,.pdf"
+                                required>
                             <small class="text-muted">Format: JPG, PNG, PDF (maks. 5MB)</small>
                         </div>
                     </div>
@@ -323,136 +332,195 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
     </div>
 <?php endif; ?>
 
+<style>
+    /* Tambahan CSS untuk memperbaiki tampilan tabel */
+    #tabelPengeluaran {
+        font-size: 0.875rem;
+    }
+
+    #tabelPengeluaran th {
+        white-space: nowrap;
+    }
+
+    #tabelPengeluaran td {
+        vertical-align: middle;
+    }
+
+    .btn-group-sm>.btn {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .text-truncate {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    /* Memastikan tabel responsive */
+    .table-responsive {
+        border-radius: 0.375rem;
+    }
+
+    /* Styling untuk status badge */
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.35em 0.65em;
+    }
+</style>
+
 <script>
-$(document).ready(function() {
-    // Inisialisasi DataTable
-    if ($('#tabelPengeluaran').length) {
-        $('#tabelPengeluaran').DataTable({
-            pageLength: 10,
-            language: {
-                search: "Cari: ",
-                lengthMenu: "Tampilkan _MENU_ data per halaman",
-                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-                zeroRecords: "Tidak ada data yang cocok",
-                infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-                infoFiltered: "(disaring dari _MAX_ total data)",
-                paginate: { 
-                    first: "Awal", 
-                    last: "Akhir", 
-                    next: "Berikutnya", 
-                    previous: "Sebelumnya" 
-                }
-            }
+    $(document).ready(function () {
+        // Inisialisasi DataTable dengan konfigurasi yang lebih ketat
+        if ($('#tabelPengeluaran').length) {
+            $('#tabelPengeluaran').DataTable({
+                pageLength: 10,
+                responsive: true,
+                autoWidth: false,
+                language: {
+                    search: "Cari: ",
+                    lengthMenu: "Tampilkan _MENU_ data per halaman",
+                    info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                    zeroRecords: "Tidak ada data yang cocok",
+                    infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                    infoFiltered: "(disaring dari _MAX_ total data)",
+                    paginate: {
+                        first: "Awal",
+                        last: "Akhir",
+                        next: "Berikutnya",
+                        previous: "Sebelumnya"
+                    }
+                },
+                columnDefs: [
+                    { targets: [0, 5, 6, 7, 8], orderable: false },
+                    { targets: [2], width: "200px" }
+                ]
+            });
+        }
+
+        // Update info saldo ketika pilih sumber dana
+        $('#sumber_dana').on('change', function () {
+            updateSaldoInfo();
         });
-    }
 
-    // Update info saldo ketika pilih sumber dana
-    $('#sumber_dana').on('change', function() {
-        updateSaldoInfo();
-    });
+        // Validasi jumlah vs saldo
+        $('#jumlah').on('input', function () {
+            updateSaldoInfo();
+        });
 
-    // Validasi jumlah vs saldo
-    $('#jumlah').on('input', function() {
-        updateSaldoInfo();
-    });
+        function updateSaldoInfo() {
+            const selectedOption = $('#sumber_dana').find('option:selected');
+            const saldo = selectedOption.data('saldo') || 0;
+            const jumlah = $('#jumlah').val() || 0;
 
-    function updateSaldoInfo() {
-        const selectedOption = $('#sumber_dana').find('option:selected');
-        const saldo = selectedOption.data('saldo') || 0;
-        const jumlah = $('#jumlah').val() || 0;
-        
-        if (saldo > 0) {
-            $('#saldoInfo').text(`Saldo tersedia: Rp ${saldo.toLocaleString('id-ID')}`);
-            
-            if (parseFloat(jumlah) > saldo) {
-                $('#saldoInfo').addClass('text-danger').removeClass('text-success')
-                    .text(`Saldo tidak cukup! Kebutuhan: Rp ${parseFloat(jumlah).toLocaleString('id-ID')}, Tersedia: Rp ${saldo.toLocaleString('id-ID')}`);
+            if (saldo > 0) {
+                $('#saldoInfo').text(`Saldo tersedia: Rp ${saldo.toLocaleString('id-ID')}`);
+
+                if (parseFloat(jumlah) > saldo) {
+                    $('#saldoInfo').addClass('text-danger').removeClass('text-success')
+                        .text(`Saldo tidak cukup! Kebutuhan: Rp ${parseFloat(jumlah).toLocaleString('id-ID')}, Tersedia: Rp ${saldo.toLocaleString('id-ID')}`);
+                } else {
+                    $('#saldoInfo').addClass('text-success').removeClass('text-danger')
+                        .text(`Saldo mencukupi: Rp ${saldo.toLocaleString('id-ID')}`);
+                }
             } else {
-                $('#saldoInfo').addClass('text-success').removeClass('text-danger')
-                    .text(`Saldo mencukupi: Rp ${saldo.toLocaleString('id-ID')}`);
+                $('#saldoInfo').text('Pilih sumber dana').removeClass('text-danger text-success');
             }
-        } else {
-            $('#saldoInfo').text('Pilih sumber dana').removeClass('text-danger text-success');
         }
-    }
 
-    // Handle form submit
-    $('#formPengeluaran').on('submit', function(e) {
-        e.preventDefault();
-        
-        const selectedOption = $('#sumber_dana').find('option:selected');
-        const saldo = selectedOption.data('saldo') || 0;
-        const jumlah = $('#jumlah').val();
-        
-        if (parseFloat(jumlah) > saldo) {
-            alert('Saldo tidak mencukupi! Silakan pilih sumber dana lain atau kurangi jumlah.');
-            return false;
-        }
-        
-        const formData = new FormData(this);
-        formData.append('action', 'ajukan_pengeluaran');
+        // Handle form submit
+        $('#formPengeluaran').on('submit', function (e) {
+            e.preventDefault();
 
-        $.ajax({
-            url: 'pages/proses/proses_pengeluaran.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    alert(response.message);
-                    $('#modalPengeluaran').modal('hide');
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
+            const selectedOption = $('#sumber_dana').find('option:selected');
+            const saldo = selectedOption.data('saldo') || 0;
+            const jumlah = $('#jumlah').val();
+
+            if (parseFloat(jumlah) > saldo) {
+                alert('Saldo tidak mencukupi! Silakan pilih sumber dana lain atau kurangi jumlah.');
+                return false;
+            }
+
+            const formData = new FormData(this);
+            formData.append('action', 'ajukan_pengeluaran');
+
+            $.ajax({
+                url: 'pages/proses/proses_pengeluaran.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === 'success') {
+                        alert(response.message);
+                        $('#modalPengeluaran').modal('hide');
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function () {
+                    alert('Terjadi kesalahan server. Silakan coba lagi.');
                 }
-            },
-            error: function() {
-                alert('Terjadi kesalahan server. Silakan coba lagi.');
+            });
+        });
+
+        // Handle approval oleh ketua
+        $('.approve-pengeluaran').on('click', function () {
+            const id = $(this).data('id');
+            if (confirm('Setujui pengajuan pengeluaran ini?')) {
+                updateStatusPengeluaran(id, 'approved');
+            }
+        });
+
+        $('.reject-pengeluaran').on('click', function () {
+            const id = $(this).data('id');
+            const reason = prompt('Alasan penolakan:');
+            if (reason !== null) {
+                updateStatusPengeluaran(id, 'rejected', reason);
+            }
+        });
+
+        function updateStatusPengeluaran(id, status, reason = '') {
+            $.ajax({
+                url: 'pages/proses/proses_pengeluaran.php',
+                type: 'POST',
+                data: {
+                    action: 'update_status',
+                    id: id,
+                    status: status,
+                    reason: reason
+                },
+                dataType: 'json',
+                success: function (response) {
+                    if (response.status === 'success') {
+                        alert(response.message);
+                        location.reload();
+                    } else {
+                        alert('Error: ' + response.message);
+                    }
+                },
+                error: function () {
+                    alert('Terjadi kesalahan server. Silakan coba lagi.');
+                }
+            });
+        }
+
+        // Handle edit pengeluaran
+        $('.edit-pengeluaran').on('click', function () {
+            const id = $(this).data('id');
+            alert('Fitur edit pengeluaran dengan ID: ' + id);
+            // Implementasi edit sesuai kebutuhan
+        });
+
+        // Handle hapus pengeluaran
+        $('.hapus-pengeluaran').on('click', function () {
+            const id = $(this).data('id');
+            if (confirm('Hapus pengajuan pengeluaran ini?')) {
+                // Implementasi hapus sesuai kebutuhan
+                alert('Fitur hapus pengeluaran dengan ID: ' + id);
             }
         });
     });
-
-    // Handle approval oleh ketua
-    $('.approve-pengeluaran').on('click', function() {
-        const id = $(this).data('id');
-        if (confirm('Setujui pengajuan pengeluaran ini?')) {
-            updateStatusPengeluaran(id, 'approved');
-        }
-    });
-
-    $('.reject-pengeluaran').on('click', function() {
-        const id = $(this).data('id');
-        const reason = prompt('Alasan penolakan:');
-        if (reason !== null) {
-            updateStatusPengeluaran(id, 'rejected', reason);
-        }
-    });
-
-    function updateStatusPengeluaran(id, status, reason = '') {
-        $.ajax({
-            url: 'pages/proses/proses_pengeluaran.php',
-            type: 'POST',
-            data: {
-                action: 'update_status',
-                id: id,
-                status: status,
-                reason: reason
-            },
-            dataType: 'json',
-            success: function(response) {
-                if (response.status === 'success') {
-                    alert(response.message);
-                    location.reload();
-                } else {
-                    alert('Error: ' + response.message);
-                }
-            },
-            error: function() {
-                alert('Terjadi kesalahan server. Silakan coba lagi.');
-            }
-        });
-    }
-});
 </script>
