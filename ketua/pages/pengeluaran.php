@@ -158,7 +158,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h2>💸 Manajemen Pengeluaran</h2>
 
-        <?php if (in_array($user_role, ['bendahara', 'ketua', 'admin'])): ?>
+        <?php if (in_array($user_role, ['bendahara'])): ?>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPengeluaran">
                 <i class="fas fa-plus"></i> Ajukan Pengeluaran
             </button>
