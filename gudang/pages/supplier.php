@@ -9,6 +9,8 @@ $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
 
+require_once 'functions/history_log.php';
+
 // TAMBAH SUPPLIER
 if (isset($_POST['tambah'])) {
     $nama_supplier = $conn->real_escape_string($_POST['nama_supplier']);
@@ -27,6 +29,9 @@ if (isset($_POST['tambah'])) {
 
         if ($conn->query($query)) {
             $id_supplier = $conn->insert_id;
+
+            $description = "Membuat supplier baru: " . $nama_supplier . " (" . $jenis_supplier . ")";
+            log_supplier_activity($id_supplier, 'create', $description, 'gudang');
 
             // Proses produk supplier
             if (isset($_POST['nama_produk']) && is_array($_POST['nama_produk'])) {
@@ -71,21 +76,16 @@ if (isset($_POST['tambah'])) {
                         if ($conn->query($query_produk)) {
                             // Ambil ID produk terakhir
                             $id_supplier_produk = $conn->insert_id;
-
-                            // DEBUG: Tampilkan informasi untuk memastikan data benar
-                            error_log("Menambahkan history harga: ID Produk = $id_supplier_produk, Harga = $harga_clean");
+                            $description_produk = "Menambahkan produk: " . $nama_clean . " dengan harga Rp " . number_format($harga_clean, 0, ',', '.') . " per " . $satuan_clean;
+                            log_supplier_product_activity($id_supplier_produk, 'create', $description_produk, 'gudang');
                             
                             // Insert juga ke tabel history
                             $query_history = "INSERT INTO supplier_harga_history (id_supplier_produk, harga_beli, tanggal_berlaku) 
                                             VALUES ('$id_supplier_produk', '$harga_clean', NOW())";
                             
                             if (!$conn->query($query_history)) {
-                                // Jika gagal menyimpan history, catat error
                                 error_log("Error menyimpan history: " . $conn->error);
                                 throw new Exception("Gagal menyimpan history harga: " . $conn->error);
-                            } else {
-                                // Berhasil menyimpan history
-                                error_log("Berhasil menyimpan history harga untuk produk ID: $id_supplier_produk");
                             }
                         } else {
                             throw new Exception("Gagal menyimpan produk: " . $conn->error);
@@ -119,6 +119,11 @@ if (isset($_POST['edit'])) {
     $jenis_supplier = $conn->real_escape_string($_POST['jenis_supplier'] ?? '');
     $status_supplier = $conn->real_escape_string($_POST['status_supplier'] ?? '');
 
+    // Ambil data lama untuk log
+    $query_old = "SELECT * FROM supplier WHERE id_supplier = '$id_supplier'";
+    $result_old = $conn->query($query_old);
+    $old_data = $result_old->fetch_assoc();
+
     // Mulai transaction
     $conn->begin_transaction();
 
@@ -134,6 +139,20 @@ if (isset($_POST['edit'])) {
                   WHERE id_supplier = '$id_supplier'";
 
         if ($conn->query($query)) {
+            // Log perubahan data supplier
+            $changes = [];
+            if ($old_data['nama_supplier'] != $nama_supplier) $changes[] = "nama dari '" . $old_data['nama_supplier'] . "' ke '" . $nama_supplier . "'";
+            if ($old_data['alamat'] != $alamat) $changes[] = "alamat";
+            if ($old_data['no_telp'] != $no_telp) $changes[] = "no. telepon";
+            if ($old_data['email'] != $email) $changes[] = "email";
+            if ($old_data['jenis_supplier'] != $jenis_supplier) $changes[] = "jenis dari '" . $old_data['jenis_supplier'] . "' ke '" . $jenis_supplier . "'";
+            if ($old_data['status_supplier'] != $status_supplier) $changes[] = "status dari '" . $old_data['status_supplier'] . "' ke '" . $status_supplier . "'";
+            
+            if (!empty($changes)) {
+                $description = "Mengubah data supplier " . $nama_supplier . ": " . implode(", ", $changes);
+                log_supplier_activity($id_supplier, 'update', $description, 'gudang');
+            }
+
             // Update produk yang dijual oleh supplier
             if (isset($_POST['id_supplier_produk']) && is_array($_POST['id_supplier_produk'])) {
                 $id_produk_arr = $_POST['id_supplier_produk'];
@@ -170,15 +189,12 @@ if (isset($_POST['edit'])) {
 
                         // Cek apakah produk sudah ada (bukan produk baru)
                         if (!empty($id_produk_clean) && $id_produk_clean != 'new') {
-                            // Ambil harga lama untuk dibandingkan
-                            $query_old_price = "SELECT harga_beli FROM supplier_produk WHERE id_supplier_produk = '$id_produk_clean'";
-                            $result_old_price = $conn->query($query_old_price);
-                            $old_price = 0;
+                            // Ambil data lama produk
+                            $query_old_produk = "SELECT * FROM supplier_produk WHERE id_supplier_produk = '$id_produk_clean'";
+                            $result_old_produk = $conn->query($query_old_produk);
+                            $old_produk = $result_old_produk->fetch_assoc();
                             
-                            if ($result_old_price && $result_old_price->num_rows > 0) {
-                                $row_old = $result_old_price->fetch_assoc();
-                                $old_price = $row_old['harga_beli'];
-                            }
+                            $old_price = $old_produk['harga_beli'];
                             
                             // Update produk yang sudah ada
                             $query_produk = "UPDATE supplier_produk SET 
@@ -199,21 +215,28 @@ if (isset($_POST['edit'])) {
                                     WHERE id_supplier_produk = '$id_produk_clean'";
 
                             if ($conn->query($query_produk)) {
+                                // Log perubahan produk
+                                $produk_changes = [];
+                                if ($old_produk['nama_produk'] != $nama_clean) $produk_changes[] = "nama produk";
+                                if ($old_produk['harga_beli'] != $harga_clean) $produk_changes[] = "harga dari Rp " . number_format($old_produk['harga_beli'], 0, ',', '.') . " ke Rp " . number_format($harga_clean, 0, ',', '.');
+                                if ($old_produk['satuan_besar'] != $satuan_clean) $produk_changes[] = "satuan";
+                                if ($old_produk['status'] != $status_clean) $produk_changes[] = "status dari '" . $old_produk['status'] . "' ke '" . $status_clean . "'";
+                                
+                                if (!empty($produk_changes)) {
+                                    $description_produk = "Mengubah data produk " . $nama_clean . ": " . implode(", ", $produk_changes);
+                                    log_supplier_product_activity($id_produk_clean, 'update', $description_produk, 'gudang');
+                                }
+                                
                                 // Jika harga berubah, simpan ke history
                                 if ($harga_clean != $old_price) {
-                                    error_log("Harga berubah: $old_price -> $harga_clean, Produk ID: $id_produk_clean");
+                                    log_supplier_price_change($id_produk_clean, $old_price, $harga_clean, 'gudang');
                                     
                                     $query_history = "INSERT INTO supplier_harga_history (id_supplier_produk, harga_beli, tanggal_berlaku)
                                                     VALUES ('$id_produk_clean', '$harga_clean', NOW())";
                                     
                                     if (!$conn->query($query_history)) {
-                                        error_log("Error menyimpan history harga: " . $conn->error);
                                         throw new Exception("Gagal menyimpan history harga: " . $conn->error);
-                                    } else {
-                                        error_log("History harga berhasil disimpan untuk produk ID: $id_produk_clean");
                                     }
-                                } else {
-                                    error_log("Harga tidak berubah untuk produk ID: $id_produk_clean");
                                 }
                             } else {
                                 throw new Exception("Gagal update produk: " . $conn->error);
@@ -233,17 +256,16 @@ if (isset($_POST['edit'])) {
                             if ($conn->query($query_produk)) {
                                 $id_supplier_produk = $conn->insert_id;
                                 
-                                // Simpan ke tabel history harga
-                                error_log("Menambahkan produk baru dengan harga: $harga_clean, Produk ID: $id_supplier_produk");
+                                // Log produk baru
+                                $description_produk = "Menambahkan produk baru: " . $nama_clean . " dengan harga Rp " . number_format($harga_clean, 0, ',', '.') . " per " . $satuan_clean;
+                                log_supplier_product_activity($id_supplier_produk, 'create', $description_produk, 'gudang');
                                 
+                                // Simpan ke tabel history harga
                                 $query_history = "INSERT INTO supplier_harga_history (id_supplier_produk, harga_beli, tanggal_berlaku)
                                                 VALUES ('$id_supplier_produk', '$harga_clean', NOW())";
                                 
                                 if (!$conn->query($query_history)) {
-                                    error_log("Error menyimpan history harga baru: " . $conn->error);
                                     throw new Exception("Gagal menyimpan history harga: " . $conn->error);
-                                } else {
-                                    error_log("History harga berhasil disimpan untuk produk BARU ID: $id_supplier_produk");
                                 }
                             } else {
                                 throw new Exception("Gagal menambahkan produk baru: " . $conn->error);
@@ -272,6 +294,11 @@ if (isset($_POST['edit'])) {
 if (isset($_GET['hapus'])) {
     $id_supplier = $conn->real_escape_string($_GET['hapus']);
 
+    // Ambil data supplier untuk log
+    $query_supplier = "SELECT * FROM supplier WHERE id_supplier = '$id_supplier'";
+    $result_supplier = $conn->query($query_supplier);
+    $supplier_data = $result_supplier->fetch_assoc();
+
     // Cek apakah supplier punya relasi dengan barang_masuk_qc
     $check_query = "SELECT COUNT(*) as total FROM barang_masuk_qc WHERE id_supplier = '$id_supplier'";
     $check_result = $conn->query($check_query);
@@ -280,6 +307,10 @@ if (isset($_GET['hapus'])) {
     if ($check_data['total'] > 0) {
         $_SESSION['error'] = "Tidak dapat menghapus supplier karena sudah memiliki data barang masuk!";
     } else {
+        // Log penghapusan supplier
+        $description = "Menghapus supplier: " . $supplier_data['nama_supplier'] . " (" . $supplier_data['jenis_supplier'] . ")";
+        log_supplier_activity($id_supplier, 'delete', $description, 'gudang');
+
         // Hapus relasi produk supplier terlebih dahulu
         $conn->query("DELETE FROM supplier_produk WHERE id_supplier = '$id_supplier'");
 
@@ -297,6 +328,7 @@ if (isset($_GET['hapus'])) {
 }
 
 ?>
+<!-- HTML CONTENT TIDAK BERUBAH -->
 <head>
         <style>
     .produk-section {
@@ -710,6 +742,7 @@ if (isset($_GET['hapus'])) {
     </div>
 </div>
 
+<!-- SCRIPT TIDAK BERUBAH -->
 <script>
     $(document).ready(function () {
         // Inisialisasi DataTables

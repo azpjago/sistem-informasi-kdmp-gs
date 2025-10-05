@@ -5,6 +5,9 @@ if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
     exit;
 }
 
+// Include file history log
+require_once 'functions/history_log.php';
+
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
@@ -28,6 +31,9 @@ if (isset($_POST['tambah_so'])) {
         
         if ($conn->query($query_header)) {
             $id_so = $conn->insert_id;
+            
+            // LOG: Pembuatan Stock Opname
+            log_so_creation($id_so, $no_so, $periode_so, 'gudang');
             
             // Insert detail SO
             if (isset($_POST['id_inventory']) && is_array($_POST['id_inventory'])) {
@@ -124,6 +130,15 @@ if (isset($_POST['approve_so'])) {
                          WHERE id_so = '$id_so' AND status = 'waiting_approval'";
 
         if ($conn->query($query_approve) && $conn->affected_rows > 0) {
+            // Get SO info untuk log
+            $query_so_info = "SELECT no_so FROM stock_opname_header WHERE id_so = '$id_so'";
+            $result_so_info = $conn->query($query_so_info);
+            $so_info = $result_so_info->fetch_assoc();
+            $no_so = $so_info['no_so'];
+            
+            // LOG: Approval Stock Opname
+            log_so_approval($id_so, $no_so, $_SESSION['role']);
+            
             // Update inventory berdasarkan hasil SO yang approved
             $query_detail = "SELECT sod.*, so.no_so 
                            FROM stock_opname_detail sod
@@ -175,6 +190,9 @@ if (isset($_POST['approve_so'])) {
                         throw new Exception("Gagal update inventory: " . $conn->error);
                     }
 
+                    // LOG: Pergerakan Inventory dari SO
+                    log_so_inventory_movement($id_so, $id_inventory, $jenis_movement, abs($selisih), $alasan, $_SESSION['role']);
+
                     // Catat pergerakan stok di audit trail
                     $query_movement = "INSERT INTO so_inventory_movement 
                                       (id_so_detail, id_inventory, jenis_movement, jumlah, alasan) 
@@ -202,6 +220,9 @@ if (isset($_POST['approve_so'])) {
                             if (!$conn->query($query_rusak)) {
                                 throw new Exception("Gagal memindahkan barang rusak: " . $conn->error);
                             }
+
+                            // LOG: Barang Rusak dari SO
+                            log_so_barang_rusak($id_so, $id_inventory, $jumlah_rusak, $status_kondisi, $_SESSION['role']);
                         }
                     }
                 }
@@ -226,11 +247,20 @@ if (isset($_POST['reject_so'])) {
     $id_so = intval($_POST['id_so']);
     $catatan_reject = $conn->real_escape_string($_POST['catatan_reject'] ?? '');
     
+    // Get SO info untuk log
+    $query_so_info = "SELECT no_so FROM stock_opname_header WHERE id_so = '$id_so'";
+    $result_so_info = $conn->query($query_so_info);
+    $so_info = $result_so_info->fetch_assoc();
+    $no_so = $so_info['no_so'];
+    
     $query = "UPDATE stock_opname_header 
              SET status = 'rejected', catatan = CONCAT(catatan, ' - REJECTED: $catatan_reject') 
              WHERE id_so = '$id_so'";
     
     if ($conn->query($query)) {
+        // LOG: Rejection Stock Opname
+        log_so_rejection($id_so, $no_so, $catatan_reject, $_SESSION['role']);
+        
         $_SESSION['success'] = "Stock Opname telah ditolak";
     } else {
         $_SESSION['error'] = "Gagal menolak SO: " . $conn->error;

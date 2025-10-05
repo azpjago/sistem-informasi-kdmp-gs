@@ -9,6 +9,9 @@ $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
 
+// Include history log functions
+require_once 'functions/history_log.php';
+
 // FUNGSI GENERATE INVOICE
 function generateInvoiceNumber($conn)
 {
@@ -62,6 +65,12 @@ if (isset($_POST['buat_order'])) {
         // Generate nomor invoice
         $no_invoice = generateInvoiceNumber($conn);
 
+        // Ambil nama supplier untuk log
+        $query_supplier = "SELECT nama_supplier FROM supplier WHERE id_supplier = '$id_supplier'";
+        $result_supplier = $conn->query($query_supplier);
+        $supplier_data = $result_supplier->fetch_assoc();
+        $nama_supplier = $supplier_data['nama_supplier'];
+
         // Insert order
         $query_order = "INSERT INTO purchase_order (no_invoice, id_supplier, tanggal_order, tanggal_pengiriman, discount, status, keterangan, created_by) 
                         VALUES ('$no_invoice', '$id_supplier', NOW(), '$tanggal_pengiriman', '$discount', '$status_po', '$keterangan', '{$_SESSION['user_id']}')";
@@ -69,6 +78,9 @@ if (isset($_POST['buat_order'])) {
         if ($conn->query($query_order)) {
             $id_po = $conn->insert_id;
             $total_po = 0;
+
+            // Panggil fungsi history log untuk pembuatan PO
+            log_po_creation($id_po, $no_invoice, $nama_supplier, 'gudang');
 
             // Insert detail order
             if (isset($_POST['produk']) && is_array($_POST['produk'])) {
@@ -137,6 +149,13 @@ if (isset($_GET['ubah_status'])) {
     $id_order = $conn->real_escape_string($_GET['ubah_status']);
     $status = $conn->real_escape_string($_GET['status']);
 
+    // Ambil data PO untuk log
+    $query_po = "SELECT po.*, s.nama_supplier FROM purchase_order po 
+                 LEFT JOIN supplier s ON po.id_supplier = s.id_supplier 
+                 WHERE po.id_po = '$id_order'";
+    $result_po = $conn->query($query_po);
+    $po_data = $result_po->fetch_assoc();
+
     // Ambil status saat ini dari database
     $query_current = "SELECT status FROM purchase_order WHERE id_po = '$id_order'";
     $result_current = $conn->query($query_current);
@@ -148,6 +167,9 @@ if (isset($_GET['ubah_status'])) {
         $query = "UPDATE purchase_order SET status = '$status' WHERE id_po = '$id_order'";
 
         if ($conn->query($query)) {
+            // Panggil fungsi history log untuk perubahan status
+            log_po_status_change($id_order, $current_status, $status, 'gudang');
+            
             $_SESSION['success'] = "Status order berhasil diubah dari " . ucfirst($current_status) . " ke " . ucfirst($status) . "!";
         } else {
             $_SESSION['error'] = "Error: " . $conn->error;

@@ -1,5 +1,9 @@
 <?php
 session_start();
+
+// Include file history log
+require_once 'functions/history_log.php';
+
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
@@ -12,8 +16,12 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $username = $_POST['username'];
 $password = $_POST['password'];
+$ip_address = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
 
 if (empty($username) || empty($password)) {
+    // LOG: Attempt login dengan field kosong
+    log_login_empty_fields();
+
     header("Location: index.php?error=empty");
     exit();
 }
@@ -33,6 +41,9 @@ if ($user = mysqli_fetch_assoc($result)) {
         $_SESSION['username'] = $user['username'];
         $_SESSION['role'] = $user['role'];
         $_SESSION['is_logged_in'] = true;
+
+        // LOG: Login berhasil
+        log_login_success($user['id'], $user['username'], $user['role']);
 
         // Tutup statement karena sudah tidak digunakan lagi
         mysqli_stmt_close($stmt);
@@ -64,7 +75,13 @@ if ($user = mysqli_fetch_assoc($result)) {
         }
         exit(); // Hentikan skrip SETELAH redirect
 
+    } else {
+        // LOG: Login gagal - password salah
+        log_login_failed_password($user['id'], $user['username'], $user['role']);
     }
+} else {
+    // LOG: Login gagal - username tidak ditemukan
+    log_login_failed_username($username, $ip_address);
 }
 
 // Jika sampai di sini, artinya username tidak ditemukan atau password salah
@@ -74,5 +91,4 @@ mysqli_close($conn);
 
 header("Location: index.php?error=1");
 exit();
-
 ?>

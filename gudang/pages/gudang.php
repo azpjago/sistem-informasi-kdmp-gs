@@ -10,14 +10,25 @@ $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
 
+// Include history log functions
+require_once 'functions/history_log.php';
+
 // PROSES UPDATE STATUS INVENTORY
 if (isset($_POST['update_status'])) {
     $id_inventory = $conn->real_escape_string($_POST['id_inventory']);
     $status = $conn->real_escape_string($_POST['status']);
 
+    // Ambil data lama untuk log
+    $query_old = "SELECT nama_produk, status FROM inventory_ready WHERE id_inventory = '$id_inventory'";
+    $result_old = $conn->query($query_old);
+    $old_data = $result_old->fetch_assoc();
+
     $query = "UPDATE inventory_ready SET status = '$status', updated_at = NOW() WHERE id_inventory = '$id_inventory'";
 
     if ($conn->query($query)) {
+        // Panggil fungsi history log
+        log_inventory_status_change($id_inventory, $old_data['status'], $status, 'gudang');
+
         $_SESSION['success'] = "Status produk berhasil diubah!";
     } else {
         $_SESSION['error'] = "Error: " . $conn->error;
@@ -53,6 +64,10 @@ if (isset($_POST['buat_rencana_penjualan'])) {
                          VALUES ('$id_inventory', '{$produk['kode_produk']}', '{$produk['nama_produk']}', '$jumlah', '$tanggal_rencana', '$keterangan', '{$_SESSION['user_id']}')";
 
         if ($conn->query($query_insert)) {
+            // Panggil fungsi history log
+            $description = "Membuat rencana penjualan untuk produk '" . $produk['nama_produk'] . "' sebanyak " . $jumlah . " " . $produk['satuan_kecil'] . " pada tanggal " . $tanggal_rencana;
+            log_sales_plan_activity($id_inventory, 'create', $description, 'gudang');
+
             $_SESSION['success'] = "Rencana penjualan berhasil dibuat!";
         } else {
             $_SESSION['error'] = "Error: " . $conn->error;
@@ -65,7 +80,6 @@ if (isset($_POST['buat_rencana_penjualan'])) {
     exit;
 }
 ?>
-
 <style>
     :root {
         --primary: #2c3e50;
