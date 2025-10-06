@@ -184,7 +184,7 @@ $html = '
 <body>
     <div class="header">
         <h1>LAPORAN DATA PEMESANAN</h1>
-        <div class="subtitle">KOPERASI Koperasi Desa Merah Putih Ganjar Sabar</div>
+        <div class="subtitle">Koperasi Desa Merah Putih Ganjar Sabar</div>
         <div class="subtitle">Dicetak pada: ' . date('d/m/Y H:i:s') . '</div>
     </div>
 
