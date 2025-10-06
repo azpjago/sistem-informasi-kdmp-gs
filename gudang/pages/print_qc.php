@@ -276,7 +276,7 @@ $html .= '
 </html>';
 
 $dompdf = new Dompdf();
-$dompdf->set_option('isRemoteEnabled', true);
+$dompdf->getOptions()->setIsRemoteEnabled(true);
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
 $dompdf->render();

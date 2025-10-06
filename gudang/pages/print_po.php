@@ -338,7 +338,7 @@ $html .= '
 $dompdf = new Dompdf();
 
 // Enable remote images (untuk logo)
-$dompdf->set_option('isRemoteEnabled', true);
+$dompdf->getOptions()->setIsRemoteEnabled(true);
 
 $dompdf->loadHtml($html);
 $dompdf->setPaper('A4', 'portrait');
