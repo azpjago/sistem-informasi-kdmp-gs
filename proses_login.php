@@ -59,6 +59,7 @@ if ($user = mysqli_fetch_assoc($result)) {
                 header("Location: ketua/dashboard.php");
                 break;
             case 'usaha':
+                // PENTING: Pastikan nama folder Anda adalah 'wk_bid_usaha' (menggunakan underscore)
                 header("Location: usaha/dashboard.php");
                 break;
             case 'sekretaris':

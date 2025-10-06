@@ -77,7 +77,7 @@ function get_session_user_info()
 }
 
 // PERBAIKAN: Fungsi helper dengan debugging
-function log_anggota_activity($anggota_id, $activity_type, $description, $user_type = null)
+function log_anggota_activity($anggota_id, $activity_type, $description, $user_type = "pengurus")
 {
     $session_info = get_session_user_info();
     $user_id = $session_info['user_id'];
@@ -88,7 +88,7 @@ function log_anggota_activity($anggota_id, $activity_type, $description, $user_t
     return log_activity($user_id, $user_role, $activity_type, $description, 'anggota', $anggota_id);
 }
 
-function log_pembayaran_activity($pembayaran_id, $activity_type, $description, $user_type = null)
+function log_pembayaran_activity($pembayaran_id, $activity_type, $description, $user_type = "pengurus")
 {
     $session_info = get_session_user_info();
     $user_id = $session_info['user_id'];
@@ -146,7 +146,7 @@ function log_update_activity($table_name, $record_id, $description, $user_type =
 }
 
 // Di functions/history_log.php - perbaiki fungsi ini
-function log_pengeluaran_activity($pengeluaran_id, $activity_type, $description, $user_type = null)
+function log_pengeluaran_activity($pengeluaran_id, $activity_type, $description, $user_type = "pengurus")
 {
     error_log("=== LOG_PENGELUARAN_ACTIVITY CALLED ===");
 

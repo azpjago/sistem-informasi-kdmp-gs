@@ -1,12 +1,6 @@
 <?php
-// Koneksi database
-session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Koneksi database gagal: " . $conn->connect_error);
-}
-
 // Filter parameters
+date_default_timezone_set("Asia/Jakarta");
 $filter_type = $_GET['type'] ?? '';
 $filter_user = $_GET['user'] ?? '';
 $filter_date = $_GET['date'] ?? '';
@@ -19,15 +13,15 @@ $offset = ($page - 1) * $limit;
 
 // Build query dengan kondisi dinamis
 $query = "SELECT ha.*, 
-                 CASE 
-                   WHEN ha.user_type = 'pengurus' THEN p.username
-                   WHEN ha.user_type = 'anggota' THEN a.nama 
-                   ELSE 'System' 
-                 END as user_name
-          FROM history_activity ha 
-          LEFT JOIN pengurus p ON ha.user_id = p.id AND ha.user_type = 'pengurus'
-          LEFT JOIN anggota a ON ha.user_id = a.id AND ha.user_type = 'anggota'
-          WHERE 1=1";
+       CASE 
+         WHEN ha.user_type IN ('pengurus', 'ketua', 'bendahara') AND p.username IS NOT NULL THEN p.username
+         WHEN ha.user_type = 'anggota' AND a.nama IS NOT NULL THEN a.nama
+         ELSE 'Pengurus'
+       END as user_name
+FROM history_activity ha 
+LEFT JOIN pengurus p ON ha.user_id = p.id AND ha.user_type IN ('pengurus', 'ketua', 'bendahara')
+LEFT JOIN anggota a ON ha.user_id = a.id AND ha.user_type = 'anggota'
+WHERE 1=1";
 
 $count_query = "SELECT COUNT(*) as total 
                 FROM history_activity ha 
@@ -430,7 +424,7 @@ $users = $users_result ? mysqli_fetch_all($users_result, MYSQLI_ASSOC) : [];
                             <?php foreach ($activities as $activity): ?>
                                 <tr>
                                     <td><?= date('d M Y H:i', strtotime($activity['created_at'])) ?></td>
-                                    <td><?= htmlspecialchars($activity['user_name'] ?? 'System') ?></td>
+                                    <td><?= htmlspecialchars($activity['username'] ?? 'Pengurus') ?></td>
                                     <td>
                                         <?php
                                         $badge_class = 'bg-secondary';

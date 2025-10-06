@@ -1,20 +1,6 @@
 ﻿<?php
-session_start();
-
-// Cek role ketua
-if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ketua') {
-    header('Location: ../index.php');
-    exit;
-}
-
 // Include file history log
 require_once 'functions/history_log.php';
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
 // PROSES APPROVAL/REJECT
 if ($_POST['action'] ?? '' === 'update_status') {
     $id_pinjaman = intval($_POST['id_pinjaman'] ?? 0);
@@ -237,13 +223,13 @@ foreach ($stats as $stat) {
 </head>
 
 <body>
-    <div class="container-fluid py-4">
+    <div class="container-fluid">
         <!-- Header -->
-        <div class="row mb-4">
-            <div class="col">
-                <h3>✅ Approval Pinjaman Anggota</h3>
+        <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>✅ Approval Pinjaman Anggota</h2>
+                <div class="btn-toolbar mb-2 mb-md-0">
                 <p class="text-muted">Tinjau dan setujui pengajuan pinjaman dari anggota</p>
-            </div>
+                </div>
         </div>
 
         <!-- Alert Messages -->

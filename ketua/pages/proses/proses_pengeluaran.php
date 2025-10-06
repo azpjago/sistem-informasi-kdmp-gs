@@ -3,7 +3,7 @@
 session_start();
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
-
+require_once 'functions/history_log.php';
 // Function untuk handle upload file
 function handleUpload($file, $folder, $prefix = '')
 {
@@ -200,8 +200,8 @@ try {
 
         // Ambil data pengeluaran yang akan di-update
         $result = $conn->query("
-            SELECT jumlah, sumber_dana, status 
-            FROM pengeluaran 
+            SELECT jumlah, sumber_dana, status, keterangan
+            FROM pengeluaran
             WHERE id = $pengeluaran_id AND status = 'pending'
         ");
 
@@ -233,6 +233,12 @@ try {
 
             if (!$stmt->execute()) {
                 throw new Exception('Gagal update status: ' . $stmt->error);
+            }
+            // ✅ LOG HISTORY LANGSUNG DI SINI
+            if ($status === 'approved') {
+                log_approval_pengeluaran($pengeluaran_id, $pengeluaran['keterangan'], $pengeluaran['jumlah'], $pengeluaran['sumber_dana']);
+            } else {
+                log_rejection_pengeluaran($pengeluaran_id, $pengeluaran['keterangan'], $pengeluaran['jumlah'], $pengeluaran['sumber_dana'], $reason);
             }
 
             // CATATAN: Tidak perlu update saldo manual

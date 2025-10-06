@@ -1,12 +1,4 @@
 <?php
-session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-
-// Check connection
-if ($conn->connect_error) {
-    die("Koneksi database gagal: " . $conn->connect_error);
-}
-
 // Query untuk statistics
 $result = $conn->query("SELECT COUNT(*) as total FROM anggota WHERE status_keanggotaan = 'Aktif'");
 $total_anggota = $result->fetch_assoc()['total'];
@@ -31,9 +23,8 @@ $pendapatan_bulan_ini = $result->fetch_assoc()['total'] ?? 0;
 
 <div class="container-fluid">
     <!-- Header -->
-    <div
-        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h3 fw-bold">Dashboard Ketua 📊</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Dashboard Ketua 📊</h2>
         <div class="btn-toolbar mb-2 mb-md-0">
             <span class="text-muted me-3"><?php echo date('d F Y'); ?></span>
         </div>

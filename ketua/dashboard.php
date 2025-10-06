@@ -1,5 +1,18 @@
 <!DOCTYPE html>
 <html>
+<?php
+session_start();
+date_default_timezone_set('Asia/Jakarta');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ketua') {
+    header('Location: ../index.php');
+    exit;
+}
+?>
+
 <head>
     <title>Dashboard Ketua - Koperasi</title>
     <!-- CSS -->
@@ -88,8 +101,8 @@
                 <div class="user-avatar">
                     <i class="fas fa-user-tie"></i>
                 </div>
-                <div class="user-name"><?php echo $_SESSION['username'] ?? 'ketua'; ?></div>
-                <div class="user-role"><?php echo $_SESSION['role'] ?? 'ketua'; ?></div>
+                <div class="user-name"><?php echo $_SESSION['username'] ?? 'Pengurus'; ?></div>
+                <div class="user-role"><?php echo $_SESSION['role'] ?? 'Ketua'; ?></div>
             </div>
         </div>
 

@@ -1,16 +1,4 @@
 <?php
-session_start();
-// Cek role ketua
-if ($_SESSION['role'] !== 'ketua') {
-    header('Location: ../index.php');
-    exit;
-}
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
 // KUERI UNTUK DASHBOARD OVERVIEW
 // Total Pemesanan
 $total_pemesanan = $conn->query("SELECT COUNT(*) as total FROM pemesanan")->fetch_assoc()['total'];
@@ -225,16 +213,16 @@ $pemesanan_result = $stmt->get_result();
 </head>
 
 <body>
-    <div class="container-fluid py-3">
+    <div class="container-fluid">
         <!-- Header -->
         <div class="row mb-4">
             <div class="col">
-                <h3>Monitoring Pemesanan</h3>
+                <h2>Monitoring Pemesanan</h2>
                 <p class="text-muted mb-0">Pantau dan kelola semua aktivitas pemesanan anggota</p>
             </div>
             <div class="col-auto d-flex align-items-center">
-                <button class="btn btn-success btn-sm" onclick="exportToExcel()">
-                    <i class="fas fa-file-excel me-1"></i> Export Excel
+                <button class="btn btn-success btn-sm" onclick="exportToCsv()">
+                    <i class="fas fa-file-csv me-1"></i> Export Data
                 </button>
             </div>
         </div>
@@ -389,9 +377,11 @@ $pemesanan_result = $stmt->get_result();
                             <i class="fas fa-cog me-1"></i>Aksi
                         </button>
                         <ul class="dropdown-menu">
-                            <li><a class="dropdown-item" href="#" onclick="exportToExcel()"><i
-                                        class="fas fa-file-excel me-2"></i>Export Excel</a></li>
-                            <li><a class="dropdown-item" href="#"><i class="fas fa-print me-2"></i>Print</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportToCsv()"><i
+                                        class="fas fa-file-csv me-2"></i>Export Data</a></li>
+                            <li><a class="dropdown-item" href="#" onclick="printReport()">
+                                <i class="fas fa-print me-2"></i>Print Laporan
+                            </a></li>
                         </ul>
                     </div>
                 </div>
@@ -569,9 +559,13 @@ $pemesanan_result = $stmt->get_result();
             });
         });
 
-        function exportToExcel() {
+        function exportToCsv() {
             const params = new URLSearchParams(window.location.search);
-            window.open(`export_pemesanan_excel.php?${params}`, '_blank');
+            window.open(`pages/export_pemesanan_csv.php?${params}`, '_blank');
+        }
+        function printReport() {
+            const params = new URLSearchParams(window.location.search);
+            window.open(`pages/print_pemesanan.php?${params}`, '_blank');
         }
     </script>
 </body>

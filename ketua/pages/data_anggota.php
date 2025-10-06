@@ -1,12 +1,4 @@
 <?php
-session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-
-// Check connection
-if ($conn->connect_error) {
-    die("Koneksi database gagal: " . $conn->connect_error);
-}
-
 // Handle non-aktifkan anggota
 if (isset($_POST['nonaktifkan_anggota'])) {
     $id_anggota = $_POST['id_anggota'];
@@ -101,9 +93,8 @@ $result = $stmt->get_result();
 
 <div class="container-fluid">
     <!-- Header -->
-    <div
-        class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
-        <h1 class="h3 fw-bold">Data Anggota 👨🏻‍🦱👩🏻‍🦱</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2>Data Anggota 👨🏻‍🦱👩🏻‍🦱</h2>
         <div class="btn-toolbar mb-2 mb-md-0">
             <a href="pages/export_anggota.php" class="btn btn-sm btn-success me-2">
                 <i class="fas fa-file-excel me-1"></i> Export Excel
