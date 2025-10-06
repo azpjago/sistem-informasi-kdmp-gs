@@ -21,7 +21,7 @@ if (isset($_POST['nonaktifkan_anggota'])) {
         // Log activity
         $log_description = "Non-aktifkan anggota ID: $id_anggota - Reset semua simpanan";
         $conn->query("INSERT INTO history_activity (user_id, user_type, activity_type, description, table_affected, record_id) 
-                     VALUES ({$_SESSION['user_id']}, 'admin', 'anggota_nonaktif', '$log_description', 'anggota', $id_anggota)");
+                     VALUES ({$_SESSION['user_id']}, {$_SESSION['role']}, 'anggota_nonaktif', '$log_description', 'anggota', $id_anggota)");
 
         $success_message = "Anggota berhasil dinon-aktifkan.";
     } else {

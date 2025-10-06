@@ -7,7 +7,7 @@ function hapusDataKecualiPengurus($db_name)
         die("Koneksi gagal: " . $conn->connect_error);
     }
 
-    echo "Menghapus data dari semua tabel KECUALI 'pengurus'<br><br>";
+    echo "Menghapus data dari semua tabel KECUALI 'pengurus' dan 'kategori_pengeluaran'<br><br>";
 
     // Nonaktifkan foreign key check
     $conn->query("SET FOREIGN_KEY_CHECKS = 0");
@@ -22,7 +22,7 @@ function hapusDataKecualiPengurus($db_name)
 
     // Kosongkan setiap tabel KECUALI 'pengurus'
     foreach ($tables as $table) {
-        if ($table !== 'pengurus') {
+        if ($table !== 'pengurus' && $table !== 'kategori_pengeluaran') {
             $conn->query("TRUNCATE TABLE `$table`");
             echo "✓ Tabel `$table` berhasil dikosongkan<br>";
         } else {
@@ -33,7 +33,7 @@ function hapusDataKecualiPengurus($db_name)
     // Aktifkan kembali foreign key check
     $conn->query("SET FOREIGN_KEY_CHECKS = 1");
 
-    echo "<br>✅ Semua data berhasil dihapus kecuali tabel 'pengurus'!";
+    echo "<br>✅ Semua data berhasil dihapus kecuali tabel 'pengurus'! dan 'kategori_pengeluaran'";
     $conn->close();
 }
 

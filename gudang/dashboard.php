@@ -63,7 +63,6 @@
                 'supplier',
                 'barang_masuk',
                 'gudang',
-                'hapus_db',
                 'produk',
                 'barang_reject',
                 'stock_opname',
