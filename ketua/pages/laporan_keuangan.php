@@ -167,11 +167,49 @@ function calculateSaldoManually()
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
+        // CICILAN PINJAMAN - PENAMBAHAN BARU
+        if ($nama_rekening == 'Kas Tunai') {
+            $result = $conn->query("
+                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
+                FROM cicilan 
+                WHERE status = 'lunas'
+                AND metode = 'cash'
+                AND jumlah_bayar > 0
+            ");
+        } else {
+            $stmt = $conn->prepare("
+                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
+                FROM cicilan 
+                WHERE status = 'lunas'
+                AND metode = 'transfer'
+                AND bank_tujuan = ?
+                AND jumlah_bayar > 0
+            ");
+            $stmt->bind_param("s", $nama_rekening);
+            $stmt->execute();
+            $result = $stmt->get_result();
+        }
+        $data = $result->fetch_assoc();
+        $saldo_rekening += (float) $data['total'];
+
         // Pengeluaran Approved
         $stmt = $conn->prepare("
             SELECT COALESCE(SUM(jumlah), 0) as total 
             FROM pengeluaran 
             WHERE status = 'approved' AND sumber_dana = ?
+        ");
+        $stmt->bind_param("s", $nama_rekening);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $saldo_rekening -= (float) $data['total'];
+
+        // Pinjaman Approved
+        $stmt = $conn->prepare("
+            SELECT COALESCE(SUM(jumlah_pinjaman), 0) as total 
+            FROM pinjaman 
+            WHERE status = 'approved' 
+            AND sumber_dana = ?
         ");
         $stmt->bind_param("s", $nama_rekening);
         $stmt->execute();
@@ -232,16 +270,38 @@ foreach ($rekening_data as $rek) {
 // TOTAL ASET
 $total_aset = $total_simpanan + $total_kas_bank;
 
-// NET INCOME BULAN INI
+// NET INCOME BULAN INI dengan CICILAN
+// NET INCOME & CASH FLOW YANG BENAR
 $bulan_ini = date('Y-m');
+
+// 1. PENDAPATAN PENJUALAN SEMBAKO
 $result_pendapatan = $conn->query("
-    SELECT COALESCE(SUM(pd.subtotal), 0) as pendapatan_penjualan
+    SELECT 
+        COALESCE(SUM(pd.subtotal), 0) as pendapatan_penjualan,
+        COALESCE(SUM(CASE WHEN p.metode = 'cash' THEN pd.subtotal ELSE 0 END), 0) as penjualan_cash,
+        COALESCE(SUM(CASE WHEN p.metode = 'transfer' THEN pd.subtotal ELSE 0 END), 0) as penjualan_transfer
     FROM pemesanan_detail pd 
     INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
     WHERE p.status = 'Terkirim' AND DATE_FORMAT(p.tanggal_pesan, '%Y-%m') = '$bulan_ini'
 ");
-$pendapatan_penjualan = $result_pendapatan->fetch_assoc()['pendapatan_penjualan'];
+$pendapatan_data = $result_pendapatan->fetch_assoc();
+$pendapatan_penjualan = $pendapatan_data['pendapatan_penjualan'];
 
+// 2. PENDAPATAN CICILAN BULAN INI
+$result_cicilan_bulan = $conn->query("
+    SELECT 
+        COALESCE(SUM(jumlah_bayar), 0) as cicilan_bulan,
+        COALESCE(SUM(CASE WHEN metode = 'cash' THEN jumlah_bayar ELSE 0 END), 0) as cicilan_cash,
+        COALESCE(SUM(CASE WHEN metode = 'transfer' THEN jumlah_bayar ELSE 0 END), 0) as cicilan_transfer
+    FROM cicilan 
+    WHERE status = 'lunas' 
+    AND DATE_FORMAT(tanggal_bayar, '%Y-%m') = '$bulan_ini'
+    AND jumlah_bayar > 0
+");
+$cicilan_data = $result_cicilan_bulan->fetch_assoc();
+$pendapatan_cicilan = $cicilan_data['cicilan_bulan'];
+
+// 3. TOTAL PENGELUARAN BULAN INI
 $result_pengeluaran = $conn->query("
     SELECT COALESCE(SUM(jumlah), 0) as total_pengeluaran
     FROM pengeluaran 
@@ -249,13 +309,16 @@ $result_pengeluaran = $conn->query("
 ");
 $total_pengeluaran = $result_pengeluaran->fetch_assoc()['total_pengeluaran'];
 
-$net_income = $pendapatan_penjualan - $total_pengeluaran;
+// 4. PERHITUNGAN YANG BENAR
+$net_income = $pendapatan_penjualan - $total_pengeluaran; // LABA/RUGI OPERASIONAL
+$net_cash_flow = ($pendapatan_penjualan + $pendapatan_cicilan) - $total_pengeluaran; // ARUS KAS BERSIH
 
-// DATA UNTUK GRAFIK TREND 6 BULAN
+// DATA UNTUK GRAFIK TREND 6 BULAN dengan CICILAN
 $bulan_labels = [];
 $data_simpanan = [];
 $data_pendapatan = [];
 $data_pengeluaran = [];
+$data_cicilan = [];
 
 for ($i = 5; $i >= 0; $i--) {
     $bulan = date('Y-m', strtotime("-$i months"));
@@ -280,6 +343,15 @@ for ($i = 5; $i >= 0; $i--) {
     ");
     $data_pendapatan[] = $result_pendapatan_bulan->fetch_assoc()['pendapatan_bulan'];
 
+    // Cicilan bulan tersebut
+    $result_cicilan_bulan = $conn->query("
+        SELECT COALESCE(SUM(jumlah_bayar), 0) as cicilan_bulan
+        FROM cicilan 
+        WHERE status = 'lunas' AND DATE_FORMAT(tanggal_bayar, '%Y-%m') = '$bulan'
+        AND jumlah_bayar > 0
+    ");
+    $data_cicilan[] = $result_cicilan_bulan->fetch_assoc()['cicilan_bulan'];
+
     // Pengeluaran bulan tersebut
     $result_pengeluaran_bulan = $conn->query("
         SELECT COALESCE(SUM(jumlah), 0) as pengeluaran_bulan
@@ -298,20 +370,36 @@ $result_top_anggota = $conn->query("
     LIMIT 5
 ");
 
-// DATA PINJAMAN
+// DATA PINJAMAN dengan DETAIL CICILAN
 $result_pinjaman = $conn->query("
     SELECT 
         COUNT(*) as total_pinjaman,
-        SUM(CASE WHEN status = 'active' THEN 1 ELSE 0 END) as pinjaman_aktif,
         SUM(CASE WHEN status = 'rejected' THEN 1 ELSE 0 END) as pinjaman_ditolak,
-        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as pinjaman_disetujui,
-        COALESCE(SUM(jumlah_pinjaman), 0) as total_nilai_pinjaman
+        SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as pinjaman_aktif,
+        SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as pinjaman_lunas,
+        COALESCE(SUM(jumlah_pinjaman), 0) as total_nilai_pinjaman,
+        COALESCE(SUM(total_pengembalian), 0) as total_pengembalian
     FROM pinjaman
 ");
 $data_pinjaman = $result_pinjaman->fetch_assoc();
 
+// DATA CICILAN DETAIL
+$result_cicilan_detail = $conn->query("
+    SELECT 
+        COUNT(*) as total_cicilan,
+        SUM(CASE WHEN status = 'lunas' THEN 1 ELSE 0 END) as cicilan_lunas,
+        SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as cicilan_pending,
+        SUM(CASE WHEN status = 'telat' THEN 1 ELSE 0 END) as cicilan_telat,
+        COALESCE(SUM(jumlah_bayar), 0) as total_cicilan_dibayar,
+        COALESCE(SUM(CASE WHEN metode = 'cash' THEN jumlah_bayar ELSE 0 END), 0) as cicilan_cash,
+        COALESCE(SUM(CASE WHEN metode = 'transfer' THEN jumlah_bayar ELSE 0 END), 0) as cicilan_transfer
+    FROM cicilan 
+    WHERE jumlah_bayar > 0
+");
+$data_cicilan = $result_cicilan_detail->fetch_assoc();
+
 // ALERT SYSTEM
-$alert_pinjaman_telat = 0;
+$alert_pinjaman_telat = $data_cicilan['cicilan_telat'] ?? 0;
 $saldo_kas_rendah = false;
 $saldo_bank_rendah = false;
 
@@ -347,7 +435,7 @@ foreach ($rekening_data as $rek) {
                 <?php if ($alert_pinjaman_telat > 0): ?>
                     <div class="alert alert-warning d-flex align-items-center">
                         <i class="fas fa-exclamation-triangle me-2"></i>
-                        <strong>Peringatan:</strong> Terdapat <?= $alert_pinjaman_telat ?> pinjaman yang terlambat bayar
+                        <strong>Peringatan:</strong> Terdapat <?= $alert_pinjaman_telat ?> cicilan yang terlambat bayar
                     </div>
                 <?php endif; ?>
 
@@ -441,7 +529,7 @@ foreach ($rekening_data as $rek) {
                             <h3 class="<?= $net_income >= 0 ? 'text-success' : 'text-danger' ?>">
                                 Rp <?= number_format($net_income, 0, ',', '.') ?>
                             </h3>
-                            <small class="text-muted">Bulan <?= date('F Y') ?></small>
+                            <small class="text-muted">Laba/Rugi Operasional</small>
                         </div>
                         <div class="metric-icon <?= $net_income >= 0 ? 'bg-success' : 'bg-danger' ?>">
                             <i class="fas fa-chart-line"></i>
@@ -450,9 +538,47 @@ foreach ($rekening_data as $rek) {
                 </div>
             </div>
         </div>
+
+        <!-- NET CASH FLOW -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">NET CASH FLOW</h6>
+                            <h3 class="<?= $net_cash_flow >= 0 ? 'text-info' : 'text-warning' ?>">
+                                Rp <?= number_format($net_cash_flow, 0, ',', '.') ?>
+                            </h3>
+                            <small class="text-muted">Arus Kas Bersih</small>
+                        </div>
+                        <div class="metric-icon <?= $net_cash_flow >= 0 ? 'bg-info' : 'bg-warning' ?>">
+                            <i class="fas fa-money-bill-wave"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PENDAPATAN PENJUALAN -->
+        <div class="col-xl-3 col-md-6 mb-4">
+            <div class="card metric-card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between">
+                        <div>
+                            <h6 class="card-title">PENDAPATAN</h6>
+                            <h3 class="text-success">Rp <?= number_format($pendapatan_penjualan, 0, ',', '.') ?></h3>
+                            <small class="text-muted">Penjualan Sembako</small>
+                        </div>
+                        <div class="metric-icon bg-success">
+                            <i class="fas fa-shopping-cart"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <!-- BREAKDOWN SALDO -->
+    <!-- BREAKDOWN SALDO DENGAN CICILAN -->
     <div class="row mb-4">
         <div class="col-12">
             <div class="card">
@@ -463,7 +589,28 @@ foreach ($rekening_data as $rek) {
                 </div>
                 <div class="card-body">
                     <div class="row">
-                        <?php foreach ($rekening_data as $rek): ?>
+                        <?php foreach ($rekening_data as $rek):
+                            // Hitung cicilan per rekening
+                            if ($rek['nama_rekening'] == 'Kas Tunai') {
+                                $result_cicilan_rek = $conn->query("
+                                    SELECT COALESCE(SUM(jumlah_bayar), 0) as cicilan_total
+                                    FROM cicilan 
+                                    WHERE status = 'lunas' AND metode = 'cash' AND jumlah_bayar > 0
+                                ");
+                            } else {
+                                $stmt = $conn->prepare("
+                                    SELECT COALESCE(SUM(jumlah_bayar), 0) as cicilan_total
+                                    FROM cicilan 
+                                    WHERE status = 'lunas' AND metode = 'transfer' 
+                                    AND bank_tujuan = ? AND jumlah_bayar > 0
+                                ");
+                                $stmt->bind_param("s", $rek['nama_rekening']);
+                                $stmt->execute();
+                                $result_cicilan_rek = $stmt->get_result();
+                            }
+                            $cicilan_rek = $result_cicilan_rek->fetch_assoc();
+                            $cicilan_total = $cicilan_rek['cicilan_total'];
+                            ?>
                             <div class="col-xl-3 col-md-6 mb-3">
                                 <div class="d-flex align-items-center p-3 border rounded">
                                     <div class="me-3">
@@ -478,6 +625,12 @@ foreach ($rekening_data as $rek) {
                                                 Rp <?= number_format($rek['saldo_sekarang'], 0, ',', '.') ?>
                                             </strong>
                                         </div>
+                                        <?php if ($cicilan_total > 0): ?>
+                                            <small class="text-success">
+                                                <i class="fas fa-hand-holding-usd"></i>
+                                                Cicilan: Rp <?= number_format($cicilan_total, 0, ',', '.') ?>
+                                            </small>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -536,13 +689,56 @@ foreach ($rekening_data as $rek) {
 
                     <div class="performance-item">
                         <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Cicilan Dibayar</span>
+                            <strong class="text-success">Rp
+                                <?= number_format($data_cicilan['total_cicilan_dibayar'], 0, ',', '.') ?></strong>
+                        </div>
+                    </div>
+
+                    <div class="performance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
                             <span>Net Income</span>
                             <strong class="<?= $net_income >= 0 ? 'text-success' : 'text-danger' ?>">
                                 Rp <?= number_format($net_income, 0, ',', '.') ?>
                             </strong>
                         </div>
                     </div>
+                    <div class="performance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Net Cash Flow</span>
+                            <strong class="<?= $net_cash_flow >= 0 ? 'text-info' : 'text-warning' ?>">
+                                Rp <?= number_format($net_cash_flow, 0, ',', '.') ?>
+                            </strong>
+                        </div>
+                        <small class="text-muted">Arus Kas Bersih</small>
+                    </div>
 
+                    <!-- Pendapatan Penjualan -->
+                    <div class="performance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Pendapatan Penjualan</span>
+                            <strong class="text-success">Rp
+                                <?= number_format($pendapatan_penjualan, 0, ',', '.') ?></strong>
+                        </div>
+                    </div>
+
+                    <!-- Cicilan Diterima -->
+                    <div class="performance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Cicilan Diterima</span>
+                            <strong class="text-primary">Rp
+                                <?= number_format($pendapatan_cicilan, 0, ',', '.') ?></strong>
+                        </div>
+                    </div>
+
+                    <!-- Pengeluaran -->
+                    <div class="performance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Pengeluaran</span>
+                            <strong class="text-danger">Rp
+                                <?= number_format($total_pengeluaran, 0, ',', '.') ?></strong>
+                        </div>
+                    </div>
                     <hr>
 
                     <div class="performance-item">
@@ -559,151 +755,191 @@ foreach ($rekening_data as $rek) {
                             <strong>Rp <?= number_format($pendapatan_penjualan, 0, ',', '.') ?></strong>
                         </div>
                     </div>
+
+                    <div class="performance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Cicilan Bulan Ini</span>
+                            <strong class="text-success">Rp
+                                <?= number_format($pendapatan_cicilan, 0, ',', '.') ?></strong>
+                        </div>
+                    </div>
+                    <div class="performance-item">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span>Profit Margin</span>
+                            <strong
+                                class="<?= $pendapatan_penjualan > 0 ? ($net_income / $pendapatan_penjualan * 100 >= 0 ? 'text-success' : 'text-danger') : 'text-muted' ?>">
+                                <?= $pendapatan_penjualan > 0 ? number_format(($net_income / $pendapatan_penjualan * 100), 1) : '0' ?>%
+                            </strong>
+                        </div>
+                        <small class="text-muted">(Net Income / Pendapatan)</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- DETAILED DATA ROW -->
+<div class="row">
+    <!-- TOP 5 ANGGOTA -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-trophy me-2"></i>Top 5 Anggota
+                </h5>
+            </div>
+            <div class="card-body">
+                <?php
+                $rank = 1;
+                while ($anggota = $result_top_anggota->fetch_assoc()):
+                    $badge_color = $rank == 1 ? 'bg-warning' : ($rank == 2 ? 'bg-secondary' : ($rank == 3 ? 'bg-danger' : 'bg-light text-dark'));
+                    ?>
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div class="d-flex align-items-center">
+                            <span class="badge <?= $badge_color ?> me-2"><?= $rank++ ?></span>
+                            <div>
+                                <h6 class="mb-1"><?= htmlspecialchars($anggota['nama']) ?></h6>
+                                <small class="text-muted"><?= $anggota['no_anggota'] ?></small>
+                            </div>
+                        </div>
+                        <span class="badge bg-primary">Rp
+                            <?= number_format($anggota['saldo_total'], 0, ',', '.') ?></span>
+                    </div>
+                <?php endwhile; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- PINJAMAN & CICILAN SUMMARY -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-hand-holding-usd me-2"></i>Summary Pinjaman & Cicilan
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6 mb-3">
+                        <h4 class="text-primary"><?= $data_pinjaman['total_pinjaman'] ?></h4>
+                        <small class="text-muted">Total Pinjaman</small>
+                    </div>
+                    <div class="col-6 mb-3">
+                        <h4 class="text-success"><?= $data_pinjaman['pinjaman_aktif'] ?></h4>
+                        <small class="text-muted">Aktif</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-warning"><?= $data_cicilan['cicilan_lunas'] ?></h4>
+                        <small class="text-muted">Cicilan Lunas</small>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-danger"><?= $data_cicilan['cicilan_telat'] ?></h4>
+                        <small class="text-muted">Cicilan Telat</small>
+                    </div>
+                </div>
+                <div class="mt-3 text-center">
+                    <small class="text-muted">Total Pinjaman: Rp
+                        <?= number_format($data_pinjaman['total_nilai_pinjaman'], 0, ',', '.') ?></small><br>
+                    <small class="text-success">Total Cicilan: Rp
+                        <?= number_format($data_cicilan['total_cicilan_dibayar'], 0, ',', '.') ?></small>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- DETAILED DATA ROW -->
-    <div class="row">
-        <!-- TOP 5 ANGGOTA -->
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-trophy me-2"></i>Top 5 Anggota
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <?php
-                    $rank = 1;
-                    while ($anggota = $result_top_anggota->fetch_assoc()):
-                        $badge_color = $rank == 1 ? 'bg-warning' : ($rank == 2 ? 'bg-secondary' : ($rank == 3 ? 'bg-danger' : 'bg-light text-dark'));
-                        ?>
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex align-items-center">
-                                <span class="badge <?= $badge_color ?> me-2"><?= $rank++ ?></span>
-                                <div>
-                                    <h6 class="mb-1"><?= htmlspecialchars($anggota['nama']) ?></h6>
-                                    <small class="text-muted"><?= $anggota['no_anggota'] ?></small>
-                                </div>
+    <!-- ALERT SYSTEM -->
+    <div class="col-xl-4 col-md-6 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-bell me-2"></i>System Status
+                </h5>
+            </div>
+            <div class="card-body">
+                <?php foreach ($rekening_data as $rek): ?>
+                    <div class="alert-item mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="alert-icon <?= $rek['saldo_sekarang'] > 0 ? 'bg-success' : 'bg-danger' ?> me-3">
+                                <i class="fas fa-<?= $rek['jenis'] == 'kas' ? 'money-bill-wave' : 'university' ?>"></i>
                             </div>
-                            <span class="badge bg-primary">Rp
-                                <?= number_format($anggota['saldo_total'], 0, ',', '.') ?></span>
-                        </div>
-                    <?php endwhile; ?>
-                </div>
-            </div>
-        </div>
-
-        <!-- PINJAMAN SUMMARY -->
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-hand-holding-usd me-2"></i>Summary Pinjaman
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row text-center">
-                        <div class="col-6 mb-3">
-                            <h4 class="text-primary"><?= $data_pinjaman['total_pinjaman'] ?></h4>
-                            <small class="text-muted">Total Pinjaman</small>
-                        </div>
-                        <div class="col-6 mb-3">
-                            <h4 class="text-success"><?= $data_pinjaman['pinjaman_aktif'] ?></h4>
-                            <small class="text-muted">Aktif</small>
-                        </div>
-                        <div class="col-6">
-                            <h4 class="text-warning"><?= $data_pinjaman['pinjaman_disetujui'] ?></h4>
-                            <small class="text-muted">Disetujui</small>
-                        </div>
-                        <div class="col-6">
-                            <h4 class="text-danger"><?= $data_pinjaman['pinjaman_ditolak'] ?></h4>
-                            <small class="text-muted">Ditolak</small>
-                        </div>
-                    </div>
-                    <div class="mt-3 text-center">
-                        <small class="text-muted">Total Nilai: Rp
-                            <?= number_format($data_pinjaman['total_nilai_pinjaman'], 0, ',', '.') ?></small>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ALERT SYSTEM -->
-        <div class="col-xl-4 col-md-6 mb-4">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-bell me-2"></i>System Status
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <?php foreach ($rekening_data as $rek): ?>
-                        <div class="alert-item mb-3">
-                            <div class="d-flex align-items-center">
-                                <div class="alert-icon <?= $rek['saldo_sekarang'] > 0 ? 'bg-success' : 'bg-danger' ?> me-3">
-                                    <i class="fas fa-<?= $rek['jenis'] == 'kas' ? 'money-bill-wave' : 'university' ?>"></i>
-                                </div>
-                                <div>
-                                    <h6 class="mb-1"><?= $rek['nama_rekening'] ?></h6>
-                                    <small class="text-muted">
-                                        Rp <?= number_format($rek['saldo_sekarang'], 0, ',', '.') ?> -
-                                        <span class="<?= $rek['saldo_sekarang'] > 0 ? 'text-success' : 'text-danger' ?>">
-                                            <?= $rek['saldo_sekarang'] > 0 ? 'Aman' : 'Perhatian' ?>
-                                        </span>
-                                    </small>
-                                </div>
+                            <div>
+                                <h6 class="mb-1"><?= $rek['nama_rekening'] ?></h6>
+                                <small class="text-muted">
+                                    Rp <?= number_format($rek['saldo_sekarang'], 0, ',', '.') ?> -
+                                    <span class="<?= $rek['saldo_sekarang'] > 0 ? 'text-success' : 'text-danger' ?>">
+                                        <?= $rek['saldo_sekarang'] > 0 ? 'Aman' : 'Perhatian' ?>
+                                    </span>
+                                </small>
                             </div>
                         </div>
-                    <?php endforeach; ?>
+                    </div>
+                <?php endforeach; ?>
+
+                <!-- Cicilan Status -->
+                <div class="alert-item mb-3">
+                    <div class="d-flex align-items-center">
+                        <div
+                            class="alert-icon <?= $data_cicilan['cicilan_telat'] == 0 ? 'bg-success' : 'bg-warning' ?> me-3">
+                            <i class="fas fa-hand-holding-usd"></i>
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Status Cicilan</h6>
+                            <small class="text-muted">
+                                <?= $data_cicilan['cicilan_telat'] ?> terlambat -
+                                <span
+                                    class="<?= $data_cicilan['cicilan_telat'] == 0 ? 'text-success' : 'text-warning' ?>">
+                                    <?= $data_cicilan['cicilan_telat'] == 0 ? 'Baik' : 'Perhatian' ?>
+                                </span>
+                            </small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
+</div>
 
-    <!-- DETAILED REPORTS SECTION -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <ul class="nav nav-tabs card-header-tabs" id="reportTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#simpanan"
-                                type="button">
-                                <i class="fas fa-piggy-bank me-2"></i>Simpanan
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#kasbank" type="button">
-                                <i class="fas fa-wallet me-2"></i>Kas & Bank
-                            </button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pinjaman" type="button">
-                                <i class="fas fa-hand-holding-usd me-2"></i>Pinjaman
-                            </button>
-                        </li>
-                    </ul>
-                </div>
-                <div class="card-body">
-                    <div class="tab-content" id="reportTabsContent">
-                        <!-- TAB SIMPANAN -->
-                        <div class="tab-pane fade show active" id="simpanan">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-striped">
-                                    <thead>
-                                        <tr>
-                                            <th>Jenis Simpanan</th>
-                                            <th class="text-end">Jumlah Anggota</th>
-                                            <th class="text-end">Total Nilai</th>
-                                            <th class="text-end">Rata-rata</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $result_breakdown = $conn->query("
+<!-- DETAILED REPORTS SECTION -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header">
+                <ul class="nav nav-tabs card-header-tabs" id="reportTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#simpanan" type="button">
+                            <i class="fas fa-piggy-bank me-2"></i>Simpanan
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#kasbank" type="button">
+                            <i class="fas fa-wallet me-2"></i>Kas & Bank
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" data-bs-toggle="tab" data-bs-target="#pinjaman" type="button">
+                            <i class="fas fa-hand-holding-usd me-2"></i>Pinjaman & Cicilan
+                        </button>
+                    </li>
+                </ul>
+            </div>
+            <div class="card-body">
+                <div class="tab-content" id="reportTabsContent">
+                    <!-- TAB SIMPANAN -->
+                    <div class="tab-pane fade show active" id="simpanan">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Jenis Simpanan</th>
+                                        <th class="text-end">Jumlah Anggota</th>
+                                        <th class="text-end">Total Nilai</th>
+                                        <th class="text-end">Rata-rata</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $result_breakdown = $conn->query("
                                             SELECT 
                                                 'Pokok' as jenis,
                                                 COUNT(*) as jumlah_anggota,
@@ -729,115 +965,142 @@ foreach ($rekening_data as $rek) {
                                             WHERE status_keanggotaan = 'Aktif'
                                         ");
 
-                                        while ($row = $result_breakdown->fetch_assoc()):
-                                            ?>
-                                            <tr>
-                                                <td>Simpanan <?= $row['jenis'] ?></td>
-                                                <td class="text-end"><?= number_format($row['jumlah_anggota']) ?></td>
-                                                <td class="text-end">Rp <?= number_format($row['total'], 0, ',', '.') ?>
-                                                </td>
-                                                <td class="text-end">Rp <?= number_format($row['rata_rata'], 0, ',', '.') ?>
-                                                </td>
-                                            </tr>
-                                        <?php endwhile; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-
-                        <!-- TAB KAS & BANK -->
-                        <div class="tab-pane fade" id="kasbank">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-striped">
-                                    <thead>
+                                    while ($row = $result_breakdown->fetch_assoc()):
+                                        ?>
                                         <tr>
-                                            <th>Sumber Dana</th>
-                                            <th class="text-end">Saldo</th>
-                                            <th class="text-end">% dari Total</th>
-                                            <th>Status</th>
+                                            <td>Simpanan <?= $row['jenis'] ?></td>
+                                            <td class="text-end"><?= number_format($row['jumlah_anggota']) ?></td>
+                                            <td class="text-end">Rp <?= number_format($row['total'], 0, ',', '.') ?>
+                                            </td>
+                                            <td class="text-end">Rp <?= number_format($row['rata_rata'], 0, ',', '.') ?>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $total_semua = $total_kas_bank;
-
-                                        foreach ($rekening_data as $rek):
-                                            $persentase = $total_semua > 0 ? ($rek['saldo_sekarang'] / $total_semua) * 100 : 0;
-                                            $status = $rek['saldo_sekarang'] > 0 ? 'Aman' : 'Kosong';
-                                            ?>
-                                            <tr>
-                                                <td><?= $rek['nama_rekening'] ?></td>
-                                                <td class="text-end">Rp
-                                                    <?= number_format($rek['saldo_sekarang'], 0, ',', '.') ?>
-                                                </td>
-                                                <td class="text-end"><?= number_format($persentase, 1) ?>%</td>
-                                                <td>
-                                                    <span
-                                                        class="badge bg-<?= $rek['saldo_sekarang'] > 0 ? 'success' : 'danger' ?>">
-                                                        <?= $status ?>
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
                         </div>
+                    </div>
 
-                        <!-- TAB PINJAMAN -->
-                        <div class="tab-pane fade" id="pinjaman">
-                            <div class="table-responsive">
-                                <table class="table table-sm table-striped">
-                                    <thead>
+                    <!-- TAB KAS & BANK -->
+                    <div class="tab-pane fade" id="kasbank">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Sumber Dana</th>
+                                        <th class="text-end">Saldo</th>
+                                        <th class="text-end">Cicilan</th>
+                                        <th class="text-end">% dari Total</th>
+                                        <th>Status</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $total_semua = $total_kas_bank;
+
+                                    foreach ($rekening_data as $rek):
+                                        // Hitung cicilan per rekening
+                                        if ($rek['nama_rekening'] == 'Kas Tunai') {
+                                            $result_cicilan_rek = $conn->query("
+                                                    SELECT COALESCE(SUM(jumlah_bayar), 0) as cicilan_total
+                                                    FROM cicilan 
+                                                    WHERE status = 'lunas' AND metode = 'cash' AND jumlah_bayar > 0
+                                                ");
+                                        } else {
+                                            $stmt = $conn->prepare("
+                                                    SELECT COALESCE(SUM(jumlah_bayar), 0) as cicilan_total
+                                                    FROM cicilan 
+                                                    WHERE status = 'lunas' AND metode = 'transfer' 
+                                                    AND bank_tujuan = ? AND jumlah_bayar > 0
+                                                ");
+                                            $stmt->bind_param("s", $rek['nama_rekening']);
+                                            $stmt->execute();
+                                            $result_cicilan_rek = $stmt->get_result();
+                                        }
+                                        $cicilan_rek = $result_cicilan_rek->fetch_assoc();
+                                        $cicilan_total = $cicilan_rek['cicilan_total'];
+
+                                        $persentase = $total_semua > 0 ? ($rek['saldo_sekarang'] / $total_semua) * 100 : 0;
+                                        $status = $rek['saldo_sekarang'] > 0 ? 'Aman' : 'Kosong';
+                                        ?>
                                         <tr>
-                                            <th>Nama Anggota</th>
-                                            <th class="text-end">Jumlah Pinjaman</th>
-                                            <th class="text-end">Tenor</th>
-                                            <th>Status</th>
-                                            <th class="text-end">Total Bayar</th>
+                                            <td><?= $rek['nama_rekening'] ?></td>
+                                            <td class="text-end">Rp
+                                                <?= number_format($rek['saldo_sekarang'], 0, ',', '.') ?>
+                                            </td>
+                                            <td class="text-end text-success">Rp
+                                                <?= number_format($cicilan_total, 0, ',', '.') ?>
+                                            </td>
+                                            <td class="text-end"><?= number_format($persentase, 1) ?>%</td>
+                                            <td>
+                                                <span
+                                                    class="badge bg-<?= $rek['saldo_sekarang'] > 0 ? 'success' : 'danger' ?>">
+                                                    <?= $status ?>
+                                                </span>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php
-                                        $result_detail_pinjaman = $conn->query("
-                                            SELECT p.*, a.nama, a.no_anggota
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- TAB PINJAMAN & CICILAN -->
+                    <div class="tab-pane fade" id="pinjaman">
+                        <div class="table-responsive">
+                            <table class="table table-sm table-striped">
+                                <thead>
+                                    <tr>
+                                        <th>Nama Anggota</th>
+                                        <th class="text-end">Jumlah Pinjaman</th>
+                                        <th class="text-end">Tenor</th>
+                                        <th>Status</th>
+                                        <th class="text-end">Cicilan Dibayar</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php
+                                    $result_detail_pinjaman = $conn->query("
+                                            SELECT p.*, a.nama, a.no_anggota,
+                                                (SELECT COALESCE(SUM(c.jumlah_bayar), 0) 
+                                                 FROM cicilan c 
+                                                 WHERE c.id_pinjaman = p.id_pinjaman AND c.status = 'lunas') as total_cicilan_dibayar
                                             FROM pinjaman p
                                             JOIN anggota a ON p.id_anggota = a.id
                                             ORDER BY p.tanggal_pengajuan DESC
                                             LIMIT 10
                                         ");
 
-                                        while ($pinjaman = $result_detail_pinjaman->fetch_assoc()):
-                                            $status_badge = [
-                                                'pending' => 'warning',
-                                                'approved' => 'success',
-                                                'rejected' => 'danger',
-                                                'active' => 'info',
-                                                'lunas' => 'primary'
-                                            ][$pinjaman['status']] ?? 'secondary';
-                                            ?>
-                                            <tr>
-                                                <td>
-                                                    <div><?= htmlspecialchars($pinjaman['nama']) ?></div>
-                                                    <small class="text-muted"><?= $pinjaman['no_anggota'] ?></small>
-                                                </td>
-                                                <td class="text-end">Rp
-                                                    <?= number_format($pinjaman['jumlah_pinjaman'], 0, ',', '.') ?>
-                                                </td>
-                                                <td class="text-end"><?= $pinjaman['tenor_bulan'] ?> bln</td>
-                                                <td>
-                                                    <span class="badge bg-<?= $status_badge ?>">
-                                                        <?= ucfirst($pinjaman['status']) ?>
-                                                    </span>
-                                                </td>
-                                                <td class="text-end">Rp
-                                                    <?= number_format($pinjaman['total_pengembalian'], 0, ',', '.') ?>
-                                                </td>
-                                            </tr>
-                                        <?php endwhile; ?>
-                                    </tbody>
-                                </table>
-                            </div>
+                                    while ($pinjaman = $result_detail_pinjaman->fetch_assoc()):
+                                        $status_badge = [
+                                            'pending' => 'warning',
+                                            'approved' => 'success',
+                                            'rejected' => 'danger',
+                                            'active' => 'info',
+                                            'lunas' => 'primary'
+                                        ][$pinjaman['status']] ?? 'secondary';
+                                        ?>
+                                        <tr>
+                                            <td>
+                                                <div><?= htmlspecialchars($pinjaman['nama']) ?></div>
+                                                <small class="text-muted"><?= $pinjaman['no_anggota'] ?></small>
+                                            </td>
+                                            <td class="text-end">Rp
+                                                <?= number_format($pinjaman['jumlah_pinjaman'], 0, ',', '.') ?>
+                                            </td>
+                                            <td class="text-end"><?= $pinjaman['tenor_bulan'] ?> bln</td>
+                                            <td>
+                                                <span class="badge bg-<?= $status_badge ?>">
+                                                    <?= ucfirst($pinjaman['status']) ?>
+                                                </span>
+                                            </td>
+                                            <td class="text-end text-success">Rp
+                                                <?= number_format($pinjaman['total_cicilan_dibayar'], 0, ',', '.') ?>
+                                            </td>
+                                        </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -845,290 +1108,304 @@ foreach ($rekening_data as $rek) {
         </div>
     </div>
 </div>
+</div>
 
-// Chart JS
+<!-- Chart JS -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
 <script>
-// Trend Chart
-const ctx = document.getElementById('trendChart').getContext('2d');
-let trendChart;
+    // Trend Chart
+    const ctx = document.getElementById('trendChart').getContext('2d');
+    let trendChart;
 
-// Initialize chart
-function initializeChart() {
-    trendChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: <?= json_encode($bulan_labels) ?>,
-            datasets: [
-                {
-                    label: 'Simpanan',
-                    data: <?= json_encode($data_simpanan) ?>,
-                    borderColor: '#2E86AB',
-                    backgroundColor: 'rgba(46, 134, 171, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                },
-                {
-                    label: 'Pendapatan',
-                    data: <?= json_encode($data_pendapatan) ?>,
-                    borderColor: '#27AE60',
-                    backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                },
-                {
-                    label: 'Pengeluaran',
-                    data: <?= json_encode($data_pengeluaran) ?>,
-                    borderColor: '#E74C3C',
-                    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-                    tension: 0.4,
-                    fill: true
-                }
-            ]
-        },
-        options: {
-            responsive: true,
-            plugins: {
-                legend: {
-                    position: 'top',
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return context.dataset.label + ': Rp ' + context.parsed.y.toLocaleString('id-ID');
+    // Initialize chart
+    function initializeChart() {
+        trendChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: <?= json_encode($bulan_labels) ?>,
+                datasets: [
+                    {
+                        label: 'Simpanan',
+                        data: <?= json_encode($data_simpanan) ?>,
+                        borderColor: '#2E86AB',
+                        backgroundColor: 'rgba(46, 134, 171, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Pendapatan',
+                        data: <?= json_encode($data_pendapatan) ?>,
+                        borderColor: '#27AE60',
+                        backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Cicilan',
+                        data: <?= json_encode($data_cicilan) ?>,
+                        borderColor: '#9B59B6',
+                        backgroundColor: 'rgba(155, 89, 182, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    },
+                    {
+                        label: 'Pengeluaran',
+                        data: <?= json_encode($data_pengeluaran) ?>,
+                        borderColor: '#E74C3C',
+                        backgroundColor: 'rgba(231, 76, 60, 0.1)',
+                        tension: 0.4,
+                        fill: true
+                    }
+                ]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function (context) {
+                                return context.dataset.label + ': Rp ' + context.parsed.y.toLocaleString('id-ID');
+                            }
                         }
                     }
-                }
-            },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        callback: function(value) {
-                            return 'Rp ' + value.toLocaleString('id-ID');
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            callback: function (value) {
+                                return 'Rp ' + value.toLocaleString('id-ID');
+                            }
                         }
                     }
                 }
             }
-        }
-    });
-}
-
-// Fungsi yang hilang - UPDATE CHARTS
-// Ganti function updateCharts dengan yang REAL
-function updateCharts(startDate, endDate) {
-    showLoadingMessage();
-    
-    // Kirim request ke server untuk data periode tertentu
-    fetch(`pages/proses/get_laporan_data.php?start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}`)
-        .then(response => response.json())
-        .then(data => {
-            // Update chart dengan data baru
-            trendChart.data.labels = data.bulan_labels;
-            trendChart.data.datasets[0].data = data.data_simpanan;
-            trendChart.data.datasets[1].data = data.data_pendapatan;
-            trendChart.data.datasets[2].data = data.data_pengeluaran;
-            trendChart.update();
-            
-            hideLoadingMessage();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            hideLoadingMessage();
-            alert('Gagal memuat data periode tersebut');
         });
-}
-// Fungsi untuk update tables
-function updateTables(startDate, endDate) {
-    console.log('Updating tables for period:', startDate, endDate);
-    // Implementasi update tabel akan ditambahkan kemudian
-}
+    }
 
-// Fungsi untuk custom date picker
-function showCustomDatePicker() {
-    const startDate = prompt('Masukkan Tanggal Mulai (YYYY-MM-DD):', '<?= date('Y-m-01') ?>');
-    const endDate = prompt('Masukkan Tanggal Akhir (YYYY-MM-DD):', '<?= date('Y-m-d') ?>');
-    
-    if (startDate && endDate) {
-        // Validasi tanggal
-        if (new Date(startDate) > new Date(endDate)) {
-            alert('Tanggal mulai tidak boleh lebih besar dari tanggal akhir!');
-            return;
+    // Fungsi yang hilang - UPDATE CHARTS
+    // Ganti function updateCharts dengan yang REAL
+    function updateCharts(startDate, endDate) {
+        showLoadingMessage();
+
+        // Kirim request ke server untuk data periode tertentu
+        fetch(`pages/proses/get_laporan_data.php?start_date=${startDate.toISOString().split('T')[0]}&end_date=${endDate.toISOString().split('T')[0]}`)
+            .then(response => response.json())
+            .then(data => {
+                // Update chart dengan data baru
+                trendChart.data.labels = data.bulan_labels;
+                trendChart.data.datasets[0].data = data.data_simpanan;
+                trendChart.data.datasets[1].data = data.data_pendapatan;
+                trendChart.data.datasets[2].data = data.data_pengeluaran;
+                trendChart.update();
+
+                hideLoadingMessage();
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                hideLoadingMessage();
+                alert('Gagal memuat data periode tersebut');
+            });
+    }
+    // Fungsi untuk update tables
+    function updateTables(startDate, endDate) {
+        console.log('Updating tables for period:', startDate, endDate);
+        // Implementasi update tabel akan ditambahkan kemudian
+    }
+
+    // Fungsi untuk custom date picker
+    function showCustomDatePicker() {
+        const startDate = prompt('Masukkan Tanggal Mulai (YYYY-MM-DD):', '<?= date('Y-m-01') ?>');
+        const endDate = prompt('Masukkan Tanggal Akhir (YYYY-MM-DD):', '<?= date('Y-m-d') ?>');
+
+        if (startDate && endDate) {
+            // Validasi tanggal
+            if (new Date(startDate) > new Date(endDate)) {
+                alert('Tanggal mulai tidak boleh lebih besar dari tanggal akhir!');
+                return;
+            }
+
+            // Update charts dengan periode custom
+            updateCharts(new Date(startDate), new Date(endDate));
+
+            // Update button text untuk menunjukkan periode custom
+            const customBtn = document.querySelector('[data-period="custom"]');
+            customBtn.innerHTML = `Custom (${formatDate(startDate)} - ${formatDate(endDate)})`;
         }
-        
-        // Update charts dengan periode custom
-        updateCharts(new Date(startDate), new Date(endDate));
-        
-        // Update button text untuk menunjukkan periode custom
-        const customBtn = document.querySelector('[data-period="custom"]');
-        customBtn.innerHTML = `Custom (${formatDate(startDate)} - ${formatDate(endDate)})`;
     }
-}
 
-// Helper function untuk format tanggal
-function formatDate(dateString) {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('id-ID', { 
-        day: '2-digit', 
-        month: 'short' 
-    });
-}
-
-// Loading message functions
-function showLoadingMessage() {
-    let loadingDiv = document.getElementById('loading-message');
-    if (!loadingDiv) {
-        loadingDiv = document.createElement('div');
-        loadingDiv.id = 'loading-message';
-        loadingDiv.className = 'alert alert-info text-center';
-        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Memuat data...';
-        document.querySelector('.container-fluid').prepend(loadingDiv);
-    }
-}
-
-function hideLoadingMessage() {
-    const loadingDiv = document.getElementById('loading-message');
-    if (loadingDiv) {
-        loadingDiv.remove();
-    }
-}
-
-// Period Filter - VERSI YANG DIPERBAIKI
-document.querySelectorAll('[data-period]').forEach(btn => {
-    btn.addEventListener('click', function() {
-        // Remove active class from all buttons
-        document.querySelectorAll('[data-period]').forEach(b => {
-            b.classList.remove('active');
+    // Helper function untuk format tanggal
+    function formatDate(dateString) {
+        const date = new Date(dateString);
+        return date.toLocaleDateString('id-ID', {
+            day: '2-digit',
+            month: 'short'
         });
-        
-        // Add active to clicked button
-        this.classList.add('active');
-        
-        const period = this.getAttribute('data-period');
-        
-        // Filter data based on period
-        filterDataByPeriod(period);
-    });
-});
-
-// Fungsi filter data - VERSI YANG DIPERBAIKI
-function filterDataByPeriod(period) {
-    let startDate, endDate;
-    
-    const today = new Date();
-    
-    switch(period) {
-        case 'month':
-            // Bulan ini
-            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = today;
-            break;
-            
-        case 'quarter':
-            // Triwulan (3 bulan terakhir)
-            startDate = new Date(today);
-            startDate.setMonth(startDate.getMonth() - 3);
-            endDate = today;
-            break;
-            
-        case 'year':
-            // Tahun ini
-            startDate = new Date(today.getFullYear(), 0, 1);
-            endDate = today;
-            break;
-            
-        case 'custom':
-            // Tampilkan date picker
-            showCustomDatePicker();
-            return;
-            
-        default:
-            // Default ke bulan ini
-            startDate = new Date(today.getFullYear(), today.getMonth(), 1);
-            endDate = today;
     }
-    
-    console.log(`Filtering data: ${period}`, startDate, endDate);
-    
-    // Update charts and tables dengan data filtered
-    updateCharts(startDate, endDate);
-    updateTables(startDate, endDate);
-}
 
-// Initialize chart when page loads
-document.addEventListener('DOMContentLoaded', function() {
-    initializeChart();
-});
+    // Loading message functions
+    function showLoadingMessage() {
+        let loadingDiv = document.getElementById('loading-message');
+        if (!loadingDiv) {
+            loadingDiv = document.createElement('div');
+            loadingDiv.id = 'loading-message';
+            loadingDiv.className = 'alert alert-info text-center';
+            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin me-2"></i>Memuat data...';
+            document.querySelector('.container-fluid').prepend(loadingDiv);
+        }
+    }
 
-// Auto refresh setiap 5 menit
-setTimeout(() => {
-    location.reload();
-}, 300000); // 5 menit
+    function hideLoadingMessage() {
+        const loadingDiv = document.getElementById('loading-message');
+        if (loadingDiv) {
+            loadingDiv.remove();
+        }
+    }
 
-// CSS untuk loading dan lainnya
+    // Period Filter - VERSI YANG DIPERBAIKI
+    document.querySelectorAll('[data-period]').forEach(btn => {
+        btn.addEventListener('click', function () {
+            // Remove active class from all buttons
+            document.querySelectorAll('[data-period]').forEach(b => {
+                b.classList.remove('active');
+            });
+
+            // Add active to clicked button
+            this.classList.add('active');
+
+            const period = this.getAttribute('data-period');
+
+            // Filter data based on period
+            filterDataByPeriod(period);
+        });
+    });
+
+    // Fungsi filter data - VERSI YANG DIPERBAIKI
+    function filterDataByPeriod(period) {
+        let startDate, endDate;
+
+        const today = new Date();
+
+        switch (period) {
+            case 'month':
+                // Bulan ini
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = today;
+                break;
+
+            case 'quarter':
+                // Triwulan (3 bulan terakhir)
+                startDate = new Date(today);
+                startDate.setMonth(startDate.getMonth() - 3);
+                endDate = today;
+                break;
+
+            case 'year':
+                // Tahun ini
+                startDate = new Date(today.getFullYear(), 0, 1);
+                endDate = today;
+                break;
+
+            case 'custom':
+                // Tampilkan date picker
+                showCustomDatePicker();
+                return;
+
+            default:
+                // Default ke bulan ini
+                startDate = new Date(today.getFullYear(), today.getMonth(), 1);
+                endDate = today;
+        }
+
+        console.log(`Filtering data: ${period}`, startDate, endDate);
+
+        // Update charts and tables dengan data filtered
+        updateCharts(startDate, endDate);
+        updateTables(startDate, endDate);
+    }
+
+    // Initialize chart when page loads
+    document.addEventListener('DOMContentLoaded', function () {
+        initializeChart();
+    });
+
+    // Auto refresh setiap 5 menit
+    setTimeout(() => {
+        location.reload();
+    }, 300000); // 5 menit
+
+    // CSS untuk loading dan lainnya
 </script>
 
 <style>
-.metric-card {
-    border: none;
-    border-radius: 10px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    transition: transform 0.2s;
-}
-.metric-card:hover {
-    transform: translateY(-2px);
-}
-.metric-icon {
-    width: 50px;
-    height: 50px;
-    border-radius: 10px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-    font-size: 1.5rem;
-}
+    .metric-card {
+        border: none;
+        border-radius: 10px;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        transition: transform 0.2s;
+    }
 
-/* PERBAIKAN TAB JUDUL */
-.nav-tabs .nav-link {
-    border: none;
-    color: #6c757d !important;
-    font-weight: 500;
-    background-color: transparent;
-}
+    .metric-card:hover {
+        transform: translateY(-2px);
+    }
 
-.nav-tabs .nav-link.active {
-    color: #2E86AB !important;
-    border-bottom: 3px solid #2E86AB !important;
-    background: none;
-}
+    .metric-icon {
+        width: 50px;
+        height: 50px;
+        border-radius: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+    }
 
-.nav-tabs .nav-link:hover {
-    color: #2E86AB !important;
-    background-color: rgba(46, 134, 171, 0.1) !important;
-}
+    /* PERBAIKAN TAB JUDUL */
+    .nav-tabs .nav-link {
+        border: none;
+        color: #6c757d !important;
+        font-weight: 500;
+        background-color: transparent;
+    }
 
-.alert-container .alert {
-    border: none;
-    border-radius: 8px;
-    margin-bottom: 10px;
-}
-.performance-item {
-    border-bottom: 1px solid #eee;
-    padding-bottom: 1rem;
-}
-.performance-item:last-child {
-    border-bottom: none;
-    padding-bottom: 0;
-}
-.alert-icon {
-    width: 40px;
-    height: 40px;
-    border-radius: 8px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: white;
-}
+    .nav-tabs .nav-link.active {
+        color: #2E86AB !important;
+        border-bottom: 3px solid #2E86AB !important;
+        background: none;
+    }
+
+    .nav-tabs .nav-link:hover {
+        color: #2E86AB !important;
+        background-color: rgba(46, 134, 171, 0.1) !important;
+    }
+
+    .alert-container .alert {
+        border: none;
+        border-radius: 8px;
+        margin-bottom: 10px;
+    }
+
+    .performance-item {
+        border-bottom: 1px solid #eee;
+        padding-bottom: 1rem;
+    }
+
+    .performance-item:last-child {
+        border-bottom: none;
+        padding-bottom: 0;
+    }
+
+    .alert-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+    }
 </style>
