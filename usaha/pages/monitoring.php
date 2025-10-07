@@ -8,7 +8,7 @@ $jam_kerja = mysqli_fetch_assoc($result_jam_kerja);
 
 if (!$jam_kerja) {
     // Default jam kerja jika tidak ada setting
-    $jam_kerja = ['buka' => '07:00:00', 'tutup' => '24:00:00'];
+    $jam_kerja = ['buka' => '07:00:00', 'tutup' => '15:00:00'];
 }
 
 // Cek status sistem (buka/tutup)
