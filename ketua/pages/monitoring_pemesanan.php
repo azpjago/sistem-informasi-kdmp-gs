@@ -273,7 +273,7 @@ $pemesanan_result = $stmt->get_result();
     <div class="col-xl-2 col-md-4 col-6">
         <div class="card border-0 bg-light h-100">
             <div class="card-body text-center p-3">
-                <h3 class="fw-bold text-dark mb-1">Rp <?= number_format($omset_bulan, 0, ',', '.') ?></h3>
+                <h4 class="fw-bold text-dark mb-1">Rp <?= number_format($omset_bulan, 0, ',', '.') ?></h4>
                 <p class="text-muted small mb-0">Omset Bulan Ini</p>
             </div>
         </div>
