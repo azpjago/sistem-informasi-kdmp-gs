@@ -201,4 +201,15 @@ function log_pelunasan_pinjaman($pinjaman_id, $no_anggota, $nama_anggota, $total
         number_format($total_pelunasan, 0, ',', '.');
     return log_activity($user_id, $user_role, 'pelunasan', $description, 'pinjaman', $pinjaman_id);
 }
+// Fungsi untuk log pembayaran cicilan
+function log_pembayaran_cicilan($id_cicilan, $id_anggota, $jumlah_bayar, $metode, $role)
+{
+    global $conn;
+
+    $log_message = "Pembayaran cicilan ID $id_cicilan sebesar Rp " . number_format($jumlah_bayar, 0, ',', '.') . " via $metode";
+
+    $stmt = $conn->prepare("INSERT INTO history_log (user_id, action, description, timestamp, role) VALUES (?, 'pembayaran_cicilan', ?, NOW(), ?)");
+    $stmt->bind_param("iss", $id_anggota, $log_message, $role);
+    $stmt->execute();
+}
 ?>

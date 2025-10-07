@@ -28,6 +28,10 @@ function hitungSaldoSumberDana($sumber_dana, $conn)
              INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
              WHERE p.status = 'Terkirim' AND p.metode = 'cash')
             +
+            -- PENAMBAHAN: Cicilan yang sudah LUNAS via Kas Tunai
+            (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
+            WHERE status = 'lunas' AND metode = 'cash' AND jumlah_bayar > 0)
+            -
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
              AND metode = 'cash')
@@ -68,6 +72,10 @@ function hitungSaldoSumberDana($sumber_dana, $conn)
              WHERE p.status = 'Terkirim' AND p.metode = 'transfer'
              AND p.bank_tujuan = '$sumber_dana')
             +
+            (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
+            WHERE status = 'lunas' AND metode = 'transfer' 
+            AND bank_tujuan = '$sumber_dana' AND jumlah_bayar > 0)
+            -
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
              AND metode = 'transfer' AND bank_tujuan = '$sumber_dana')

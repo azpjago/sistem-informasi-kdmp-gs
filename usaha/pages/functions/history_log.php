@@ -201,4 +201,66 @@ function log_pelunasan_pinjaman($pinjaman_id, $no_anggota, $nama_anggota, $total
         number_format($total_pelunasan, 0, ',', '.');
     return log_activity($user_id, $user_role, 'pelunasan', $description, 'pinjaman', $pinjaman_id);
 }
+// ================== FUNGSI UNTUK PEMBAYARAN CICILAN ==================
+
+// Fungsi untuk log pembayaran cicilan
+function log_pembayaran_cicilan($id_cicilan, $id_anggota, $jumlah_bayar, $metode, $user_type = null)
+{
+    $session_info = get_session_user_info();
+    $user_id = $session_info['user_id'];
+    $user_role = $user_type ?: $session_info['user_role'];
+
+    $description = "Melakukan pembayaran cicilan #$id_cicilan sebesar Rp " .
+        number_format($jumlah_bayar, 0, ',', '.') . " via $metode";
+
+    return log_activity($user_id, $user_role, 'pembayaran_cicilan', $description, 'cicilan', $id_cicilan);
+}
+
+// Fungsi untuk log aktivitas cicilan secara umum
+function log_cicilan_activity($cicilan_id, $activity_type, $description, $user_type = null)
+{
+    $session_info = get_session_user_info();
+    $user_id = $session_info['user_id'];
+    $user_role = $user_type ?: $session_info['user_role'];
+
+    return log_activity($user_id, $user_role, $activity_type, $description, 'cicilan', $cicilan_id);
+}
+
+// Fungsi untuk log pelunasan cicilan
+function log_pelunasan_cicilan($cicilan_id, $id_anggota, $total_pelunasan, $metode, $user_type = null)
+{
+    $session_info = get_session_user_info();
+    $user_id = $session_info['user_id'];
+    $user_role = $user_type ?: $session_info['user_role'];
+
+    $description = "Melunasi cicilan #$cicilan_id untuk anggota #$id_anggota sebesar Rp " .
+        number_format($total_pelunasan, 0, ',', '.') . " via $metode";
+
+    return log_activity($user_id, $user_role, 'pelunasan_cicilan', $description, 'cicilan', $cicilan_id);
+}
+
+// Fungsi untuk log pembayaran sebagian cicilan
+function log_pembayaran_sebagian_cicilan($cicilan_id, $id_anggota, $jumlah_bayar, $sisa_cicilan, $metode, $user_type = null)
+{
+    $session_info = get_session_user_info();
+    $user_id = $session_info['user_id'];
+    $user_role = $user_type ?: $session_info['user_role'];
+
+    $description = "Membayar sebagian cicilan #$cicilan_id untuk anggota #$id_anggota sebesar Rp " .
+        number_format($jumlah_bayar, 0, ',', '.') . " via $metode (Sisa: Rp " .
+        number_format($sisa_cicilan, 0, ',', '.') . ")";
+
+    return log_activity($user_id, $user_role, 'pembayaran_sebagian', $description, 'cicilan', $cicilan_id);
+}
+
+// Fungsi untuk log perubahan status cicilan
+function log_status_cicilan_change($cicilan_id, $old_status, $new_status, $user_type = null)
+{
+    $session_info = get_session_user_info();
+    $user_id = $session_info['user_id'];
+    $user_role = $user_type ?: $session_info['user_role'];
+
+    $description = "Mengubah status cicilan #$cicilan_id dari $old_status menjadi $new_status";
+    return log_activity($user_id, $user_role, 'status_change', $description, 'cicilan', $cicilan_id);
+}
 ?>

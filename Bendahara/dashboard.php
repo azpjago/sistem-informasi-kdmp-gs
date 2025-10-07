@@ -42,12 +42,6 @@ date_default_timezone_set('Asia/Jakarta');
                         <span>Buku Simpanan</span></a></li>
                 <li class="nav-item"><a href="?page=nota" class="nav-link"><i class="fas fa-sticky-note"></i>
                         <span>Kartu Nota</span></a></li>
-                <li class="nav-item">
-                    <a href="?page=set_saldo_awal" class="nav-link">
-                        <i class="fas fa-wallet"></i>
-                        <span>Set Saldo Awal</span>
-                    </a>
-                </li>
                 <li class="nav-item"><a href="?page=saldo_dashboard" class="nav-link"><i
                             class="fas fa-money-bill-wave"></i>
                         <span>Saldo</span></a></li>
