@@ -2,13 +2,34 @@
 session_start();
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 
+// Include file history log
+require_once 'functions/history_log.php';
+
 // Handle delete
 if (isset($_GET['delete'])) {
     $id = intval($_GET['delete']);
+    
+    // Ambil info kurir sebelum dihapus untuk log
+    $kurir_info = mysqli_fetch_assoc(mysqli_query($conn, "SELECT nama FROM kurir WHERE id = $id"));
+    
     $query = "UPDATE kurir SET status = 'Non-Aktif' WHERE id = $id";
-    mysqli_query($conn, $query);
-    header("Location: ?page=kurir&success=Kurir berhasil dinonaktifkan");
-    exit();
+    
+    if (mysqli_query($conn, $query)) {
+        // LOG ACTIVITY: Nonaktifkan kurir
+        if ($kurir_info) {
+            log_activity(
+                $_SESSION['user_id'] ?? 0,
+                $_SESSION['role'] ?? 'system',
+                'nonaktif_kurir',
+                "Menonaktifkan kurir: {$kurir_info['nama']} (ID: $id)",
+                'kurir',
+                $id
+            );
+        }
+        
+        header("Location: ?page=kurir&success=Kurir berhasil dinonaktifkan");
+        exit();
+    }
 }
 
 // Handle form submission
@@ -21,20 +42,70 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     if (isset($_POST['edit_id'])) {
         // Edit existing kurir
         $id = intval($_POST['edit_id']);
+        
+        // Ambil data lama untuk log
+        $old_data = mysqli_fetch_assoc(mysqli_query($conn, "SELECT * FROM kurir WHERE id = $id"));
+        
         $query = "UPDATE kurir SET nama='$nama', no_hp='$no_hp', kendaraan='$kendaraan', plat_nomor='$plat_nomor' WHERE id=$id";
         $success_msg = "Kurir berhasil diupdate";
+        
+        if (mysqli_query($conn, $query)) {
+            // LOG ACTIVITY: Edit kurir
+            $description = "Mengedit data kurir: $nama (ID: $id)";
+            if ($old_data) {
+                $changes = [];
+                if ($old_data['nama'] != $nama) $changes[] = "nama: {$old_data['nama']} → $nama";
+                if ($old_data['no_hp'] != $no_hp) $changes[] = "no_hp: {$old_data['no_hp']} → $no_hp";
+                if ($old_data['kendaraan'] != $kendaraan) $changes[] = "kendaraan: {$old_data['kendaraan']} → $kendaraan";
+                if ($old_data['plat_nomor'] != $plat_nomor) $changes[] = "plat_nomor: {$old_data['plat_nomor']} → $plat_nomor";
+                
+                if (!empty($changes)) {
+                    $description .= " - Perubahan: " . implode(', ', $changes);
+                }
+            }
+            
+            log_activity(
+                $_SESSION['user_id'] ?? 0,
+                $_SESSION['role'] ?? 'system',
+                'edit_kurir',
+                $description,
+                'kurir',
+                $id
+            );
+            
+            header("Location: ?page=kurir&success=" . urlencode($success_msg));
+            exit();
+        }
     } else {
         // Add new kurir
         $query = "INSERT INTO kurir (nama, no_hp, kendaraan, plat_nomor) VALUES ('$nama', '$no_hp', '$kendaraan', '$plat_nomor')";
         $success_msg = "Kurir berhasil ditambahkan";
+        
+        if (mysqli_query($conn, $query)) {
+            $new_id = mysqli_insert_id($conn);
+            
+            // LOG ACTIVITY: Tambah kurir baru
+            $description = "Menambah kurir baru: $nama - $kendaraan";
+            if ($plat_nomor) {
+                $description .= " ($plat_nomor)";
+            }
+            
+            log_activity(
+                $_SESSION['user_id'] ?? 0,
+                $_SESSION['role'] ?? 'system',
+                'tambah_kurir',
+                $description,
+                'kurir',
+                $new_id
+            );
+            
+            header("Location: ?page=kurir&success=" . urlencode($success_msg));
+            exit();
+        }
     }
-
-    if (mysqli_query($conn, $query)) {
-        header("Location: ?page=kurir&success=" . urlencode($success_msg));
-        exit();
-    } else {
-        $error = "Error: " . mysqli_error($conn);
-    }
+    
+    // Jika query gagal
+    $error = "Error: " . mysqli_error($conn);
 }
 
 // Get all active kurir

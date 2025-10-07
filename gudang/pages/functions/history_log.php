@@ -307,4 +307,52 @@ function log_so_barang_rusak($so_id, $inventory_id, $jumlah_rusak, $jenis_kerusa
     $description = "Menambahkan barang rusak dari SO #$so_id - Inventory #$inventory_id: $jumlah_rusak unit ($jenis_kerusakan)";
     return log_activity($user_id, $user_role, 'damaged_goods', $description, 'stock_opname_header', $so_id);
 }
+function logProdukActivity($action, $produk_id, $nama_produk, $additional_info = '')
+{
+    $descriptions = [
+        'tambah_eceran' => "Menambah produk eceran: $nama_produk (ID: $produk_id)",
+        'edit_eceran' => "Mengedit produk eceran: $nama_produk (ID: $produk_id)",
+        'tambah_paket' => "Membuat produk paket: $nama_produk (ID: $produk_id)",
+        'edit_paket' => "Mengedit produk paket: $nama_produk (ID: $produk_id)",
+        'hapus' => "Menghapus produk: $nama_produk (ID: $produk_id)",
+        'bulk_delete' => "Menghapus multiple produk: $additional_info",
+        'bulk_activate' => "Mengaktifkan multiple produk: $additional_info",
+        'bulk_deactivate' => "Menonaktifkan multiple produk: $additional_info"
+    ];
+
+    $description = $descriptions[$action] ?? "Aksi produk: $action - $nama_produk";
+
+    log_activity(
+        $_SESSION['user_id'] ?? 0,
+        $_SESSION['role'] ?? 'gudang',
+        $action,
+        $description,
+        'produk',
+        $produk_id
+    );
+}
+// Fungsi untuk log aktivitas barang reject
+function logBarangRejectActivity($action, $reject_id, $additional_info = '')
+{
+    $descriptions = [
+        'update_status' => "Mengupdate status tindakan barang reject #$reject_id",
+        'delete' => "Menghapus data barang reject #$reject_id",
+        'view_detail' => "Melihat detail barang reject #$reject_id"
+    ];
+
+    $description = $descriptions[$action] ?? "Aksi barang reject: $action - ID: $reject_id";
+
+    if ($additional_info) {
+        $description .= " - $additional_info";
+    }
+
+    log_activity(
+        $_SESSION['user_id'] ?? 0,
+        $_SESSION['role'] ?? 'system',
+        $action,
+        $description,
+        'barang_reject',
+        $reject_id
+    );
+}
 ?>

@@ -1,8 +1,11 @@
 <?php
+session_start();
 // Koneksi ke database
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
+// Include file history log
+require_once 'functions/history_log.php';
 
 // Query inventory yang tersedia untuk produk eceran
 $query_inventory = "SELECT ir.id_inventory, ir.nama_produk, ir.satuan_kecil, ir.jumlah_tersedia 
@@ -49,6 +52,7 @@ function getProductImageUrl($filename)
 }
 
 // Menangani aksi hapus
+// Menangani aksi hapus
 if (isset($_GET['hapus'])) {
     $id = intval($_GET['hapus']);
     $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT gambar, nama_produk FROM produk WHERE id_produk=$id"));
@@ -56,6 +60,11 @@ if (isset($_GET['hapus'])) {
     $upload_dir = getUploadPath();
     if ($row && $row['gambar'] && file_exists($upload_dir . '/' . $row['gambar'])) {
         unlink($upload_dir . '/' . $row['gambar']);
+    }
+
+    // LOG ACTIVITY: Hapus produk
+    if ($row) {
+        logProdukActivity('hapus', $id, $row['nama_produk']);
     }
 
     mysqli_query($conn, "DELETE FROM produk WHERE id_produk=$id");
@@ -74,34 +83,70 @@ if (isset($_POST['bulk_action']) && isset($_POST['selected_products'])) {
     }
 
     $successCount = 0;
+    $product_names = [];
+
     if ($action == 'delete') {
         foreach ($selected as $id) {
             $id = intval($id);
-            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT gambar FROM produk WHERE id_produk=$id"));
+            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT gambar, nama_produk FROM produk WHERE id_produk=$id"));
             $upload_dir = getUploadPath();
             if ($row && $row['gambar'] && file_exists($upload_dir . '/' . $row['gambar'])) {
                 unlink($upload_dir . '/' . $row['gambar']);
             }
             if (mysqli_query($conn, "DELETE FROM produk WHERE id_produk=$id")) {
                 $successCount++;
+                $product_names[] = $row['nama_produk'] ?? 'Unknown';
             }
         }
+
+        // LOG ACTIVITY: Bulk delete
+        if ($successCount > 0) {
+            $product_list = implode(', ', array_slice($product_names, 0, 5)); // Limit to 5 names
+            if (count($product_names) > 5)
+                $product_list .= '...';
+            logProdukActivity('bulk_delete', 0, 'Multiple Products', "$successCount produk: $product_list");
+        }
+
         $_SESSION['success'] = "$successCount produk berhasil dihapus.";
+
     } elseif ($action == 'activate') {
         foreach ($selected as $id) {
             $id = intval($id);
+            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT nama_produk FROM produk WHERE id_produk=$id"));
             if (mysqli_query($conn, "UPDATE produk SET status='aktif' WHERE id_produk=$id")) {
                 $successCount++;
+                $product_names[] = $row['nama_produk'] ?? 'Unknown';
             }
         }
+
+        // LOG ACTIVITY: Bulk activate
+        if ($successCount > 0) {
+            $product_list = implode(', ', array_slice($product_names, 0, 5));
+            if (count($product_names) > 5)
+                $product_list .= '...';
+            logProdukActivity('bulk_activate', 0, 'Multiple Products', "$successCount produk: $product_list");
+        }
+
         $_SESSION['success'] = "$successCount produk diaktifkan.";
+
     } elseif ($action == 'deactivate') {
         foreach ($selected as $id) {
             $id = intval($id);
+            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT nama_produk FROM produk WHERE id_produk=$id"));
             if (mysqli_query($conn, "UPDATE produk SET status='non-aktif' WHERE id_produk=$id")) {
                 $successCount++;
+                $product_names[] = $row['nama_produk'] ?? 'Unknown';
             }
         }
+
+        // LOG ACTIVITY: Bulk deactivate
+        if ($successCount > 0) {
+            $product_list = implode(', ', array_slice($product_names, 0, 5));
+            if (count($product_names) > 5)
+                $product_list .= '...';
+            logProdukActivity('bulk_deactivate', 0, 'Multiple Products', "$successCount produk: $product_list");
+        }
+
         $_SESSION['success'] = "$successCount produk dinonaktifkan.";
     }
 
@@ -143,7 +188,8 @@ if (isset($_POST['buat_paket'])) {
 
     if ($conn->query($query)) {
         $id_produk_baru = $conn->insert_id;
-
+        logProdukActivity('tambah_paket', $id_produk_baru, $nama);
+        // Simpan komposisi produk paket
         // Simpan komposisi produk paket
         if (isset($_POST['komposisi_produk'])) {
             $komposisi = $_POST['komposisi_produk'];
@@ -234,7 +280,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
         // EDIT PRODUK
         $id = intval($_POST['id_produk']);
         $gambar_sql = '';
-
+        
         if ($gambar) {
             $upload_dir = getUploadPath();
             $old = mysqli_fetch_assoc(mysqli_query($conn, "SELECT gambar FROM produk WHERE id_produk=$id"));
@@ -250,12 +296,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
                  status='$status', is_paket='$is_paket', id_inventory='$id_inventory'
                  $gambar_sql 
                  WHERE id_produk=$id";
+                 logProdukActivity('edit_eceran', $produk_id, $nama);
     } else {
         // TAMBAH PRODUK BARU
         $query = "INSERT INTO produk 
                  (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan, gambar, status, is_paket, id_inventory) 
                  VALUES 
                  ('$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', '$id_inventory')";
+                 logProdukActivity('tambah_eceran', $produk_id, $nama);
+            $_SESSION['success'] = "Produk berhasil ditambahkan";
     }
 
     if ($conn->query($query)) {
@@ -307,7 +356,7 @@ if (isset($_POST['edit_paket'])) {
     if ($conn->query($query)) {
         // Hapus komposisi lama dan simpan yang baru
         $conn->query("DELETE FROM produk_paket_items WHERE id_produk_paket = $id_produk");
-
+        logProdukActivity('edit_paket', $id_produk, $nama);
         // Simpan komposisi baru
         if (isset($_POST['komposisi_produk'])) {
             $komposisi = $_POST['komposisi_produk'];

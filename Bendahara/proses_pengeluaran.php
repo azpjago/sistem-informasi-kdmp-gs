@@ -60,6 +60,13 @@ function hitungSaldoKasTunai()
              AND jenis_transaksi = 'setor' AND metode = 'cash'
              AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
             +
+            (SELECT COALESCE(SUM(jumlah), 0) as total 
+                FROM pembayaran 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'setor'
+                AND metode = 'cash'
+                AND jenis_simpanan = 'Simpanan Sukarela')
+            +
             (SELECT COALESCE(SUM(pd.subtotal), 0) FROM pemesanan_detail pd 
              INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
              WHERE p.status = 'Terkirim' AND p.metode = 'cash')
@@ -96,6 +103,14 @@ function hitungSaldoBank($nama_bank)
              AND bank_tujuan = '$nama_bank'
              AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
             +
+            (SELECT COALESCE(SUM(jumlah), 0) as total 
+                FROM pembayaran 
+                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+                AND jenis_transaksi = 'setor'
+                AND metode = 'transfer' 
+                AND bank_tujuan = '$nama_bank'
+                AND jenis_simpanan = 'Simpanan Sukarela')
+                +
             (SELECT COALESCE(SUM(pd.subtotal), 0) FROM pemesanan_detail pd 
              INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
              WHERE p.status = 'Terkirim' AND p.metode = 'transfer'

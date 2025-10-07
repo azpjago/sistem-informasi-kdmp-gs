@@ -80,7 +80,7 @@ function log_produk_activity($produk_id, $activity_type, $description, $user_typ
 }
 
 // Fungsi untuk log perubahan status pesanan
-function log_status_pemesanan_change($pemesanan_id, $old_status, $new_status, $user_type = null)
+function log_status_pemesanan_change($pemesanan_id, $old_status, $new_status, $description, $user_type = null)
 {
     $session_info = get_session_user_info();
     $user_id = $session_info['user_id'];

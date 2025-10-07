@@ -64,7 +64,7 @@ try {
         } else {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
-                FROM pembayaran 
+                FROM pembayaran
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
                 AND jenis_transaksi = 'setor'
                 AND metode = 'transfer' 
@@ -86,6 +86,7 @@ try {
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
                 AND jenis_transaksi = 'tarik'
                 AND metode = 'cash'
+                AND jenis_simpanan = 'Simpanan Sukarela'
             ");
             $stmt->execute();
         } else {
@@ -96,6 +97,7 @@ try {
                 AND jenis_transaksi = 'tarik'
                 AND metode = 'transfer' 
                 AND bank_tujuan = ?
+                AND jenis_simpanan = 'Simpanan Sukarela'
             ");
             $stmt->bind_param("s", $nama_rekening);
             $stmt->execute();
@@ -225,7 +227,7 @@ try {
     $total_angsuran = hitungTotalCicilan($conn);
 
     // Hitung dana operasional
-    $dana_operasional = $saldo_simpanan_pokok_wajib + $saldo_simpanan_sukarela + $saldo_penjualan + $saldo_hibah + $total_angsuran - $saldo_tarik - $total_pengeluaran - $total_pinjaman;
+    $dana_operasional = $saldo_simpanan_pokok_wajib + $saldo_simpanan_sukarela + $saldo_penjualan + $saldo_hibah + $total_angsuran - $total_pengeluaran - $total_pinjaman;
     $selisih = $saldo_utama - $dana_operasional;
 
     echo json_encode([
@@ -283,11 +285,20 @@ function hitungTotalSimpananPokokWajib($conn)
 function hitungSimpananSukarela($conn)
 {
     $stmt = $conn->prepare("
-        SELECT COALESCE(SUM(jumlah), 0) as total 
-        FROM pembayaran 
-        WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-        AND jenis_transaksi = 'setor'
-        AND jenis_simpanan = 'Simpanan Sukarela'
+        (
+    SELECT 
+    (SELECT COALESCE(SUM(jumlah), 0) 
+     FROM pembayaran 
+     WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+     AND jenis_transaksi = 'setor'
+     AND jenis_simpanan = 'Simpanan Sukarela')
+    -
+    (SELECT COALESCE(SUM(jumlah), 0) 
+     FROM pembayaran 
+     WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
+     AND jenis_transaksi = 'tarik'
+     AND jenis_simpanan = 'Simpanan Sukarela') as total
+     )
     ");
     $stmt->execute();
     $result = $stmt->get_result();

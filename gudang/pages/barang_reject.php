@@ -9,12 +9,17 @@ $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-
+// Include file history log
+require_once 'functions/history_log.php';
+// Handle actions (update status, hapus, dll)
 // Handle actions (update status, hapus, dll)
 if (isset($_POST['update_status'])) {
     $id_reject = intval($_POST['id_reject']);
     $status_tindaklanjut = $conn->real_escape_string($_POST['status_tindaklanjut']);
     $catatan_tindaklanjut = $conn->real_escape_string($_POST['catatan_tindaklanjut']);
+
+    // Ambil info barang reject sebelum update untuk log
+    $reject_info = $conn->query("SELECT nama_produk, jumlah_reject, satuan_kecil, status_tindaklanjut FROM barang_rejek WHERE id_reject = '$id_reject'")->fetch_assoc();
 
     $sql = "UPDATE barang_rejek 
             SET status_tindaklanjut = '$status_tindaklanjut', 
@@ -24,6 +29,24 @@ if (isset($_POST['update_status'])) {
             WHERE id_reject = '$id_reject'";
 
     if ($conn->query($sql)) {
+        // LOG ACTIVITY: Update status barang reject
+        $description = "Mengupdate status barang reject: {$reject_info['nama_produk']} ";
+        $description .= "({$reject_info['jumlah_reject']} {$reject_info['satuan_kecil']}) ";
+        $description .= "dari {$reject_info['status_tindaklanjut']} menjadi $status_tindaklanjut";
+
+        if ($catatan_tindaklanjut) {
+            $description .= " - Catatan: $catatan_tindaklanjut";
+        }
+
+        log_activity(
+            $_SESSION['user_id'] ?? 0,
+            $_SESSION['role'] ?? 'system',
+            'update_status',
+            $description,
+            'barang_reject',
+            $id_reject
+        );
+
         $_SESSION['success'] = "Status barang reject berhasil diupdate!";
     } else {
         $_SESSION['error'] = "Gagal update status: " . $conn->error;
@@ -34,9 +57,31 @@ if (isset($_POST['update_status'])) {
 
 if (isset($_GET['delete'])) {
     $id_reject = intval($_GET['delete']);
-    
+
+    // Ambil info barang reject sebelum dihapus untuk log
+    $reject_info = $conn->query("SELECT br.nama_produk, br.jumlah_reject, br.satuan_kecil, s.nama_supplier 
+                                FROM barang_rejek br
+                                LEFT JOIN purchase_order_items poi ON br.id_po_item = poi.id_item
+                                LEFT JOIN purchase_order po ON poi.id_po = po.id_po
+                                LEFT JOIN supplier s ON po.id_supplier = s.id_supplier
+                                WHERE br.id_reject = '$id_reject'")->fetch_assoc();
+
     $sql = "DELETE FROM barang_rejek WHERE id_reject = '$id_reject'";
     if ($conn->query($sql)) {
+        // LOG ACTIVITY: Hapus barang reject
+        $description = "Menghapus data barang reject: {$reject_info['nama_produk']} ";
+        $description .= "({$reject_info['jumlah_reject']} {$reject_info['satuan_kecil']}) ";
+        $description .= "dari supplier {$reject_info['nama_supplier']}";
+
+        log_activity(
+            $_SESSION['user_id'] ?? 0,
+            $_SESSION['role'] ?? 'system',
+            'delete',
+            $description,
+            'barang_reject',
+            $id_reject
+        );
+
         $_SESSION['success'] = "Data barang reject berhasil dihapus!";
     } else {
         $_SESSION['error'] = "Gagal menghapus data: " . $conn->error;
@@ -102,8 +147,8 @@ $result = $conn->query($query);
         <div class="d-flex justify-content-between align-items-center mb-4">
             <h2 class="mb-0"><i class="fas fa-times-circle text-danger me-2"></i>Data Barang Reject</h2>
             <div>
-                <a href="export_barang_reject.php" class="btn btn-success">
-                    <i class="fas fa-file-excel me-2"></i>Export Excel
+                <a href="pages/export_barang_reject.php" class="btn btn-success">
+                    <i class="fas fa-file-csv me-2"></i>Export Csv
                 </a>
             </div>
         </div>

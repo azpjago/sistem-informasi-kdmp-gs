@@ -8,7 +8,7 @@ use Dompdf\Dompdf;
 date_default_timezone_set("Asia/Jakarta");
 if (isset($_GET['id'])) {
     $id_so = intval($_GET['id']);
-    
+
     // Query data SO
     $query = "SELECT so.*, p.username as nama_petugas, ap.username as nama_approver
              FROM stock_opname_header so
@@ -17,14 +17,14 @@ if (isset($_GET['id'])) {
              WHERE so.id_so = '$id_so'";
     $result = $conn->query($query);
     $so = $result->fetch_assoc();
-    
+
     // Query detail SO
     $query_detail = "SELECT sod.*, ir.nama_produk, ir.no_batch, ir.satuan_kecil
                     FROM stock_opname_detail sod
                     JOIN inventory_ready ir ON sod.id_inventory = ir.id_inventory
                     WHERE sod.id_so = '$id_so'";
     $result_detail = $conn->query($query_detail);
-    
+
     // HTML content untuk PDF
     $html = '
     <!DOCTYPE html>
@@ -112,9 +112,9 @@ if (isset($_GET['id'])) {
                     <td><strong>Status</strong></td>
                     <td>' . strtoupper(str_replace('_', ' ', $so['status'])) . '</td>
                 </tr>';
-                
-                if ($so['approved_by']) {
-                    $html .= '
+
+    if ($so['approved_by']) {
+        $html .= '
                     <tr>
                         <td><strong>Disetujui oleh</strong></td>
                         <td>' . $so['nama_approver'] . '</td>
@@ -123,9 +123,9 @@ if (isset($_GET['id'])) {
                         <td><strong>Tanggal Approval</strong></td>
                         <td>' . date('d/m/Y H:i', strtotime($so['approved_at'])) . '</td>
                     </tr>';
-                }
-                
-            $html .= '
+    }
+
+    $html .= '
             </table>
         </div>
 
@@ -144,17 +144,17 @@ if (isset($_GET['id'])) {
                 </tr>
             </thead>
             <tbody>';
-            
-            $no = 1;
-            while ($detail = $result_detail->fetch_assoc()) {
-                $selisih_class = '';
-                if ($detail['selisih'] > 0) {
-                    $selisih_class = 'selisih-positif';
-                } elseif ($detail['selisih'] < 0) {
-                    $selisih_class = 'selisih-negatif';
-                }
-                
-                $html .= '
+
+    $no = 1;
+    while ($detail = $result_detail->fetch_assoc()) {
+        $selisih_class = '';
+        if ($detail['selisih'] > 0) {
+            $selisih_class = 'selisih-positif';
+        } elseif ($detail['selisih'] < 0) {
+            $selisih_class = 'selisih-negatif';
+        }
+
+        $html .= '
                 <tr>
                     <td class="text-center">' . $no++ . '</td>
                     <td>' . htmlspecialchars($detail['nama_produk']) . '</td>
@@ -165,14 +165,14 @@ if (isset($_GET['id'])) {
                     <td>' . $detail['status_kondisi'] . '</td>
                     <td>' . ($detail['analisis_penyebab'] ?: '-') . '</td>
                 </tr>';
-            }
-            
-            $html .= '
+    }
+
+    $html .= '
             </tbody>
         </table>';
 
-        // Summary section
-        $html .= '
+    // Summary section
+    $html .= '
         <div class="mt-3">
             <table style="width: 50%; margin-left: auto; border: 1px solid #000; border-collapse: collapse;">
                 <tr>
@@ -186,15 +186,15 @@ if (isset($_GET['id'])) {
             </table>
         </div>';
 
-        if ($so['catatan']) {
-            $html .= '
+    if ($so['catatan']) {
+        $html .= '
             <div class="mt-3">
                 <p><strong>Catatan:</strong></p>
                 <p style="border: 1px solid #ccc; padding: 10px; background-color: #f9f9f9;">' . nl2br(htmlspecialchars($so['catatan'])) . '</p>
             </div>';
-        }
+    }
 
-        $html .= '
+    $html .= '
         <div class="footer">
             <table class="signature">
                 <tr>
@@ -206,14 +206,14 @@ if (isset($_GET['id'])) {
                     <td>
                         <p>Mengetahui,</p>
                         <br><br><br>';
-                        
-                        if ($so['approved_by']) {
-                            $html .= '<p><strong>' . $so['nama_approver'] . '</strong></p>';
-                        } else {
-                            $html .= '<p><strong>(__________________________)</strong></p>';
-                        }
-                        
-                    $html .= '
+
+    if ($so['approved_by']) {
+        $html .= '<p><strong>(__________________________)</strong></p>';
+    } else {
+        $html .= '<p><strong>(__________________________)</strong></p>';
+    }
+
+    $html .= '
                     </td>
                 </tr>
             </table>
@@ -231,10 +231,10 @@ if (isset($_GET['id'])) {
     $dompdf->loadHtml($html);
     $dompdf->setPaper('A4', 'portrait');
     $dompdf->render();
-    
+
     // Render PDF
     $dompdf->render();
-    
+
     // Output PDF
     if (isset($_GET['download']) && $_GET['download'] == '1') {
         // Force download
@@ -243,7 +243,7 @@ if (isset($_GET['id'])) {
         // View in browser
         $dompdf->stream("SO_" . $so['no_so'] . ".pdf", array("Attachment" => false));
     }
-    
+
     exit;
 } else {
     echo "ID Stock Opname tidak valid";

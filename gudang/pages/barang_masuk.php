@@ -142,25 +142,6 @@ if (isset($_POST['submit_qc'])) {
                         // Panggil fungsi history log untuk produk baru
                         $description_new_product = "Menambahkan produk baru ke inventory: " . $nama_produk . " (" . $kode_produk . ") dengan stok awal: $q_bagus $satuan_kecil";
                         log_inventory_activity($id_inventory_baru, 'create', $description_new_product, 'gudang');
-
-                        // Sekarang insert atau update ke tabel produk
-                        $check_produk = "SELECT id_produk FROM produk WHERE id_inventory = '$id_inventory_baru' LIMIT 1";
-                        $result_produk = $conn->query($check_produk);
-
-                        if ($result_produk && $result_produk->num_rows > 0) {
-                            // Produk sudah ada untuk inventory ini (mungkin dari sebelumnya)
-                            error_log("Produk sudah ada untuk inventory: $id_inventory_baru");
-                        } else {
-                            // Insert produk baru
-                            $insert_produk = "INSERT INTO produk (id_inventory, nama_produk, kode_produk, created_at) 
-                                 VALUES ('$id_inventory_baru', '$nama_produk', '$kode_produk', NOW())";
-                            if ($conn->query($insert_produk)) {
-                                error_log("Berhasil insert ke tabel produk");
-                            } else {
-                                error_log("Gagal insert ke tabel produk: " . $conn->error);
-                            }
-                        }
-
                     } else {
                         error_log("Gagal insert inventory_ready: " . $conn->error);
                         $_SESSION['error'] = "Gagal menyimpan data inventory";
@@ -550,7 +531,7 @@ $result_barang_masuk = $conn->query($query_barang_masuk);
                         </select>
                     </td>
                     <td>
-                        <input type="text" class="form-control" name="catatan[]" placeholder="Catatan reject" required>
+                        <input type="text" class="form-control" name="catatan[]" placeholder="Catatan" required>
                     </td>
                 </tr>`;
                         });
