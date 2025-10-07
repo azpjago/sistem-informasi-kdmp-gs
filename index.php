@@ -66,7 +66,7 @@ if (isset($_SESSION['is_logged_in'])) {
             align-items: center;
             justify-content: center;
             background: #f8f9fa;
-            border: 2px solid var(--primary);
+            border: 1px solid var(--primary);
             padding: 5px;
         }
 
