@@ -483,8 +483,6 @@ $anggota = $stmt->get_result();
                 </div>
                 </div>
 <!-- Modal Update Pembayaran -->
-<!-- monitoring.php -->
-<!-- Tambahkan modal update bayar -->
 <div class="modal fade" id="updateBayarModal" tabindex="-1" aria-labelledby="updateBayarModalLabel" aria-hidden="true">
     <div class="modal-dialog">
         <div class="modal-content">
