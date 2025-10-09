@@ -242,7 +242,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <?= htmlspecialchars($pengeluaran['created_by_name'] ?? 'System') ?>
+                                    <?= htmlspecialchars($pengeluaran['created_by_name'] ?? 'Bendahara') ?>
                                 </td>
                                 <td class="text-center">
                                     <?php if ($pengeluaran['bukti_file']): ?>

@@ -112,7 +112,7 @@ $kategori_result = $conn->query("SELECT * FROM kategori_pengeluaran ORDER BY nam
 // Query pengeluaran berdasarkan role
 if ($is_ketua) {
     $pengeluaran_result = $conn->query("
-        SELECT p.*, k.nama_kategori, pn.nama as created_by_name
+        SELECT p.*, k.nama_kategori, pn.username as created_by_name
         FROM pengeluaran p
         LEFT JOIN kategori_pengeluaran k ON p.kategori_id = k.id
         LEFT JOIN pengurus pn ON p.created_by = pn.id
@@ -120,7 +120,7 @@ if ($is_ketua) {
     ");
 } else {
     $pengeluaran_result = $conn->query("
-        SELECT p.*, k.nama_kategori, pn.nama as created_by_name
+        SELECT p.*, k.nama_kategori, pn.username as created_by_name
         FROM pengeluaran p
         LEFT JOIN kategori_pengeluaran k ON p.kategori_id = k.id
         LEFT JOIN pengurus pn ON p.created_by = pn.id
@@ -244,7 +244,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                                     </span>
                                 </td>
                                 <td class="text-center">
-                                    <?= htmlspecialchars($pengeluaran['created_by_name'] ?? 'System') ?>
+                                    <?= htmlspecialchars($pengeluaran['created_by_name'] ?? 'Bendahara') ?>
                                 </td>
                                 <td class="text-center">
                                     <?php if ($pengeluaran['bukti_file']): ?>
@@ -335,7 +335,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                             <div class="mb-3">
                                 <label for="jumlah" class="form-label">Jumlah (Rp)</label>
                                 <input type="number" class="form-control" id="jumlah" name="jumlah" 
-                                       min="1000" step="1000" placeholder="Contoh: 50000" required>
+                                       min="1000" placeholder="Contoh: 50000" required>
                             </div>
                         </div>
                         <div class="col-md-6">
