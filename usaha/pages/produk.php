@@ -904,7 +904,6 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
         <?php endif; ?>
 
         // Fungsi tambah komposisi dengan nilai edit - PERBAIKAN
-        // Fungsi tambah komposisi dengan nilai edit - PERBAIKAN
         window.tambahKomposisiEdit = function (id_produk_komposisi, quantity) {
             const container = document.getElementById('komposisiContainer');
 
@@ -978,6 +977,7 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                 $('#tabelProduk').DataTable({
                     pageLength: 10,
                     lengthMenu: [10, 25, 50, 100],
+                    order: [[2, 'desc']],
                     language: {
                         search: "Cari Produk : ",
                         lengthMenu: "Tampilkan _MENU_ data per halaman",
