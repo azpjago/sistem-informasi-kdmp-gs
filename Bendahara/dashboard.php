@@ -92,7 +92,17 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'bendahara') {
             if (in_array($page, $allowed_pages) && file_exists("pages/" . $page . ".php")) {
                 include "pages/" . $page . ".php";
             } else {
-                echo "Halaman tidak ditemukan.";
+                echo '
+    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 80vh;">
+        <div class="text-center">
+            <div class="error-code display-1 fw-bold text-muted mb-2">404</div>
+            <h2 class="h3 text-muted mb-3">Halaman Tidak Ditemukan</h2>
+            <p class="text-muted mb-4">Halaman yang Anda cari tidak tersedia dalam sistem.</p>
+            <a href="dashboard.php?page=dashboard_utama" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>Kembali ke Aplikasi
+            </a>
+        </div>
+    </div>';
             }
             ?>
         </div>

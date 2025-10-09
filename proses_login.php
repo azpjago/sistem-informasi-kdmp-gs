@@ -56,17 +56,17 @@ if ($user = mysqli_fetch_assoc($result)) {
                 header("Location: bendahara/dashboard.php");
                 break;
             case 'ketua':
-                header("Location: ketua/dashboard.php");
+                header("Location: ketua/dashboard.php?page=dashboard_utama");
                 break;
             case 'usaha':
                 // PENTING: Pastikan nama folder Anda adalah 'wk_bid_usaha' (menggunakan underscore)
-                header("Location: usaha/dashboard.php");
+                header("Location: usaha/dashboard.php?page=dashboard_utama");
                 break;
             case 'sekretaris':
-                header("Location: sekretaris/dashboard.php");
+                header("Location: sekretaris/dashboard.php?page=dashboard_utama");
                 break;
             case 'gudang':
-                header("Location: gudang/dashboard.php");
+                header("Location: gudang/dashboard.php?page=dashboard_utama");
                 break;
             default:
                 // Jika role tidak dikenal, arahkan ke halaman login

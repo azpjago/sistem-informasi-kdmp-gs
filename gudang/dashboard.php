@@ -90,7 +90,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'gudang') {
             <div class="error-code display-1 fw-bold text-muted mb-2">404</div>
             <h2 class="h3 text-muted mb-3">Halaman Tidak Ditemukan</h2>
             <p class="text-muted mb-4">Halaman yang Anda cari tidak tersedia dalam sistem.</p>
-            <a href="dashboard.php" class="btn btn-outline-primary">
+            <a href="dashboard.php?page=dashboard_utama" class="btn btn-outline-primary">
                 <i class="fas fa-arrow-left me-2"></i>Kembali ke Aplikasi
             </a>
         </div>
