@@ -1,17 +1,6 @@
 <?php
-session_start();
-if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
-    header("Location: ../dashboard.php");
-    exit;
-}
-
 // Include file history log
 require_once 'functions/history_log.php';
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
 // PROSES TAMBAH STOCK OPNAME
 if (isset($_POST['tambah_so'])) {
     $tanggal_so = $conn->real_escape_string($_POST['tanggal_so']);

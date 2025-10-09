@@ -56,7 +56,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ketua') {
                 <li class="nav-item">
                     <a href="?page=pengeluaran" class="nav-link">
                         <i class="fas fa-money-bill-transfer"></i>
-                        <span>Appr. Pengeluaran</span>
+                        <span>App. Pengeluaran</span>
                     </a>
                 </li>
                 <li class="nav-item">
@@ -68,7 +68,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ketua') {
                 <li class="nav-item">
                     <a href="?page=approval_pinjaman" class="nav-link">
                         <i class="fas fa-check-circle"></i>
-                        <span>Approval Pinjaman</span>
+                        <span>App. Pinjaman</span>
                     </a>
                 </li>
                 <li class="nav-item">

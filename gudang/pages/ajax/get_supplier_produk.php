@@ -79,8 +79,8 @@ if (isset($_GET['id_supplier'])) {
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label for="grade[]">Grade</label>
-                    <input type="text" class="form-control" name="grade[]" value="' . ($row['grade'] ?? '') . '" placeholder="Grade">
+                    <label for="isi[]">Isi produk</label>
+                    <input type="text" class="form-control" name="isi[]" value="' . ($row['isi'] ?? '') . '" placeholder="Isi produk">
                 </div>
                 <div class="col-md-2">
                     <label for="merk[]">Merk</label>
@@ -156,8 +156,8 @@ if (isset($_GET['id_supplier'])) {
                 </select>
             </div>
             <div class="col-md-2">
-                <label for="grade[]">Grade</label>
-                <input type="text" class="form-control" name="grade[]" placeholder="Grade">
+                <label for="isi[]">Isi produk</label>
+                <input type="text" class="form-control" name="isi[]" placeholder="Isi produk">
             </div>
             <div class="col-md-2">
                 <label for="merk[]">Merk</label>

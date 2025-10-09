@@ -1,8 +1,6 @@
 <?php
-// Koneksi ke database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
+// Include file history log
+require_once 'functions/history_log.php';
 
 // Query inventory yang tersedia untuk produk eceran
 $query_inventory = "SELECT ir.id_inventory, ir.nama_produk, ir.satuan_kecil, ir.jumlah_tersedia 
@@ -19,8 +17,15 @@ $query_produk_eceran = "SELECT p.*, ir.nama_produk as nama_inventory, ir.jumlah_
                        ORDER BY p.nama_produk";
 $result_produk_eceran = $conn->query($query_produk_eceran);
 
+// PERBAIKAN: Simpan hasil query ke array untuk digunakan berulang
+$produk_eceran_list = [];
+if ($result_produk_eceran && $result_produk_eceran->num_rows > 0) {
+    while ($produk = $result_produk_eceran->fetch_assoc()) {
+        $produk_eceran_list[] = $produk;
+    }
+}
+
 // Fungsi helper untuk mendapatkan path upload
-// Di usaha/pages/produk.php - PASTIKAN path sama
 function getUploadPath()
 {
     $upload_dir = realpath($_SERVER['DOCUMENT_ROOT'] . '/kdmpgs2/uploads/produk/');
@@ -33,12 +38,15 @@ function getUploadPath()
     return $upload_dir;
 }
 
+// Fungsi untuk get image URL
 function getProductImageUrl($filename)
 {
     if (empty($filename))
         return '/kdmpgs2/assets/img/no-image.jpg';
     return '/kdmpgs2/uploads/produk/' . $filename;
 }
+
+// Menangani aksi hapus
 // Menangani aksi hapus
 if (isset($_GET['hapus'])) {
     $id = intval($_GET['hapus']);
@@ -47,6 +55,11 @@ if (isset($_GET['hapus'])) {
     $upload_dir = getUploadPath();
     if ($row && $row['gambar'] && file_exists($upload_dir . '/' . $row['gambar'])) {
         unlink($upload_dir . '/' . $row['gambar']);
+    }
+
+    // LOG ACTIVITY: Hapus produk
+    if ($row) {
+        logProdukActivity('hapus', $id, $row['nama_produk']);
     }
 
     mysqli_query($conn, "DELETE FROM produk WHERE id_produk=$id");
@@ -65,34 +78,70 @@ if (isset($_POST['bulk_action']) && isset($_POST['selected_products'])) {
     }
 
     $successCount = 0;
+    $product_names = [];
+
     if ($action == 'delete') {
         foreach ($selected as $id) {
             $id = intval($id);
-            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT gambar FROM produk WHERE id_produk=$id"));
+            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT gambar, nama_produk FROM produk WHERE id_produk=$id"));
             $upload_dir = getUploadPath();
             if ($row && $row['gambar'] && file_exists($upload_dir . '/' . $row['gambar'])) {
                 unlink($upload_dir . '/' . $row['gambar']);
             }
             if (mysqli_query($conn, "DELETE FROM produk WHERE id_produk=$id")) {
                 $successCount++;
+                $product_names[] = $row['nama_produk'] ?? 'Unknown';
             }
         }
+
+        // LOG ACTIVITY: Bulk delete
+        if ($successCount > 0) {
+            $product_list = implode(', ', array_slice($product_names, 0, 5)); // Limit to 5 names
+            if (count($product_names) > 5)
+                $product_list .= '...';
+            logProdukActivity('bulk_delete', 0, 'Multiple Products', "$successCount produk: $product_list");
+        }
+
         $_SESSION['success'] = "$successCount produk berhasil dihapus.";
+
     } elseif ($action == 'activate') {
         foreach ($selected as $id) {
             $id = intval($id);
+            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT nama_produk FROM produk WHERE id_produk=$id"));
             if (mysqli_query($conn, "UPDATE produk SET status='aktif' WHERE id_produk=$id")) {
                 $successCount++;
+                $product_names[] = $row['nama_produk'] ?? 'Unknown';
             }
         }
+
+        // LOG ACTIVITY: Bulk activate
+        if ($successCount > 0) {
+            $product_list = implode(', ', array_slice($product_names, 0, 5));
+            if (count($product_names) > 5)
+                $product_list .= '...';
+            logProdukActivity('bulk_activate', 0, 'Multiple Products', "$successCount produk: $product_list");
+        }
+
         $_SESSION['success'] = "$successCount produk diaktifkan.";
+
     } elseif ($action == 'deactivate') {
         foreach ($selected as $id) {
             $id = intval($id);
+            $row = mysqli_fetch_assoc(mysqli_query($conn, "SELECT nama_produk FROM produk WHERE id_produk=$id"));
             if (mysqli_query($conn, "UPDATE produk SET status='non-aktif' WHERE id_produk=$id")) {
                 $successCount++;
+                $product_names[] = $row['nama_produk'] ?? 'Unknown';
             }
         }
+
+        // LOG ACTIVITY: Bulk deactivate
+        if ($successCount > 0) {
+            $product_list = implode(', ', array_slice($product_names, 0, 5));
+            if (count($product_names) > 5)
+                $product_list .= '...';
+            logProdukActivity('bulk_deactivate', 0, 'Multiple Products', "$successCount produk: $product_list");
+        }
+
         $_SESSION['success'] = "$successCount produk dinonaktifkan.";
     }
 
@@ -100,21 +149,19 @@ if (isset($_POST['bulk_action']) && isset($_POST['selected_products'])) {
     exit();
 }
 
-// Handle Buat Paket - VERSION CORRECTED
+// Handle Buat Paket
 if (isset($_POST['buat_paket'])) {
     $nama = $conn->real_escape_string($_POST['nama_produk']);
     $kategori = $conn->real_escape_string($_POST['kategori']);
-    $satuan = $conn->real_escape_string($_POST['satuan']); // "Paket"
+    $satuan = $conn->real_escape_string($_POST['satuan']);
     $harga = intval($_POST['harga']);
     $merk = $conn->real_escape_string($_POST['merk']);
     $keterangan = $conn->real_escape_string($_POST['keterangan']);
     $gambar = '';
     $status = $conn->real_escape_string($_POST['status']);
     $is_paket = 1;
-
-    // **PAKET TIDAK PUNYA STOK SENDIRI!**
-    $jumlah = 0; // Karena stok bergantung pada komponennya
-    $id_inventory = "NULL"; // PAKET TIDAK PUNYA INVENTORY!
+    $jumlah = 0;
+    $id_inventory = "NULL";
 
     // Upload gambar
     if (isset($_FILES['gambar']['name']) && $_FILES['gambar']['name'] != '') {
@@ -128,16 +175,17 @@ if (isset($_POST['buat_paket'])) {
         }
     }
 
-    // **HANYA INSERT KE PRODUK SAJA (TANPA INVENTORY)**
+    // Insert produk paket
     $query = "INSERT INTO produk 
-             (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan, gambar, status, is_paket, id_inventory) 
+             (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan_paket, gambar, status, is_paket, id_inventory) 
              VALUES 
              ('$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', $id_inventory)";
 
     if ($conn->query($query)) {
         $id_produk_baru = $conn->insert_id;
-
-        // **SIMPAN KOMPOSISI KE produk_paket_items**
+        logProdukActivity('tambah_paket', $id_produk_baru, $nama);
+        // Simpan komposisi produk paket
+        // Simpan komposisi produk paket
         if (isset($_POST['komposisi_produk'])) {
             $komposisi = $_POST['komposisi_produk'];
             $quantities = $_POST['komposisi_quantity'];
@@ -146,15 +194,20 @@ if (isset($_POST['buat_paket'])) {
                 if (!empty($id_produk_komposisi) && !empty($quantities[$index])) {
                     $quantity = floatval($quantities[$index]);
 
-                    // **Langsung simpan relasi ke produk komponen**
-                    $conn->query("INSERT INTO produk_paket_items 
-                                 (id_produk_paket, id_produk_komposisi, quantity_komponen) 
-                                 VALUES 
-                                 ($id_produk_baru, $id_produk_komposisi, $quantity)");
+                    // Dapatkan id_inventory dari produk komponen
+                    $result = $conn->query("SELECT id_inventory FROM produk WHERE id_produk = $id_produk_komposisi");
+                    if ($result->num_rows > 0) {
+                        $row = $result->fetch_assoc();
+                        $id_inventory_komponen = $row['id_inventory'];
+
+                        $conn->query("INSERT INTO produk_paket_items 
+                             (id_produk_paket, id_produk_komposisi, id_inventory_komponen, quantity_komponen) 
+                             VALUES 
+                             ($id_produk_baru, $id_produk_komposisi, $id_inventory_komponen, $quantity)");
+                    }
                 }
             }
         }
-
         $_SESSION['success'] = "Produk paket berhasil dibuat";
     } else {
         $_SESSION['error'] = "Error: " . $conn->error;
@@ -174,11 +227,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
     $keterangan = $conn->real_escape_string($_POST['keterangan']);
     $gambar = '';
     $status = $conn->real_escape_string($_POST['status']);
-    
-    // Untuk produk eceran
+
     $id_inventory = isset($_POST['id_inventory']) ? intval($_POST['id_inventory']) : 0;
     $jumlah = isset($_POST['jumlah']) ? floatval($_POST['jumlah']) : 0;
-    $is_paket = 0; // Selalu eceran
+    $is_paket = 0;
 
     // VALIDASI
     if ($id_inventory == 0) {
@@ -191,7 +243,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
         header("Location: dashboard.php?page=produk");
         exit();
     }
-    
+
     // Validasi kapasitas inventory
     $inventory_check = $conn->query("SELECT jumlah_tersedia FROM inventory_ready WHERE id_inventory = $id_inventory");
     if ($inventory_check && $inventory_check->num_rows > 0) {
@@ -239,12 +291,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
                  status='$status', is_paket='$is_paket', id_inventory='$id_inventory'
                  $gambar_sql 
                  WHERE id_produk=$id";
+        logProdukActivity('edit_eceran', $produk_id, $nama);
     } else {
         // TAMBAH PRODUK BARU
         $query = "INSERT INTO produk 
                  (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan, gambar, status, is_paket, id_inventory) 
                  VALUES 
                  ('$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', '$id_inventory')";
+        logProdukActivity('tambah_eceran', $produk_id, $nama);
+        $_SESSION['success'] = "Produk berhasil ditambahkan";
     }
 
     if ($conn->query($query)) {
@@ -257,7 +312,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
     exit();
 }
 
-// Handle Edit Paket - TAMBAHKAN INI
+// Handle Edit Paket
 if (isset($_POST['edit_paket'])) {
     $id_produk = intval($_POST['id_produk']);
     $nama = $conn->real_escape_string($_POST['nama_produk']);
@@ -268,6 +323,7 @@ if (isset($_POST['edit_paket'])) {
     $keterangan = $conn->real_escape_string($_POST['keterangan']);
     $status = $conn->real_escape_string($_POST['status']);
     $gambar = '';
+    $gambar_sql = '';
 
     // Upload gambar jika ada
     if (isset($_FILES['gambar']['name']) && $_FILES['gambar']['name'] != '') {
@@ -275,13 +331,8 @@ if (isset($_POST['edit_paket'])) {
         $gambar = uniqid('img_') . '.' . strtolower($ext);
         $upload_dir = getUploadPath();
         $upload_path = $upload_dir . '/' . $gambar;
-        if (!move_uploaded_file($_FILES['gambar']['tmp_name'], $upload_path)) {
-            $_SESSION['error'] = "Gagal mengupload gambar!";
-            $gambar = '';
-        }
-        
-        // Hapus gambar lama jika upload baru berhasil
-        if ($gambar) {
+        if (move_uploaded_file($_FILES['gambar']['tmp_name'], $upload_path)) {
+            // Hapus gambar lama jika upload baru berhasil
             $old = mysqli_fetch_assoc(mysqli_query($conn, "SELECT gambar FROM produk WHERE id_produk=$id_produk"));
             if ($old && $old['gambar'] && file_exists($upload_dir . '/' . $old['gambar'])) {
                 unlink($upload_dir . '/' . $old['gambar']);
@@ -291,17 +342,16 @@ if (isset($_POST['edit_paket'])) {
     }
 
     // Update data produk paket
-    $gambar_sql = $gambar ? ", gambar='$gambar'" : '';
     $query = "UPDATE produk SET 
              nama_produk='$nama', kategori='$kategori', satuan='$satuan', 
-             harga=$harga, merk='$merk', keterangan='$keterangan', 
+             harga=$harga, merk='$merk', keterangan_paket='$keterangan', 
              status='$status' $gambar_sql 
              WHERE id_produk=$id_produk AND is_paket=1";
 
     if ($conn->query($query)) {
         // Hapus komposisi lama dan simpan yang baru
         $conn->query("DELETE FROM produk_paket_items WHERE id_produk_paket = $id_produk");
-        
+        logProdukActivity('edit_paket', $id_produk, $nama);
         // Simpan komposisi baru
         if (isset($_POST['komposisi_produk'])) {
             $komposisi = $_POST['komposisi_produk'];
@@ -310,14 +360,21 @@ if (isset($_POST['edit_paket'])) {
             foreach ($komposisi as $index => $id_produk_komposisi) {
                 if (!empty($id_produk_komposisi) && !empty($quantities[$index])) {
                     $quantity = floatval($quantities[$index]);
-                    $conn->query("INSERT INTO produk_paket_items 
-                                 (id_produk_paket, id_produk_komposisi, quantity_komponen) 
-                                 VALUES 
-                                 ($id_produk, $id_produk_komposisi, $quantity)");
+
+                    // Dapatkan id_inventory dari produk komponen
+                    $result = $conn->query("SELECT id_inventory FROM produk WHERE id_produk = $id_produk_komposisi");
+                    if ($result->num_rows > 0) {
+                        $row = $result->fetch_assoc();
+                        $id_inventory_komponen = $row['id_inventory'];
+
+                        $conn->query("INSERT INTO produk_paket_items 
+                             (id_produk_paket, id_produk_komposisi, id_inventory_komponen, quantity_komponen) 
+                             VALUES 
+                             ($id_produk, $id_produk_komposisi, $id_inventory_komponen, $quantity)");
+                    }
                 }
             }
         }
-
         $_SESSION['success'] = "Produk paket berhasil diupdate";
     } else {
         $_SESSION['error'] = "Error: " . $conn->error;
@@ -329,11 +386,38 @@ if (isset($_POST['edit_paket'])) {
 
 // Ambil produk jika edit
 $edit = null;
+$komposisi_paket = [];
 if (isset($_GET['edit'])) {
     $id = (int) $_GET['edit'];
     if ($id > 0) {
         $res = mysqli_query($conn, "SELECT * FROM produk WHERE id_produk=$id");
         $edit = mysqli_fetch_assoc($res) ?: null;
+
+        // PERBAIKAN: Jika edit produk paket, ambil data komposisi dari tabel produk_paket_items
+        if ($edit && $edit['is_paket'] == 1) {
+            $komposisi_result = $conn->query("
+                SELECT ppi.*, p.nama_produk, p.satuan, p.jumlah 
+                FROM produk_paket_items ppi 
+                JOIN produk p ON ppi.id_produk_komposisi = p.id_produk 
+                WHERE ppi.id_produk_paket = $id
+            ");
+
+            // DEBUG: Cek hasil query
+            if (!$komposisi_result) {
+                echo "<!-- Debug: Query error: " . $conn->error . " -->";
+            } else {
+                echo "<!-- Debug: Jumlah komposisi ditemukan: " . $komposisi_result->num_rows . " -->";
+            }
+
+            if ($komposisi_result && $komposisi_result->num_rows > 0) {
+                while ($komposisi = $komposisi_result->fetch_assoc()) {
+                    $komposisi_paket[] = $komposisi;
+                    echo "<!-- Debug: Komposisi - id: {$komposisi['id_produk_komposisi']}, qty: {$komposisi['quantity_komponen']} -->";
+                }
+            } else {
+                echo "<!-- Debug: Tidak ada komposisi ditemukan untuk produk paket id: $id -->";
+            }
+        }
     }
 }
 
@@ -353,6 +437,7 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
 
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Manajemen Produk</title>
@@ -361,6 +446,7 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
     <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
     <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 </head>
+
 <body>
     <div class="container-fluid py-4">
         <!-- Notifikasi -->
@@ -380,7 +466,7 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
             <?php unset($_SESSION['error']); ?>
         <?php endif; ?>
 
-        <h2 class="mb-4">👩🏻‍🌾👨🏻‍🌾 Manajemen Produk</h2>
+        <h3 class="mb-4">👩🏻‍🌾👨🏻‍🌾 Manajemen Produk</h3>
 
         <!-- Quick Stats Dashboard -->
         <div class="row mb-4">
@@ -448,44 +534,43 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
 
         <!-- Modal Crop -->
         <div class="modal fade" id="modalCrop" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">
-                    <i class="fas fa-crop me-2"></i>Crop Gambar Produk
-                </h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            
-            <div class="modal-body text-center">
-                <!-- Gambar dengan container yang rapi -->
-                <div class="crop-preview-container mb-3">
-                    <img id="imagePreview" class="img-fluid" style="max-height: 400px;">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">
+                            <i class="fas fa-crop me-2"></i>Crop Gambar Produk
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+
+                    <div class="modal-body text-center">
+                        <div class="crop-preview-container mb-3">
+                            <img id="imagePreview" class="img-fluid" style="max-height: 400px;">
+                        </div>
+
+                        <div class="alert alert-info py-2">
+                            <small>
+                                <i class="fas fa-mouse-pointer me-1"></i>
+                                Drag untuk memilih area. Geser tepian untuk menyesuaikan.
+                            </small>
+                        </div>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                            <i class="fas fa-arrow-left me-1"></i>Batal
+                        </button>
+                        <button type="button" class="btn btn-success" id="cropButton">
+                            <i class="fas fa-check me-1"></i>Simpan Crop
+                        </button>
+                    </div>
                 </div>
-                
-                <!-- Instruksi -->
-                <div class="alert alert-info py-2">
-                    <small>
-                        <i class="fas fa-mouse-pointer me-1"></i>
-                        Drag untuk memilih area. Geser tepian untuk menyesuaikan.
-                    </small>
-                </div>
-            </div>
-            
-            <div class="modal-footer">
-                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
-                    <i class="fas fa-arrow-left me-1"></i>Batal
-                </button>
-                <button type="button" class="btn btn-success" id="cropButton">
-                    <i class="fas fa-check me-1"></i>Simpan Crop
-                </button>
             </div>
         </div>
-    </div>
-</div>
 
         <!-- Form Tambah Produk Eceran -->
-        <div class="card mb-4" id="formEceran" style="display: <?= ($edit && $edit['is_paket'] == 0) ? 'block' : 'none' ?>;">
+        <div class="card mb-4" id="formEceran"
+            style="display: <?= ($edit && $edit['is_paket'] == 0) ? 'block' : 'none' ?>;">
             <div class="card-header">Form <?= $edit ? 'Edit' : 'Tambah' ?> Produk Eceran</div>
             <div class="card-body">
                 <form method="post" enctype="multipart/form-data">
@@ -528,7 +613,8 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                         </div>
                         <div class="col-md-2">
                             <label>Merk</label>
-                            <input type="text" name="merk" value="<?= $edit['merk'] ?? '' ?>" class="form-control" placeholder="Merk Produk">
+                            <input type="text" name="merk" value="<?= $edit['merk'] ?? '' ?>" class="form-control"
+                                placeholder="Merk Produk">
                         </div>
                         <div class="col-md-10">
                             <label>Inventory <span class="text-danger">*</span></label>
@@ -551,9 +637,8 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                         </div>
                         <div class="col-md-2">
                             <label>Jumlah Konversi <span class="text-danger">*</span></label>
-                            <input type="number" name="jumlah" value="<?= $edit['jumlah'] ?? '' ?>" 
-                                class="form-control" placeholder="Jumlah" step="0.001" min="0.001" required
-                                onchange="validateJumlah()">
+                            <input type="number" name="jumlah" value="<?= $edit['jumlah'] ?? '' ?>" class="form-control"
+                                placeholder="Jumlah" step="0.001" min="0.001" required onchange="validateJumlah()">
                             <small class="text-muted">Berapa banyak inventory yang digunakan per produk</small>
                         </div>
                         <div class="col-md-6">
@@ -563,10 +648,12 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                         </div>
                         <div class="col-md-4">
                             <label>Gambar</label>
-                            <input type="file" name="gambar" accept="image/*" class="form-control" id="gambarInputEceran">
+                            <input type="file" name="gambar" accept="image/*" class="form-control"
+                                id="gambarInputEceran">
                             <?php if ($edit && !empty($edit['gambar'])): ?>
                                 <div class="mt-2">
-                                    <img src="<?= getProductImageUrl($edit['gambar']) ?>" style="height:60px" class="img-thumbnail">
+                                    <img src="<?= getProductImageUrl($edit['gambar']) ?>" style="height:60px"
+                                        class="img-thumbnail">
                                     <br>
                                     <small class="text-muted">Gambar saat ini</small>
                                 </div>
@@ -586,7 +673,8 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                             <?php if ($edit): ?>
                                 <a href="?page=produk" class="btn btn-secondary ms-2">Batal</a>
                             <?php else: ?>
-                                <button type="button" class="btn btn-secondary ms-2" onclick="toggleForm('none')">Batal</button>
+                                <button type="button" class="btn btn-secondary ms-2"
+                                    onclick="toggleForm('none')">Batal</button>
                             <?php endif; ?>
                         </div>
                     </div>
@@ -594,8 +682,9 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
             </div>
         </div>
 
-        <!-- Form Buat Produk Paket -->
-        <div class="card mb-4" id="formPaket" style="display: <?= ($edit && $edit['is_paket'] == 1) ? 'block' : 'none' ?>;">
+        <!-- Form Buat/Edit Produk Paket -->
+        <div class="card mb-4" id="formPaket"
+            style="display: <?= ($edit && $edit['is_paket'] == 1) ? 'block' : 'none' ?>;">
             <div class="card-header"><?= $edit ? 'Edit' : 'Buat' ?> Produk Paket</div>
             <div class="card-body">
                 <form method="post" enctype="multipart/form-data">
@@ -603,11 +692,11 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                     <?php if ($edit): ?>
                         <input type="hidden" name="id_produk" value="<?= $edit['id_produk'] ?>">
                     <?php endif; ?>
-                    
+
                     <div class="row g-3">
                         <div class="col-md-4">
                             <label>Nama Paket</label>
-                            <input type="text" name="nama_produk" value="<?= $edit['nama_produk'] ?? '' ?>" 
+                            <input type="text" name="nama_produk" value="<?= $edit['nama_produk'] ?? '' ?>"
                                 class="form-control" placeholder="Nama Paket" required>
                         </div>
                         <div class="col-md-2">
@@ -616,7 +705,8 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                                 <option value="">Kategori</option>
                                 <?php
                                 foreach (["Sembako", "LPG", "Pupuk", "Elektronik", "Perabotan"] as $k) {
-                                    echo "<option value='$k'>$k</option>";
+                                    $sel = isset($edit['kategori']) && $edit['kategori'] == $k ? 'selected' : '';
+                                    echo "<option value='$k' $sel>$k</option>";
                                 }
                                 ?>
                             </select>
@@ -627,34 +717,46 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                                 <option value="">Satuan</option>
                                 <?php
                                 foreach (["Paket", "Set", "Dus", "Box"] as $k) {
-                                    echo "<option value='$k'>$k</option>";
+                                    $sel = isset($edit['satuan']) && $edit['satuan'] == $k ? 'selected' : '';
+                                    echo "<option value='$k' $sel>$k</option>";
                                 }
                                 ?>
                             </select>
                         </div>
                         <div class="col-md-2">
                             <label>Harga Paket</label>
-                            <input type="number" name="harga" class="form-control" placeholder="Harga Paket" required min="0">
+                            <input type="number" name="harga" value="<?= $edit['harga'] ?? '' ?>" class="form-control"
+                                placeholder="Harga Paket" required min="0">
                         </div>
-
                         <div class="col-md-2">
                             <label>Merk</label>
-                            <input type="text" name="merk" class="form-control" placeholder="Merk Paket">
+                            <input type="text" name="merk" value="<?= $edit['merk'] ?? '' ?>" class="form-control"
+                                placeholder="Merk Paket">
                         </div>
                         <div class="col-md-6">
                             <label>Keterangan</label>
-                            <textarea name="keterangan" class="form-control" placeholder="Keterangan paket"></textarea>
+                            <textarea name="keterangan" class="form-control"
+                                placeholder="Keterangan paket"><?= $edit['keterangan_paket'] ?? '' ?></textarea>
                         </div>
                         <div class="col-md-4">
                             <label>Gambar Paket</label>
-                            <input type="file" name="gambar" accept="image/*" class="form-control" id="gambarInputPaket">
+                            <input type="file" name="gambar" accept="image/*" class="form-control"
+                                id="gambarInputPaket">
+                            <?php if ($edit && !empty($edit['gambar'])): ?>
+                                <div class="mt-2">
+                                    <img src="<?= getProductImageUrl($edit['gambar']) ?>" style="height:60px"
+                                        class="img-thumbnail">
+                                    <br>
+                                    <small class="text-muted">Gambar saat ini</small>
+                                </div>
+                            <?php endif; ?>
                         </div>
                         <div class="col-md-2">
                             <label>Status</label>
                             <select name="status" class="form-select" required>
                                 <option value="">Status</option>
-                                <option value="aktif">Aktif</option>
-                                <option value="non-aktif">Non-Aktif</option>
+                                <option value="aktif" <?= (isset($edit['status']) && $edit['status'] == 'aktif') ? 'selected' : '' ?>>Aktif</option>
+                                <option value="non-aktif" <?= (isset($edit['status']) && $edit['status'] == 'non-aktif') ? 'selected' : '' ?>>Non-Aktif</option>
                             </select>
                         </div>
 
@@ -664,14 +766,16 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                             <div id="komposisiContainer">
                                 <!-- Item komposisi akan ditambahkan di sini -->
                             </div>
-                            <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="tambahKomposisi()">
+                            <button type="button" class="btn btn-sm btn-outline-primary mt-2"
+                                onclick="tambahKomposisi()">
                                 <i class="fas fa-plus"></i> Tambah Item
                             </button>
                         </div>
 
                         <div class="col-12">
-                            <button type="submit" class="btn btn-warning">Buat Paket</button>
-                            <button type="button" class="btn btn-secondary ms-2" onclick="toggleForm('none')">Batal</button>
+                            <button type="submit" class="btn btn-warning"><?= $edit ? 'Update' : 'Buat' ?>
+                                Paket</button>
+                            <a href="?page=produk" class="btn btn-secondary ms-2">Batal</a>
                         </div>
                     </div>
                 </form>
@@ -757,70 +861,73 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
     </div>
 
     <script>
-        // Fungsi toggle form - MODIFIKASI
-window.toggleForm = function (type) {
-    document.getElementById('formEceran').style.display = 'none';
-    document.getElementById('formPaket').style.display = 'none';
-    
-    if (type === 'eceran') {
-        document.getElementById('formEceran').style.display = 'block';
-        <?php if (!$edit || ($edit && $edit['is_paket'] == 0)): ?>
-                        document.querySelector('#formEceran form').reset();
+        // Fungsi toggle form
+        window.toggleForm = function (type) {
+            document.getElementById('formEceran').style.display = 'none';
+            document.getElementById('formPaket').style.display = 'none';
+
+            if (type === 'eceran') {
+                document.getElementById('formEceran').style.display = 'block';
+                <?php if (!$edit || ($edit && $edit['is_paket'] == 0)): ?>
+                    document.querySelector('#formEceran form').reset();
+                <?php endif; ?>
+            } else if (type === 'paket') {
+                document.getElementById('formPaket').style.display = 'block';
+                <?php if (!$edit || ($edit && $edit['is_paket'] == 1)): ?>
+                    document.querySelector('#formPaket form').reset();
+                    // Reset komposisi hanya jika buat baru
+                    <?php if (!$edit): ?>
+                        document.getElementById('komposisiContainer').innerHTML = '';
+                        tambahKomposisi();
                     <?php endif; ?>
-                } else if (type === 'paket') {
-                    document.getElementById('formPaket').style.display = 'block';
-                    <?php if (!$edit || ($edit && $edit['is_paket'] == 1)): ?>
-                        document.querySelector('#formPaket form').reset();
-                        // Reset komposisi hanya jika buat baru
-                        <?php if (!$edit): ?>
-                            document.getElementById('komposisiContainer').innerHTML = '';
-                            tambahKomposisi();
-                        <?php endif; ?>
-                    <?php endif; ?>
-                }
-            };
+                <?php endif; ?>
+            }
+        };
 
-            // Auto load komposisi saat edit paket - TAMBAHKAN
-            <?php if ($edit && $edit['is_paket'] == 1): ?>
-                // Load komposisi existing saat edit paket
-                document.addEventListener('DOMContentLoaded', function () {
-                    <?php
-                    $komposisi_result = $conn->query("
-        SELECT ppi.*, p.nama_produk 
-        FROM produk_paket_items ppi 
-        JOIN produk p ON ppi.id_produk_komposisi = p.id_produk 
-        WHERE ppi.id_produk_paket = {$edit['id_produk']}
-    ");
+        // Load komposisi saat edit paket
+        // Load komposisi saat edit paket - PERBAIKAN
+        <?php if ($edit && $edit['is_paket'] == 1): ?>
+            document.addEventListener('DOMContentLoaded', function () {
+                console.log('Loading komposisi untuk produk paket id: <?= $edit['id_produk'] ?>');
+                console.log('Jumlah komposisi: <?= count($komposisi_paket) ?>');
 
-                    if ($komposisi_result && $komposisi_result->num_rows > 0) {
-                        while ($komposisi = $komposisi_result->fetch_assoc()) {
-                            echo "tambahKomposisiEdit({$komposisi['id_produk_komposisi']}, {$komposisi['quantity_komponen']});";
-                        }
-                    } else {
-                        echo "tambahKomposisi();";
-                    }
-                    ?>
-                });
-            <?php endif; ?>
+                <?php if (!empty($komposisi_paket)): ?>
+                    <?php foreach ($komposisi_paket as $index => $komposisi): ?>
+                        console.log('Komposisi <?= $index ?>: id=<?= $komposisi['id_produk_komposisi'] ?>, qty=<?= $komposisi['quantity_komponen'] ?>');
+                        tambahKomposisiEdit(<?= $komposisi['id_produk_komposisi'] ?>, <?= $komposisi['quantity_komponen'] ?>);
+                    <?php endforeach; ?>
+                <?php else: ?>
+                    console.log('Tidak ada komposisi, menambahkan item kosong');
+                    tambahKomposisi();
+                <?php endif; ?>
+            });
+        <?php endif; ?>
 
-            // Fungsi tambah komposisi dengan nilai edit - TAMBAHKAN
-            window.tambahKomposisiEdit = function (id_produk, quantity) {
-                const container = document.getElementById('komposisiContainer');
-                const index = container.children.length;
+        // Fungsi tambah komposisi dengan nilai edit - PERBAIKAN
+        // Fungsi tambah komposisi dengan nilai edit - PERBAIKAN
+        window.tambahKomposisiEdit = function (id_produk_komposisi, quantity) {
+            const container = document.getElementById('komposisiContainer');
 
-                const html = `
+            const html = `
         <div class="row mb-2 komposisi-item">
             <div class="col-md-6">
                 <select name="komposisi_produk[]" class="form-select" required>
                     <option value="">Pilih Produk Eceran</option>
                     <?php
-                    if ($result_produk_eceran && $result_produk_eceran->num_rows > 0) {
-                        $result_produk_eceran->data_seek(0);
-                        while ($produk = $result_produk_eceran->fetch_assoc()) {
-                            echo "<option value='{$produk['id_produk']}'>
-                                    {$produk['nama_produk']} - {$produk['jumlah']} {$produk['satuan']}
+                    if (!empty($produk_eceran_list)) {
+                        foreach ($produk_eceran_list as $produk) {
+                            $selected = ''; // Akan di-set via JavaScript
+                            $nama_produk = htmlspecialchars($produk['nama_produk']);
+                            $jumlah = htmlspecialchars($produk['jumlah']);
+                            $satuan = htmlspecialchars($produk['satuan']);
+                            $id_produk = htmlspecialchars($produk['id_produk']);
+
+                            echo "<option value='{$id_produk}'>
+                                    {$nama_produk} - {$jumlah} {$satuan}
                                 </option>";
                         }
+                    } else {
+                        echo "<option value=''>Tidak ada produk eceran tersedia</option>";
                     }
                     ?>
                 </select>
@@ -836,25 +943,28 @@ window.toggleForm = function (type) {
             </div>
         </div>`;
 
-                container.insertAdjacentHTML('beforeend', html);
+            container.insertAdjacentHTML('beforeend', html);
 
-                // Set selected value setelah element dibuat
-                setTimeout(() => {
-                    const select = container.lastElementChild.querySelector('select');
-                    if (select) select.value = id_produk;
-                }, 100);
-            };
+            // Set selected value setelah element dibuat - PERBAIKAN
+            setTimeout(() => {
+                const select = container.lastElementChild.querySelector('select');
+                if (select) {
+                    select.value = id_produk_komposisi;
+                    console.log('Set select value to:', id_produk_komposisi, 'Success:', select.value == id_produk_komposisi);
+                }
+            }, 100);
+        };
 
         // Validasi jumlah konversi
         window.validateJumlah = function () {
             const jumlahInput = document.querySelector('#formEceran [name="jumlah"]');
             const inventorySelect = document.querySelector('#formEceran [name="id_inventory"]');
             const selectedOption = inventorySelect.options[inventorySelect.selectedIndex];
-            
+
             if (selectedOption && selectedOption.value) {
                 const maxStok = parseFloat(selectedOption.getAttribute('data-stok'));
                 const jumlah = parseFloat(jumlahInput.value);
-                
+
                 if (jumlah > maxStok) {
                     alert('Jumlah konversi melebihi stok inventory yang tersedia!');
                     jumlahInput.value = maxStok;
@@ -881,38 +991,40 @@ window.toggleForm = function (type) {
             }
         });
 
-        // FUNGSI TAMBAH ITEM KOMPOSISI UNTUK PAKET
+        // FUNGSI TAMBAH ITEM KOMPOSISI UNTUK PAKET - PERBAIKAN
         window.tambahKomposisi = function () {
             const container = document.getElementById('komposisiContainer');
             const index = container.children.length;
 
             const html = `
-                <div class="row mb-2 komposisi-item">
-                    <div class="col-md-6">
-                        <select name="komposisi_produk[]" class="form-select" required>
-                            <option value="">Pilih Produk Eceran</option>
-                            <?php
-                            if ($result_produk_eceran && $result_produk_eceran->num_rows > 0) {
-                                $result_produk_eceran->data_seek(0);
-                                while ($produk = $result_produk_eceran->fetch_assoc()) {
-                                    echo "<option value='{$produk['id_produk']}'>
-                                            {$produk['nama_produk']} - {$produk['jumlah']} {$produk['satuan']}
-                                        </option>";
-                                }
-                            }
-                            ?>
-                        </select>
-                    </div>
-                    <div class="col-md-4">
-                        <input type="number" name="komposisi_quantity[]" class="form-control" 
-                               placeholder="Quantity" step="1" min="1" required>
-                    </div>
-                    <div class="col-md-2">
-                        <button type="button" class="btn btn-danger btn-sm" onclick="hapusKomposisi(this)">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                </div>`;
+        <div class="row mb-2 komposisi-item">
+            <div class="col-md-6">
+                <select name="komposisi_produk[]" class="form-select" required>
+                    <option value="">Pilih Produk Eceran</option>
+                    <?php
+                    // PERBAIKAN: Gunakan array yang sudah disimpan
+                    if (!empty($produk_eceran_list)) {
+                        foreach ($produk_eceran_list as $produk) {
+                            echo "<option value='{$produk['id_produk']}'>
+                                    {$produk['nama_produk']} - {$produk['jumlah']} {$produk['satuan']}
+                                </option>";
+                        }
+                    } else {
+                        echo "<option value=''>Tidak ada produk eceran tersedia</option>";
+                    }
+                    ?>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <input type="number" name="komposisi_quantity[]" class="form-control" 
+                       placeholder="Quantity" step="1" min="1" required>
+            </div>
+            <div class="col-md-2">
+                <button type="button" class="btn btn-danger btn-sm" onclick="hapusKomposisi(this)">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>`;
 
             container.insertAdjacentHTML('beforeend', html);
         };
@@ -1044,8 +1156,9 @@ window.toggleForm = function (type) {
 
         // Auto close form ketika edit
         <?php if ($edit): ?>
-        toggleForm('<?= $edit['is_paket'] == 0 ? "eceran" : "paket" ?>');
+            toggleForm('<?= $edit['is_paket'] == 0 ? "eceran" : "paket" ?>');
         <?php endif; ?>
     </script>
 </body>
+
 </html>

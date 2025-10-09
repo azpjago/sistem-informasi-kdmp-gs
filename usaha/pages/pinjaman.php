@@ -1,19 +1,6 @@
 <?php
-session_start();
-// Cek role usaha
-if ($_SESSION['role'] !== 'usaha') {
-    header('Location: ../index.php');
-    exit;
-}
-
 // Include file history log
 require_once 'functions/history_log.php';
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
 // PROSES TAMBAH PENGAJUAN PINJAMAN
 if ($_POST['action'] ?? '' === 'ajukan_pinjaman') {
     $id_anggota = intval($_POST['id_anggota'] ?? 0);
@@ -161,7 +148,7 @@ function hitungSaldoSumberDana($sumber_dana)
                 AND metode = 'transfer' 
                 AND bank_tujuan = '$sumber_dana'
                 AND jenis_simpanan = 'Simpanan Sukarela')
-                +
+            +
             (SELECT COALESCE(SUM(pd.subtotal), 0) FROM pemesanan_detail pd 
              INNER JOIN pemesanan p ON pd.id_pemesanan = p.id_pemesanan
              WHERE p.status = 'Terkirim' AND p.metode = 'transfer'
@@ -284,7 +271,7 @@ $pinjaman_result = $conn->query("
         <!-- Header -->
         <div class="row mb-4">
             <div class="col">
-                <h2>💸 Pengajuan Pinjaman Anggota</h2>
+                <h3 class="mb-4">💸 Pengajuan Pinjaman Anggota</h3>
                 <p class="text-muted">Ajukan pinjaman untuk anggota koperasi</p>
             </div>
         </div>
@@ -585,7 +572,7 @@ $pinjaman_result = $conn->query("
                 .then(anggota => {
                     const results = document.getElementById('searchResults');
                     if (anggota.length === 0) {
-                        results.innerHTML = '<div class="alert alert-warning py-2 m-2">Tidak ada anggota ditemukan</div>';
+                        results.innerHTML = '<div class="alert alert-warning py-2 m-2">Tidak ada anggota ditemukan/Anggota sudah Non-Aktif</div>';
                         results.style.display = 'block';
                         return;
                     }

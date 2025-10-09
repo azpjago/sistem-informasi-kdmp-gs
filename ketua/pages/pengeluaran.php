@@ -168,7 +168,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>💸 Manajemen Pengeluaran</h2>
+        <h3 class="mb-4">💸 Manajemen Pengeluaran</h3>
 
         <?php if (in_array($user_role, ['bendahara'])): ?>
             <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPengeluaran">
@@ -255,7 +255,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-center">
-                                    <div class="btn-group btn-group-sm" role="group">
+                                    <div class="btn-group" role="group">
                                         <?php if ($can_edit): ?>
                                             <button class="btn btn-warning edit-pengeluaran" data-id="<?= $pengeluaran['id'] ?>"
                                                 title="Edit">
@@ -266,11 +266,11 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
                                                 <i class="fas fa-trash"></i>
                                             </button>
                                         <?php elseif ($can_approve): ?>
-                                            <button type="button" class="btn btn-success approve-pengeluaran"
+                                            <button type="button" class="btn btn-sm btn-outline-success approve-pengeluaran"
                                                 data-id="<?= $pengeluaran['id'] ?>" title="Setujui">
                                                 <i class="fas fa-check"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-danger reject-pengeluaran"
+                                            </button> 
+                                            <button type="button" class="btn btn-sm btn-outline-danger reject-pengeluaran"
                                                 data-id="<?= $pengeluaran['id'] ?>" title="Tolak">
                                                 <i class="fas fa-times"></i>
                                             </button>

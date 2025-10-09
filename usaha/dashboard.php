@@ -1,7 +1,16 @@
 <!DOCTYPE html>
 <html>
 <?php
+session_start();
 date_default_timezone_set('Asia/Jakarta');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'usaha') {
+    header('Location: ../index.php');
+    exit;
+}
 ?>
 <head>
     <title>Dashboard Usaha</title>

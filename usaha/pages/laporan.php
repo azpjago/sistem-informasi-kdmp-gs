@@ -1,9 +1,4 @@
 <?php
-// Koneksi ke database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
 // Handle Export CSV - PASTIKAN INI DI AWAL SEBELUM OUTPUT APAPUN
 if (isset($_GET['export']) && $_GET['export'] == 'csv') {
     // Pastikan tidak ada output sebelumnya dengan buffer output
@@ -196,7 +191,7 @@ $total_summary = mysqli_fetch_assoc(mysqli_query($conn, "
 
 <body>
     <div class="container-fluid py-4">
-        <h4 class="mb-4">📊 Laporan Usaha</h4>
+        <h3 class="mb-4">📊 Laporan Usaha</h3>
         <!-- Filter Form -->
         <div class="card mb-4">
             <div class="card-header bg-primary text-white">

@@ -1,15 +1,4 @@
 <?php
-session_start();
-if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
-    header("Location: ../dashboard.php");
-    exit;
-}
-
-date_default_timezone_set("Asia/Jakarta");
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
 // Include history log functions
 require_once 'functions/history_log.php';
 

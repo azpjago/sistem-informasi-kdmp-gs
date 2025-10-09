@@ -1,6 +1,4 @@
 <?php
-// Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 // Ambil pengaturan jam kerja
 $query_jam_kerja = "SELECT * FROM pengaturan_jam_kerja ORDER BY id DESC LIMIT 1";
 $result_jam_kerja = mysqli_query($conn, $query_jam_kerja);
@@ -8,7 +6,7 @@ $jam_kerja = mysqli_fetch_assoc($result_jam_kerja);
 
 if (!$jam_kerja) {
     // Default jam kerja jika tidak ada setting
-    $jam_kerja = ['buka' => '07:00:00', 'tutup' => '15:00:00'];
+    $jam_kerja = ['buka' => '07:00:00', 'tutup' => '23:00:00'];
 }
 
 // Cek status sistem (buka/tutup)

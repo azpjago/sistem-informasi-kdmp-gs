@@ -1,10 +1,4 @@
 <?php
-// Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
 // Mengambil data unik untuk dropdown filter
 $rws = $conn->query("SELECT DISTINCT rw FROM anggota WHERE rw IS NOT NULL AND rw != '' ORDER BY rw ASC");
 $rts = $conn->query("SELECT DISTINCT rt FROM anggota WHERE rt IS NOT NULL AND rt != '' ORDER BY rt ASC");
@@ -39,7 +33,7 @@ $anggota = $stmt->get_result();
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3>📊 Monitoring Simpanan Anggota</h3>
+    <h3 class="mb-4">📊 Monitoring Simpanan Anggota</h3>
     <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalPendaftaran">
         <i class="fa fa-plus"></i> 🧒 Pendaftaran Anggota Baru
     </button>

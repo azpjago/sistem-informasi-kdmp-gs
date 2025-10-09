@@ -217,7 +217,7 @@ $pemesanan_result = $stmt->get_result();
         <!-- Header -->
         <div class="row mb-4">
             <div class="col">
-                <h2>Monitoring Pemesanan</h2>
+                <h3 class="mb-4">Monitoring Pemesanan</h3>
                 <p class="text-muted mb-0">Pantau dan kelola semua aktivitas pemesanan anggota</p>
             </div>
             <div class="col-auto d-flex align-items-center">
@@ -285,7 +285,7 @@ $pemesanan_result = $stmt->get_result();
             <div class="card-body text-center p-3">
                 <h4 class="fw-bold text-dark mb-1">
                     <?=
-                        $produk_terlaris['nama_produk']
+                        !empty($produk_terlaris['nama_produk'])
                         ? (strlen($produk_terlaris['nama_produk']) > 8
                             ? substr($produk_terlaris['nama_produk'], 0, 8) . '...'
                             : $produk_terlaris['nama_produk'])

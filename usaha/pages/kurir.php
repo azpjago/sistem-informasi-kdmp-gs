@@ -1,7 +1,4 @@
 <?php
-session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-
 // Include file history log
 require_once 'functions/history_log.php';
 

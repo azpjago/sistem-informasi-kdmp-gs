@@ -90,24 +90,17 @@ if (isset($_POST['buat_order'])) {
                         $total_harga = $qty * $harga;
 
                         // Validasi qty_kecil
-                        // ambil posted values
-                        $posted_qty_kecil = isset($qty_kecil[$i]) ? floatval($qty_kecil[$i]) : 0;
-                        $posted_isi = isset($_POST['isi'][$i]) ? floatval($_POST['isi'][$i]) : 1;
-                        $qty = isset($jumlah[$i]) ? floatval($jumlah[$i]) : 0;
+                        $qty_kecil_val = $conn->real_escape_string($qty_kecil[$i]);
+                        $satuan_kecil_val = $conn->real_escape_string($satuan_kecil[$i]);
 
-                        // fallback: hitung di server jika client tidak mengirim atau nilai invalid
-                        $qty_kecil_val = ($posted_qty_kecil > 0) ? $posted_qty_kecil : ($qty * max(1, $posted_isi));
-                        $satuan_kecil_val = $conn->real_escape_string($satuan_kecil[$i] ?? 'Pcs');
-
-                        // validasi
                         if (empty($qty_kecil_val) || $qty_kecil_val <= 0) {
                             throw new Exception("Qty kecil harus diisi dan lebih besar dari 0 untuk produk baris " . ($i + 1));
                         }
 
-                        // kemudian insert seperti biasa (sebaiknya pakai prepared statement untuk keamanan)
+                        // Query insert detail
                         $query_detail = "INSERT INTO purchase_order_items 
-            (id_po, id_supplier_produk, qty, satuan, qty_kecil, satuan_kecil, harga_satuan, total_harga) 
-            VALUES ('$id_po', '$id_produk', '$qty', '$satuan', '$qty_kecil_val', '$satuan_kecil_val', '$harga', '$total_harga')";
+                                    (id_po, id_supplier_produk, qty, satuan, qty_kecil, satuan_kecil, harga_satuan, total_harga) 
+                                    VALUES ('$id_po', '$id_produk', '$qty', '$satuan', '$qty_kecil_val', '$satuan_kecil_val', '$harga', '$total_harga')";
 
                         if ($conn->query($query_detail)) {
                             $total_po += $total_harga;
@@ -478,36 +471,7 @@ if (isset($_GET['ubah_status'])) {
                 }
             });
         }
-
-        // ensure existing rows have isi default
-        $('.produk-item').each(function() {
-            if ($(this).find('.isi').length === 0) {
-                // jika baris awal HTML tidak punya hidden isi[], tambahkan
-                $(this).append('<input type="hidden" name="isi[]" class="isi" value="1">');
-            } else if ($(this).find('.isi').val() === '') {
-                $(this).find('.isi').val('1');
-            }
-        });
-
-        // initial total calc
-        calculateTotal();
     });
-
-    // utility: update qty-kecil for a single row (qty * isi)
-    function updateQtyKecilForRow(row) {
-        const isi = parseFloat(row.find('.isi').val()) || 1;
-        const qty = parseFloat(row.find('.qty').val()) || 0;
-        const qtyKecil = qty * isi;
-        row.find('.qty-kecil').val(Number(qtyKecil.toFixed(3)));
-    }
-
-    // utility: update all rows qty-kecil
-    function updateAllQtyKecil() {
-        $('.produk-item').each(function() {
-            updateQtyKecilForRow($(this));
-        });
-    }
-
     // Load produk berdasarkan supplier - DIPERBAIKI
     $('#selectSupplier').change(function () {
         const idSupplier = $(this).val();
@@ -540,11 +504,6 @@ if (isset($_GET['ubah_status'])) {
                     $('.satuan-kecil').val('Pcs');
                     $('.total').val('');
 
-                    // ensure isi hidden exists and default
-                    $('.isi').each(function(){ if (!$(this).val()) $(this).val('1'); });
-
-                    // recalc qty-kecil for all rows after supplier change
-                    updateAllQtyKecil();
                     calculateTotal();
                 },
                 error: function (xhr, status, error) {
@@ -605,50 +564,45 @@ if (isset($_GET['ubah_status'])) {
         const baseSelect = $('.select-produk:first').html() || '<option value="">Pilih Produk</option>';
 
         return `
-        <div class="row produk-item mb-3 align-items-end">
-            <div class="col-md-2">
-                <label class="form-label">Produk <span class="text-danger">*</span></label>
-                <select class="form-select select-produk" name="produk[]" required>
-                    ${baseSelect}
-                </select>
-            </div>
-            <div class="col-md-1">
-                <label class="form-label">Qty <span class="text-danger">*</span></label>
-                <input type="number" class="form-control qty" name="jumlah[]" value="1" required min="1">
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Satuan Besar</label>
-                <input type="text" name="satuan[]" class="form-control satuan" readonly>
-            </div>
-
-            <!-- hidden isi (jumlah isi per satuan besar) -->
-            <input type="hidden" name="isi[]" class="isi" value="1">
-
-            <div class="col-md-1">
-                <label class="form-label">Qty Kecil <span class="text-danger">*</span></label>
-                <input type="number" class="form-control qty-kecil" name="qty_kecil[]" value="1" required min="0.001" step="0.001">
-            </div>
-            <div class="col-md-1">
-                <label class="form-label">Satuan Kecil <span class="text-danger">*</span></label>
-                <input type="text" class="form-control satuan-kecil" name="satuan_kecil[]" value="Pcs" required>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Harga Satuan</label>
-                <input type="number" class="form-control harga" name="harga_satuan[]" step="0.01" readonly>
-            </div>
-            <div class="col-md-2">
-                <label class="form-label">Total</label>
-                <input type="text" class="form-control total" readonly>
-            </div>
-            <div class="col-md-1">
-                <label class="form-label">Hapus</label>
-                <button type="button" class="btn btn-danger btn-sm mt-1 hapus-produk" disabled>
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        </div>`;
+            <div class="row produk-item mb-3 align-items-end">
+                <div class="col-md-2">
+                    <label class="form-label">Produk <span class="text-danger">*</span></label>
+                    <select class="form-select select-produk" name="produk[]" required>
+                        ${baseSelect}
+                    </select>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Qty <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control qty" name="jumlah[]" value="1" required min="1">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Satuan Besar</label>
+                    <input type="text" name="satuan[]" class="form-control satuan" readonly>
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Qty Kecil <span class="text-danger">*</span></label>
+                    <input type="number" class="form-control qty-kecil" name="qty_kecil[]" value="1" required min="0.001" step="0.001">
+                </div>
+                <div class="col-md-1">
+                    <label class="form-label">Satuan Kecil <span class="text-danger">*</span></label>
+                    <input type="text" class="form-control satuan-kecil" name="satuan_kecil[]" value="Pcs" required>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Harga Satuan</label>
+                    <input type="number" class="form-control harga" name="harga_satuan[]" step="0.01" readonly>
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label">Total</label>
+                    <input type="text" class="form-control total" readonly>
+                </div>
+                <div class="col-md-1">
+                                <label class="form-label">Hapus</label>
+                                <button type="button" class="btn btn-danger btn-sm mt-1 hapus-produk" disabled>
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            </div>
+            </div>`;
     }
-
 
     // Tambah baris produk
     $('#tambah-produk').click(function () {
@@ -656,12 +610,6 @@ if (isset($_GET['ubah_status'])) {
         $('#produk-container').append(newRow);
         updateHapusButtonState();
         console.log('Added new product row');
-
-        // ensure the newly added row has isi default and qty-kecil computed
-        const row = $('#produk-container .produk-item').last();
-        if (row.find('.isi').length === 0) row.append('<input type="hidden" name="isi[]" class="isi" value="1">');
-        row.find('.isi').val('1');
-        updateQtyKecilForRow(row);
     });
 
     // Hapus baris produk
@@ -674,7 +622,7 @@ if (isset($_GET['ubah_status'])) {
         updateHapusButtonState();
     });
 
-    // Update harga, satuan, dan isi ketika produk dipilih
+    // Update harga dan satuan ketika produk dipilih
     $(document).on('change', '.select-produk', function () {
         const idProduk = $(this).val();
         const row = $(this).closest('.produk-item');
@@ -683,61 +631,36 @@ if (isset($_GET['ubah_status'])) {
 
         if (idProduk) {
             const selectedOption = $(this).find('option:selected');
-            const harga = parseFloat(selectedOption.data('harga')) || 0;
+            const harga = selectedOption.data('harga') || 0;
             const satuan = selectedOption.data('satuan') || '';
-            const isi = parseFloat(selectedOption.data('isi')) || 1;
+
+            console.log('Harga:', harga, 'Satuan:', satuan);
 
             row.find('.satuan').val(satuan);
             row.find('.harga').val(harga);
-
-            // set hidden isi[]
-            if (row.find('.isi').length === 0) row.append('<input type="hidden" name="isi[]" class="isi" value="1">');
-            row.find('.isi').val(isi);
-
-            // recalc qty kecil from qty * isi
-            updateQtyKecilForRow(row);
 
             // Auto-suggest satuan kecil
             const satuanKecilMap = {
                 'ton': 'kg', 'dus': 'pcs', 'pack': 'pcs', 'kerat': 'botol',
                 'kg': 'gram', 'liter': 'ml', 'pcs': 'pcs', 'unit': 'unit',
-                'pack': 'pcs', 'kerat': 'botol', 'box': 'pcs', 'kwintal': 'kg'
+                'pack': 'pcs', 'kerat': 'botol', 'Box': 'pcs', 'Kwintal': 'Kg'
             };
+
             const suggestedSatuanKecil = satuanKecilMap[satuan.toLowerCase()] || 'pcs';
             row.find('.satuan-kecil').val(suggestedSatuanKecil);
 
-            // Trigger calculation of price total
+            // Trigger calculation
             row.find('.qty').trigger('input');
         } else {
             row.find('.satuan').val('');
             row.find('.harga').val('');
-            if (row.find('.isi').length === 0) row.append('<input type="hidden" name="isi[]" class="isi" value="1">');
-            row.find('.isi').val('1');
-            row.find('.qty-kecil').val('1');
             row.find('.total').val('');
         }
 
         calculateTotal();
     });
 
-    // Calculate row total and update qty-kecil when qty changes
-    $(document).on('input', '.qty', function () {
-        const row = $(this).closest('.produk-item');
-
-        // ambil isi (hidden)
-        const isi = parseFloat(row.find('.isi').val()) || 1;
-        const qty = parseFloat($(this).val()) || 0;
-        const qtyKecil = qty * isi;
-
-        // tulis ke field qty-kecil (3 desimal untuk aman)
-        row.find('.qty-kecil').val(Number(qtyKecil.toFixed(3)));
-
-        // calc price total
-        calculateRowTotal(row);
-        calculateTotal();
-    });
-
-    // Calculate total ketika qty atau harga berubah
+    // Calculate total ketika qty berubah
     $(document).on('input', '.qty, .harga', function () {
         const row = $(this).closest('.produk-item');
         calculateRowTotal(row);
@@ -789,9 +712,6 @@ if (isset($_GET['ubah_status'])) {
     // Validasi form sebelum submit
     $('#formOrder').on('submit', function (e) {
         console.log('Form submitted - validating...');
-
-        // ensure qty-kecil up-to-date before validation
-        updateAllQtyKecil();
 
         let valid = true;
         let errorMessage = "";

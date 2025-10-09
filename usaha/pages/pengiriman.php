@@ -1,7 +1,4 @@
 <?php
-session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-
 // Filter
 $filter_tanggal = $_GET['tanggal'] ?? date('Y-m-d');
 $filter_kurir = $_GET['kurir'] ?? '';

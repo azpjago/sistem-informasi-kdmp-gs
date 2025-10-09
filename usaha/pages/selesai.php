@@ -1,7 +1,4 @@
 <?php
-// File: pages/selesai.php
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-
 // Filter yang tersedia
 $filter_status = $_GET['status'] ?? 'all';
 $filter_tanggal = $_GET['tanggal'] ?? '';

@@ -1,9 +1,4 @@
 <?php
-// Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
 // Query SQL diubah untuk mengambil semua kolom yang relevan dan nama anggota
 $sql = "
     SELECT

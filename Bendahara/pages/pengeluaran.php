@@ -1,18 +1,11 @@
 <?php
-session_start();
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-error_log("SESSION DATA: " . print_r($_SESSION, true));
-
 // FUNGSI HITUNG SALDO REAL-TIME - DIPERBAIKI: SUDAH KURANGI PENGELUARAN APPROVED
+             
 function hitungSaldoKasTunai() {
     global $conn;
     $result = $conn->query("
         SELECT (
-            -- Simpanan Anggota (cash)
+            -- Setor Simpanan Anggota (cash)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'setor' AND metode = 'cash'
@@ -38,7 +31,7 @@ function hitungSaldoKasTunai() {
             (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
              WHERE status = 'Lunas' AND metode = 'cash')
             -
-            -- Tarik Sukarela (cash)
+            -- Tarik Sukarela/Wajib/Pokok (cash)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'tarik' AND metode = 'cash')
@@ -60,7 +53,7 @@ function hitungSaldoBank($nama_bank) {
     global $conn;
     $result = $conn->query("
         SELECT (
-            -- Simpanan Anggota (transfer ke bank tertentu)
+            -- Setor Simpanan Anggota (transfer ke bank tertentu)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'setor' AND metode = 'transfer' 
@@ -89,7 +82,7 @@ function hitungSaldoBank($nama_bank) {
             (SELECT COALESCE(SUM(jumlah_bayar), 0) FROM cicilan 
              WHERE status = 'Lunas' AND metode = 'transfer' AND bank_tujuan = '$nama_bank')
             -
-            -- Tarik Sukarela (transfer dari bank tertentu)
+            -- Tarik Sukarela/Wajib/Pokok (transfer dari bank tertentu)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'tarik' AND metode = 'transfer' 
@@ -144,7 +137,7 @@ $saldo_bni = hitungSaldoBank('Bank BNI');
 ?>
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>💸 Manajemen Pengeluaran</h2>
+        <h3 class="mb-4">💸 Manajemen Pengeluaran</h3>
         
         <!-- DEBUG: Tampilkan role untuk testing -->
         <!-- <div class="alert alert-warning py-1">Role: <?= $user_role ?></div> -->

@@ -49,7 +49,7 @@ function hitungSaldoKasTunai($conn)
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
              AND jenis_transaksi = 'setor' AND metode = 'cash'
              AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
-            +
+             +
             -- Simpanan Sukarela (cash)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
@@ -98,7 +98,7 @@ function hitungSaldoBank($conn, $nama_bank)
              AND jenis_transaksi = 'setor' AND metode = 'transfer' 
              AND bank_tujuan = '$nama_bank'
              AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib'))
-            +
+             +
             -- Simpanan Sukarela (transfer ke bank tertentu)
             (SELECT COALESCE(SUM(jumlah), 0) FROM pembayaran 
              WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
@@ -192,20 +192,6 @@ $conn->close();
       border-radius: 50%;
       border: 4px solid #fff;
       box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
-    }
-
-    .saldo-item {
-      padding: 4px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .saldo-item:last-child {
-      border-bottom: none;
-    }
-
-    .saldo-list {
-      max-height: 200px;
-      overflow-y: auto;
     }
   </style>
 </head>
@@ -402,39 +388,33 @@ $conn->close();
               </select>
             </div>
 
-            <!-- Sumber Dana -->
+            <!-- Sumber Dana - VERSI UPDATE SEPERTI DI SUKARELA.PHP -->
             <div class="mb-3">
-              <label class="form-label">Sumber Dana *</label>
-              <select class="form-select" name="metode" id="metodeInput" required>
-                <option value="">Pilih Sumber Dana</option>
-                <option value="cash">Kas Tunai</option>
-                <option value="transfer">Rekening Bank</option>
+              <label class="form-label">Metode *</label>
+              <select class="form-select" name="metode" id="metodeInput" required onchange="tampilkanSaldoDanBank(this.value)">
+                <option value="">Pilih Metode</option>
+                <option value="cash">Cash</option>
+                <option value="transfer">Transfer</option>
               </select>
             </div>
 
-            <!-- Informasi Saldo Rekening -->
-            <div id="infoSaldoContainer" style="display: none;">
-              <div class="alert alert-info py-2">
-                <h6 class="alert-heading mb-2">Informasi Saldo Rekening</h6>
-                <div id="infoSaldoContent">
-                  <div class="text-center">
-                    <div class="spinner-border spinner-border-sm" role="status">
-                      <span class="visually-hidden">Loading...</span>
-                    </div>
-                    Memuat data saldo...
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="mb-3" id="bankTujuanContainer" style="display: none;">
-              <label class="form-label">Rekening Bank Tujuan *</label>
-              <select class="form-select" name="bank_tujuan" id="bankTujuanInput">
-                <option value="">Pilih Bank</option>
+            <!-- Bank Tujuan Container (muncul hanya jika transfer dipilih) -->
+            <div class="mb-3" id="bank_tujuan_container" style="display:none;">
+              <label class="form-label">Bank Tujuan *</label>
+              <select class="form-select" name="bank_tujuan" id="bank_tujuan_select" onchange="tampilkanSaldo(this.value)">
+                <option value="">-- Pilih Bank --</option>
                 <option value="Bank MANDIRI">Bank MANDIRI</option>
                 <option value="Bank BRI">Bank BRI</option>
                 <option value="Bank BNI">Bank BNI</option>
               </select>
+            </div>
+
+            <!-- Informasi Saldo -->
+            <div id="infoSaldoContainer" class="alert alert-info py-2" style="display: none;">
+              <h6 class="alert-heading mb-2">Informasi Saldo</h6>
+              <div id="infoSaldoContent">
+                <!-- Informasi saldo akan ditampilkan di sini -->
+              </div>
             </div>
 
             <!-- Upload bukti -->
@@ -454,59 +434,84 @@ $conn->close();
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // === FUNGSI UNTUK MENAMPILKAN INFORMASI SALDO ===
-    function displaySaldoInfo(metode, bankTujuan = '') {
+    // === FUNGSI UNTUK MENAMPILKAN SALDO BERDASARKAN SUMBER DANA ===
+    function tampilkanSaldo(sumberDana) {
+      const infoSaldoContainer = document.getElementById('infoSaldoContainer');
       const infoSaldoContent = document.getElementById('infoSaldoContent');
-      let html = '';
-
-      // Data saldo dari PHP (sudah dihitung di server dengan fungsi sama seperti pengeluaran.php)
+      
+      // Data saldo dari PHP
       const saldoKas = <?= $saldo_kas ?>;
       const saldoMandiri = <?= $saldo_mandiri ?>;
       const saldoBri = <?= $saldo_bri ?>;
       const saldoBni = <?= $saldo_bni ?>;
-
-      if (metode === 'cash') {
-        // Tampilkan saldo kas tunai
-        html = `
-          <div class="saldo-item">
-            <strong>Kas Tunai:</strong> 
-            <span class="float-end">Rp ${formatRupiah(saldoKas)}</span>
-          </div>
-        `;
-      } else if (metode === 'transfer') {
-        // Tampilkan semua saldo bank
-        html = '<div class="saldo-list">';
-
-        const banks = [
-          { name: 'Bank MANDIRI', saldo: saldoMandiri },
-          { name: 'Bank BRI', saldo: saldoBri },
-          { name: 'Bank BNI', saldo: saldoBni }
-        ];
-
-        banks.forEach(bank => {
-          const isSelected = bank.name === bankTujuan;
-          const highlight = isSelected ? 'text-primary fw-bold' : '';
-          html += `
-            <div class="saldo-item ${highlight}">
-              <strong>${bank.name}:</strong> 
-              <span class="float-end">Rp ${formatRupiah(bank.saldo)}</span>
-              ${isSelected ? ' ← Dipilih' : ''}
-            </div>
-          `;
-        });
-        html += '</div>';
+      
+      let saldo = 0;
+      let namaSumber = '';
+      
+      switch(sumberDana) {
+        case 'cash':
+          saldo = saldoKas;
+          namaSumber = 'Kas Tunai';
+          break;
+        case 'Bank MANDIRI':
+          saldo = saldoMandiri;
+          namaSumber = 'Bank MANDIRI';
+          break;
+        case 'Bank BRI':
+          saldo = saldoBri;
+          namaSumber = 'Bank BRI';
+          break;
+        case 'Bank BNI':
+          saldo = saldoBni;
+          namaSumber = 'Bank BNI';
+          break;
+        default:
+          infoSaldoContainer.style.display = 'none';
+          return;
       }
+      
+      // Tampilkan informasi saldo
+      infoSaldoContent.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center">
+          <span><strong>${namaSumber}:</strong></span>
+          <span class="fw-bold ${saldo > 0 ? 'text-success' : 'text-danger'}">
+            Rp ${formatRupiah(saldo)}
+          </span>
+        </div>
+      `;
+      
+      infoSaldoContainer.style.display = 'block';
+      
+      // Validasi kecukupan saldo jika ada perubahan simpanan
+      validasiKecukupanSaldo(sumberDana, saldo);
+    }
 
-      infoSaldoContent.innerHTML = html;
-
-      // Validasi kecukupan saldo setelah data dimuat
-      validasiKecukupanSaldo(metode, bankTujuan);
+    // === FUNGSI UNTUK MENAMPILKAN/MENYEMBUNYIKAN BANK TUJUAN ===
+    function tampilkanSaldoDanBank(metode) {
+      const bankContainer = document.getElementById('bank_tujuan_container');
+      const bankSelect = document.getElementById('bank_tujuan_select');
+      
+      if (metode === 'transfer') {
+        bankContainer.style.display = 'block';
+        bankSelect.required = true;
+        // Reset dan sembunyikan info saldo saat metode berubah
+        document.getElementById('infoSaldoContainer').style.display = 'none';
+      } else if (metode === 'cash') {
+        bankContainer.style.display = 'none';
+        bankSelect.required = false;
+        // Tampilkan saldo kas tunai
+        tampilkanSaldo('cash');
+      } else {
+        bankContainer.style.display = 'none';
+        bankSelect.required = false;
+        document.getElementById('infoSaldoContainer').style.display = 'none';
+      }
     }
 
     // === FUNGSI VALIDASI KECUKUPAN SALDO ===
-    function validasiKecukupanSaldo(metode, bankTujuan) {
+    function validasiKecukupanSaldo(sumberDana, saldoTersedia) {
       const infoPerubahan = document.getElementById('info-perubahan');
-
+      
       // Cek apakah ada kekurangan yang harus dibayar
       const kekuranganText = infoPerubahan.textContent;
       let jumlahKekurangan = 0;
@@ -519,56 +524,21 @@ $conn->close();
       }
 
       // Jika ada kekurangan, validasi saldo
-      if (jumlahKekurangan > 0) {
-        let saldoTersedia = 0;
-
-        // Data saldo dari PHP
-        const saldoKas = <?= $saldo_kas ?>;
-        const saldoMandiri = <?= $saldo_mandiri ?>;
-        const saldoBri = <?= $saldo_bri ?>;
-        const saldoBni = <?= $saldo_bni ?>;
-
-        if (metode === 'cash') {
-          saldoTersedia = saldoKas;
-        } else if (metode === 'transfer' && bankTujuan) {
-          switch (bankTujuan) {
-            case 'Bank MANDIRI': saldoTersedia = saldoMandiri; break;
-            case 'Bank BRI': saldoTersedia = saldoBri; break;
-            case 'Bank BNI': saldoTersedia = saldoBni; break;
-            default: saldoTersedia = 0;
-          }
-        }
-
-        if (saldoTersedia < jumlahKekurangan) {
-          // Tampilkan peringatan di UI
-          const warningHtml = `
-            <div class="alert alert-warning mt-2 py-2">
-              <small>
-                <i class="bi bi-exclamation-triangle"></i>
-                <strong>Saldo tidak mencukupi!</strong><br>
-                Saldo tersedia: Rp ${formatRupiah(saldoTersedia)}<br>
-                Kebutuhan: Rp ${formatRupiah(jumlahKekurangan)}
-              </small>
-            </div>
-          `;
-
-          // Tambahkan atau update warning
-          let existingWarning = document.getElementById('saldoWarning');
-          if (existingWarning) {
-            existingWarning.innerHTML = warningHtml;
-          } else {
-            const warningDiv = document.createElement('div');
-            warningDiv.id = 'saldoWarning';
-            warningDiv.innerHTML = warningHtml;
-            document.getElementById('infoSaldoContainer').appendChild(warningDiv);
-          }
-        } else {
-          // Hapus warning jika ada
-          const existingWarning = document.getElementById('saldoWarning');
-          if (existingWarning) {
-            existingWarning.remove();
-          }
-        }
+      if (jumlahKekurangan > 0 && saldoTersedia < jumlahKekurangan) {
+        // Tampilkan peringatan
+        const warningHtml = `
+          <div class="mt-2 p-2 border border-warning rounded bg-warning bg-opacity-10">
+            <small class="text-warning">
+              <i class="bi bi-exclamation-triangle"></i>
+              <strong>Saldo tidak mencukupi!</strong><br>
+              Saldo ${sumberDana}: Rp ${formatRupiah(saldoTersedia)}<br>
+              Kebutuhan: Rp ${formatRupiah(jumlahKekurangan)}
+            </small>
+          </div>
+        `;
+        
+        // Tambahkan warning ke info saldo
+        infoSaldoContent.innerHTML += warningHtml;
       }
     }
 
@@ -577,38 +547,7 @@ $conn->close();
       return new Intl.NumberFormat('id-ID').format(angka);
     }
 
-    // === FUNGSI UNTUK SUMBER DANA DAN INFO SALDO ===
-    document.getElementById('metodeInput').addEventListener('change', function () {
-      const metode = this.value;
-      const bankContainer = document.getElementById('bankTujuanContainer');
-      const infoSaldoContainer = document.getElementById('infoSaldoContainer');
-      const bankInput = document.getElementById('bankTujuanInput');
-
-      if (metode === 'transfer') {
-        bankContainer.style.display = 'block';
-        bankInput.required = true;
-        infoSaldoContainer.style.display = 'block';
-        displaySaldoInfo(metode);
-      } else if (metode === 'cash') {
-        bankContainer.style.display = 'none';
-        bankInput.required = false;
-        bankInput.value = '';
-        infoSaldoContainer.style.display = 'block';
-        displaySaldoInfo(metode);
-      } else {
-        bankContainer.style.display = 'none';
-        infoSaldoContainer.style.display = 'none';
-        bankInput.required = false;
-        bankInput.value = '';
-      }
-    });
-
-    document.getElementById('bankTujuanInput').addEventListener('change', function () {
-      const metode = document.getElementById('metodeInput').value;
-      displaySaldoInfo(metode, this.value);
-    });
-
-    // === FUNGSI UNTUK PERHITUNGAN PERIODE ===
+    // === EVENT LISTENER UNTUK PERUBAHAN SIMPANAN ===
     (function () {
       const lama = parseInt(document.getElementById('simpanan_lama').value, 10);
       const tJoinStr = document.getElementById('tanggal_join').value;
@@ -665,11 +604,15 @@ $conn->close();
 
         infoPeriode.textContent = `Periode: ${teksPeriode(tJoinStr, jmlPeriode)}`;
 
-        // Load ulang saldo jika metode sudah dipilih
+        // Update validasi saldo jika sumber dana sudah dipilih
         const metode = document.getElementById('metodeInput').value;
-        const bankTujuan = document.getElementById('bankTujuanInput').value;
-        if (metode) {
-          displaySaldoInfo(metode, bankTujuan);
+        if (metode === 'cash') {
+          tampilkanSaldo('cash');
+        } else if (metode === 'transfer') {
+          const bankTujuan = document.getElementById('bank_tujuan_select').value;
+          if (bankTujuan) {
+            tampilkanSaldo(bankTujuan);
+          }
         }
       }
 
@@ -681,27 +624,14 @@ $conn->close();
       refresh();
     })();
 
-    // Validasi form sebelum submit
-    document.getElementById('formUbahSimpanan').addEventListener('submit', function (e) {
-      const metode = document.getElementById('metodeInput').value;
-      const bankTujuan = document.getElementById('bankTujuanInput').value;
-
-      if (metode === 'transfer' && !bankTujuan) {
-        e.preventDefault();
-        alert('Bank tujuan wajib dipilih untuk metode transfer.');
-        return false;
-      }
-    });
-
     // Reset form ketika modal ditutup
     document.getElementById('ubahSimpananModal').addEventListener('hidden.bs.modal', function () {
       document.getElementById('metodeInput').value = '';
-      document.getElementById('bankTujuanContainer').style.display = 'none';
-      document.getElementById('bankTujuanInput').value = '';
-      document.getElementById('bankTujuanInput').required = false;
+      document.getElementById('bank_tujuan_container').style.display = 'none';
+      document.getElementById('bank_tujuan_select').value = '';
       document.getElementById('infoSaldoContainer').style.display = 'none';
     });
   </script>
 </body>
-
 </html>
+[file content end]

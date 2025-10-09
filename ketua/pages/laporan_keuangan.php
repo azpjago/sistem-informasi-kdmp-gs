@@ -416,7 +416,7 @@ foreach ($rekening_data as $rek) {
 <div class="container-fluid">
     <!-- HEADER -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>📈 Laporan Keuangan Komprehensif</h2>
+        <h3 class="mb-4">📈 Laporan Keuangan Komprehensif</h3>
         <div class="d-flex align-items-center">
             <small class="text-muted me-3">Last Update: <?= $last_update ?></small>
             <div class="btn-group">

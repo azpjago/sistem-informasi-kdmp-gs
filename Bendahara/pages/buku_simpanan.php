@@ -1,8 +1,4 @@
 <?php
-// Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) die("Connection failed: ". $conn->connect_error);
-
 // --- LOGIKA FILTER TAHUN ---
 $current_year = date('Y');
 $selected_year = isset($_GET['tahun']) ? intval($_GET['tahun']) : $current_year;
@@ -47,7 +43,7 @@ $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'S
 ?>
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3>📚 Buku Simpanan Wajib Anggota</h3>
+    <h3 class="mb-4">📚 Buku Simpanan Wajib Anggota</h3>
     <a href="cetak_buku_simpanan.php?tahun=<?= $selected_year ?>" target="_blank" class="btn btn-danger no-print">
         📄 Export ke PDF
     </a>

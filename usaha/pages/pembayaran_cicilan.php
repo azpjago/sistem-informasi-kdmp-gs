@@ -1,20 +1,6 @@
 <?php
-session_start();
-// Cek role usaha
-if ($_SESSION['role'] !== 'usaha') {
-    header('Location: ../index.php');
-    exit;
-}
-
 // Include file history log
 require_once 'functions/history_log.php';
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-// PROSES PEMBAYARAN CICILAN
 // PROSES PEMBAYARAN CICILAN
 if ($_POST['action'] ?? '' === 'bayar_cicilan') {
     $id_cicilan = intval($_POST['id_cicilan'] ?? 0);
@@ -283,7 +269,7 @@ $riwayat_result = $conn->query("
         <!-- Header -->
         <div class="row mb-4">
             <div class="col">
-                <h2>💰 Pembayaran Cicilan Pinjaman</h2>
+                <h3 class="mb-4">💰 Pembayaran Cicilan Pinjaman</h3>
                 <p class="text-muted">Kelola pembayaran cicilan anggota koperasi</p>
             </div>
         </div>

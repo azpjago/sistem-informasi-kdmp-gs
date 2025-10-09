@@ -1,9 +1,4 @@
 <?php
-session_start();
-// Koneksi ke database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
 // Include file history log
 require_once 'functions/history_log.php';
 

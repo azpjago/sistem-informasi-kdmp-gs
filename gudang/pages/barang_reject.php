@@ -1,14 +1,4 @@
 <?php
-session_start();
-if (!isset($_SESSION['is_logged_in']) || !in_array($_SESSION['role'], ['gudang', 'qc', 'admin'])) {
-    header("Location: ../login.php");
-    exit;
-}
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
 // Include file history log
 require_once 'functions/history_log.php';
 // Handle actions (update status, hapus, dll)

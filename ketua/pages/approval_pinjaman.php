@@ -226,7 +226,7 @@ foreach ($stats as $stat) {
     <div class="container-fluid">
         <!-- Header -->
         <div class="d-flex justify-content-between align-items-center mb-4">
-                <h2>✅ Approval Pinjaman Anggota</h2>
+                <h3 class="mb-4">✅ Approval Pinjaman Anggota</h3>
                 <div class="btn-toolbar mb-2 mb-md-0">
                 <p class="text-muted">Tinjau dan setujui pengajuan pinjaman dari anggota</p>
                 </div>

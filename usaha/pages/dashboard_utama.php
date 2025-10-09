@@ -1,9 +1,4 @@
 <?php
-// Koneksi ke database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
 // 1. TOTAL PRODUK AKTIF
 $total_produk = mysqli_fetch_assoc(mysqli_query(
     $conn,
@@ -102,7 +97,7 @@ while ($row = mysqli_fetch_assoc($grafik_query)) {
 }
 ?>
 
-<h4 class="h3 fw-bold">📊 Dashboard Usaha</h4>
+<h3 class="mb-4">📊 Dashboard Usaha</h3>
 
 <!-- Statistik Utama -->
 <div class="row mb-4">

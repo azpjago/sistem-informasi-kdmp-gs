@@ -1,6 +1,4 @@
 <?php
-// pages/simpan_pesanan_manual.php (VERSION WITH IMPROVED HISTORY LOG)
-
 session_start();
 require_once 'functions/history_log.php';
 

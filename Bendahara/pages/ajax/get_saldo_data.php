@@ -1,5 +1,5 @@
 <?php
-// get_saldo_data.php - VERSION DENGAN PERHITUNGAN CICILAN YANG DETAIL
+// get_saldo_data.php - VERSION DENGAN PERHITUNGAN YANG AKURAT (SETOR - TARIK)
 session_start();
 if (!isset($_SESSION['role'])) {
     echo json_encode(['status' => 'error', 'message' => 'Unauthorized access']);
@@ -22,23 +22,25 @@ try {
     foreach ($rekening_list as $nama_rekening) {
         $saldo_rekening = 0;
 
-        // === 1. SIMPANAN ANGGOTA (SETOR) - POKOK & WAJIB ===
+        // === 1. SIMPANAN POKOK & WAJIB (SETOR - TARIK) ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran 
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'cash'
                 AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')
             ");
             $stmt->execute();
         } else {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran 
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'transfer' 
                 AND bank_tujuan = ?
                 AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')
@@ -48,25 +50,27 @@ try {
         }
         $result = $stmt->get_result();
         $data = $result->fetch_assoc();
-        $saldo_rekening += (float) $data['total'];
+        $saldo_rekening += (float) $data['setor'] - (float) $data['tarik'];
 
-        // === 2. SIMPANAN SUKARELA (SETOR) ===
+        // === 2. SIMPANAN SUKARELA (SETOR - TARIK) ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran 
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'cash'
                 AND jenis_simpanan = 'Simpanan Sukarela'
             ");
             $stmt->execute();
         } else {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'transfer' 
                 AND bank_tujuan = ?
                 AND jenis_simpanan = 'Simpanan Sukarela'
@@ -76,37 +80,9 @@ try {
         }
         $result = $stmt->get_result();
         $data = $result->fetch_assoc();
-        $saldo_rekening += (float) $data['total'];
+        $saldo_rekening += (float) $data['setor'] - (float) $data['tarik'];
 
-        // === 3. TARIK SUKARELA === (mengurangi saldo)
-        if ($nama_rekening == 'Kas Tunai') {
-            $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
-                FROM pembayaran 
-                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'tarik'
-                AND metode = 'cash'
-                AND jenis_simpanan = 'Simpanan Sukarela'
-            ");
-            $stmt->execute();
-        } else {
-            $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
-                FROM pembayaran 
-                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'tarik'
-                AND metode = 'transfer' 
-                AND bank_tujuan = ?
-                AND jenis_simpanan = 'Simpanan Sukarela'
-            ");
-            $stmt->bind_param("s", $nama_rekening);
-            $stmt->execute();
-        }
-        $result = $stmt->get_result();
-        $data = $result->fetch_assoc();
-        $saldo_rekening -= (float) $data['total'];
-
-        // === 4. PENJUALAN SEMBAKO ===
+        // === 3. PENJUALAN SEMBAKO ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
@@ -132,7 +108,7 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening += (float) $data['total'];
 
-        // === 5. HIBAH ===
+        // === 4. HIBAH ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
@@ -148,6 +124,32 @@ try {
                 WHERE (jenis_simpanan = 'hibah' OR keterangan LIKE '%hibah%')
                 AND metode = 'transfer' 
                 AND bank_tujuan = ?
+            ");
+            $stmt->bind_param("s", $nama_rekening);
+            $stmt->execute();
+        }
+        $result = $stmt->get_result();
+        $data = $result->fetch_assoc();
+        $saldo_rekening += (float) $data['total'];
+
+        // === 5. CICILAN PINJAMAN ===
+        if ($nama_rekening == 'Kas Tunai') {
+            $stmt = $conn->prepare("
+                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
+                FROM cicilan 
+                WHERE status = 'lunas'
+                AND metode = 'cash'
+                AND jumlah_bayar > 0
+            ");
+            $stmt->execute();
+        } else {
+            $stmt = $conn->prepare("
+                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
+                FROM cicilan 
+                WHERE status = 'lunas'
+                AND metode = 'transfer'
+                AND bank_tujuan = ?
+                AND jumlah_bayar > 0
             ");
             $stmt->bind_param("s", $nama_rekening);
             $stmt->execute();
@@ -181,32 +183,6 @@ try {
         $data = $result->fetch_assoc();
         $saldo_rekening -= (float) $data['total'];
 
-        // === 8. CICILAN PINJAMAN === (menambah saldo) - PERBAIKAN DETAIL
-        if ($nama_rekening == 'Kas Tunai') {
-            $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
-                FROM cicilan 
-                WHERE status = 'lunas'
-                AND metode = 'cash'
-                AND jumlah_bayar > 0
-            ");
-            $stmt->execute();
-        } else {
-            $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
-                FROM cicilan 
-                WHERE status = 'lunas'
-                AND metode = 'transfer'
-                AND bank_tujuan = ?
-                AND jumlah_bayar > 0
-            ");
-            $stmt->bind_param("s", $nama_rekening);
-            $stmt->execute();
-        }
-        $result = $stmt->get_result();
-        $data = $result->fetch_assoc();
-        $saldo_rekening += (float) $data['total'];
-
         // Simpan data rekening
         $rekening[] = [
             'nama_rekening' => $nama_rekening,
@@ -228,7 +204,7 @@ try {
         'simpanan_sukarela' => $breakdown['simpanan_sukarela'],
         'penjualan_sembako' => $breakdown['penjualan_sembako'],
         'hibah' => $breakdown['hibah'],
-        'tarik_sukarela' => $breakdown['tarik_sukarela'],
+        'tarik_simpanan' => $breakdown['tarik_simpanan'],
         'total_pengeluaran' => $breakdown['total_pengeluaran'],
         'total_pinjaman_approved' => $breakdown['total_pinjaman_approved'],
         'total_angsuran' => $breakdown['total_angsuran'],
@@ -266,7 +242,7 @@ function hitungBreakdownDetail($conn, $rekening_list)
         'simpanan_sukarela' => 0,
         'penjualan_sembako' => 0,
         'hibah' => 0,
-        'tarik_sukarela' => 0,
+        'tarik_simpanan' => 0, // Total semua penarikan
         'total_pengeluaran' => 0,
         'total_pinjaman_approved' => 0,
         'total_angsuran' => 0,
@@ -276,9 +252,12 @@ function hitungBreakdownDetail($conn, $rekening_list)
     foreach ($rekening_list as $nama_rekening) {
         $per_rekening = [
             'nama_rekening' => $nama_rekening,
-            'simpanan_pokok_wajib' => 0,
+            'simpanan_pokok_wajib_setor' => 0,
+            'simpanan_pokok_wajib_tarik' => 0,
+            'simpanan_pokok_wajib_net' => 0,
             'simpanan_sukarela_setor' => 0,
             'simpanan_sukarela_tarik' => 0,
+            'simpanan_sukarela_net' => 0,
             'penjualan_sembako' => 0,
             'hibah' => 0,
             'pengeluaran' => 0,
@@ -286,23 +265,25 @@ function hitungBreakdownDetail($conn, $rekening_list)
             'angsuran' => 0
         ];
 
-        // Simpanan Pokok & Wajib
+        // === SIMPANAN POKOK & WAJIB (SETOR - TARIK) ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran 
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'cash'
                 AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')
             ");
             $stmt->execute();
         } else {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran 
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'transfer' 
                 AND bank_tujuan = ?
                 AND jenis_simpanan IN ('Simpanan Pokok', 'Simpanan Wajib')
@@ -312,26 +293,30 @@ function hitungBreakdownDetail($conn, $rekening_list)
         }
         $result = $stmt->get_result();
         $data = $result->fetch_assoc();
-        $per_rekening['simpanan_pokok_wajib'] = (float) $data['total'];
-        $breakdown['simpanan_pokok_wajib'] += $per_rekening['simpanan_pokok_wajib'];
+        $per_rekening['simpanan_pokok_wajib_setor'] = (float) $data['setor'];
+        $per_rekening['simpanan_pokok_wajib_tarik'] = (float) $data['tarik'];
+        $per_rekening['simpanan_pokok_wajib_net'] = $per_rekening['simpanan_pokok_wajib_setor'] - $per_rekening['simpanan_pokok_wajib_tarik'];
+        $breakdown['simpanan_pokok_wajib'] += $per_rekening['simpanan_pokok_wajib_net'];
 
-        // Simpanan Sukarela (Setor)
+        // === SIMPANAN SUKARELA (SETOR - TARIK) ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran 
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'cash'
                 AND jenis_simpanan = 'Simpanan Sukarela'
             ");
             $stmt->execute();
         } else {
             $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
+                SELECT 
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'setor' THEN jumlah ELSE 0 END), 0) as setor,
+                    COALESCE(SUM(CASE WHEN jenis_transaksi = 'tarik' THEN jumlah ELSE 0 END), 0) as tarik
                 FROM pembayaran
                 WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'setor'
                 AND metode = 'transfer' 
                 AND bank_tujuan = ?
                 AND jenis_simpanan = 'Simpanan Sukarela'
@@ -341,42 +326,15 @@ function hitungBreakdownDetail($conn, $rekening_list)
         }
         $result = $stmt->get_result();
         $data = $result->fetch_assoc();
-        $per_rekening['simpanan_sukarela_setor'] = (float) $data['total'];
+        $per_rekening['simpanan_sukarela_setor'] = (float) $data['setor'];
+        $per_rekening['simpanan_sukarela_tarik'] = (float) $data['tarik'];
+        $per_rekening['simpanan_sukarela_net'] = $per_rekening['simpanan_sukarela_setor'] - $per_rekening['simpanan_sukarela_tarik'];
+        $breakdown['simpanan_sukarela'] += $per_rekening['simpanan_sukarela_net'];
 
-        // Simpanan Sukarela (Tarik)
-        if ($nama_rekening == 'Kas Tunai') {
-            $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
-                FROM pembayaran 
-                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'tarik'
-                AND metode = 'cash'
-                AND jenis_simpanan = 'Simpanan Sukarela'
-            ");
-            $stmt->execute();
-        } else {
-            $stmt = $conn->prepare("
-                SELECT COALESCE(SUM(jumlah), 0) as total 
-                FROM pembayaran 
-                WHERE (status_bayar = 'Lunas' OR status = 'Lunas')
-                AND jenis_transaksi = 'tarik'
-                AND metode = 'transfer' 
-                AND bank_tujuan = ?
-                AND jenis_simpanan = 'Simpanan Sukarela'
-            ");
-            $stmt->bind_param("s", $nama_rekening);
-            $stmt->execute();
-        }
-        $result = $stmt->get_result();
-        $data = $result->fetch_assoc();
-        $per_rekening['simpanan_sukarela_tarik'] = (float) $data['total'];
+        // Total penarikan semua jenis simpanan
+        $breakdown['tarik_simpanan'] += $per_rekening['simpanan_pokok_wajib_tarik'] + $per_rekening['simpanan_sukarela_tarik'];
 
-        // Net Simpanan Sukarela
-        $net_sukarela = $per_rekening['simpanan_sukarela_setor'] - $per_rekening['simpanan_sukarela_tarik'];
-        $breakdown['simpanan_sukarela'] += $net_sukarela;
-        $breakdown['tarik_sukarela'] += $per_rekening['simpanan_sukarela_tarik'];
-
-        // Penjualan Sembako
+        // === PENJUALAN SEMBAKO ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(pd.subtotal), 0) as total 
@@ -403,7 +361,7 @@ function hitungBreakdownDetail($conn, $rekening_list)
         $per_rekening['penjualan_sembako'] = (float) $data['total'];
         $breakdown['penjualan_sembako'] += $per_rekening['penjualan_sembako'];
 
-        // Hibah
+        // === HIBAH ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(jumlah), 0) as total 
@@ -428,7 +386,7 @@ function hitungBreakdownDetail($conn, $rekening_list)
         $per_rekening['hibah'] = (float) $data['total'];
         $breakdown['hibah'] += $per_rekening['hibah'];
 
-        // Pengeluaran
+        // === PENGELUARAN ===
         $stmt = $conn->prepare("
             SELECT COALESCE(SUM(jumlah), 0) as total 
             FROM pengeluaran 
@@ -441,7 +399,7 @@ function hitungBreakdownDetail($conn, $rekening_list)
         $per_rekening['pengeluaran'] = (float) $data['total'];
         $breakdown['total_pengeluaran'] += $per_rekening['pengeluaran'];
 
-        // Pinjaman
+        // === PINJAMAN ===
         $stmt = $conn->prepare("
             SELECT COALESCE(SUM(jumlah_pinjaman), 0) as total 
             FROM pinjaman 
@@ -455,7 +413,7 @@ function hitungBreakdownDetail($conn, $rekening_list)
         $per_rekening['pinjaman'] = (float) $data['total'];
         $breakdown['total_pinjaman_approved'] += $per_rekening['pinjaman'];
 
-        // Angsuran (Cicilan)
+        // === ANGSURAN (CICILAN) ===
         if ($nama_rekening == 'Kas Tunai') {
             $stmt = $conn->prepare("
                 SELECT COALESCE(SUM(jumlah_bayar), 0) as total 
@@ -494,14 +452,15 @@ function hitungBreakdownDetail($conn, $rekening_list)
         $breakdown['total_pengeluaran'] -
         $breakdown['total_pinjaman_approved'];
 
-    $breakdown['selisih'] = $breakdown['dana_operasional'] -
+    // Selisih seharusnya 0 jika perhitungan benar
+    $breakdown['selisih'] = $breakdown['dana_operasional'] - 
         ($breakdown['simpanan_pokok_wajib'] +
-            $breakdown['simpanan_sukarela'] +
-            $breakdown['penjualan_sembako'] +
-            $breakdown['hibah'] +
-            $breakdown['total_angsuran'] -
-            $breakdown['total_pengeluaran'] -
-            $breakdown['total_pinjaman_approved']);
+         $breakdown['simpanan_sukarela'] +
+         $breakdown['penjualan_sembako'] +
+         $breakdown['hibah'] +
+         $breakdown['total_angsuran'] -
+         $breakdown['total_pengeluaran'] -
+         $breakdown['total_pinjaman_approved']);
 
     return $breakdown;
 }

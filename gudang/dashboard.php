@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html>
-
+<?php
+session_start();
+date_default_timezone_set('Asia/Jakarta');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'gudang') {
+    header('Location: ../index.php');
+    exit;
+}
+?>
 <head>
     <title>Dashboard Gudang</title>
     <!-- CSS -->
@@ -21,7 +32,7 @@
         <!-- SIDEBAR NAVIGATION -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h4>KDMPGS</h4>
+                <h4>KDMPGS - INV</h4>
             </div>
 
             <ul class="nav flex-column">
@@ -49,7 +60,7 @@
                 <div class="user-avatar">
                     <i class="fas fa-user"></i>
                 </div>
-                <div class="user-name"><?php echo $_SESSION['nama'] ?? 'Pengurus'; ?></div>
+                <div class="user-name"><?php echo $_SESSION['username'] ?? 'Pengurus'; ?></div>
                 <div class="user-role"><?php echo $_SESSION['role'] ?? 'Gudang'; ?></div>
             </div>
         </div>
@@ -73,7 +84,17 @@
             if (in_array($page, $allowed_pages) && file_exists("pages/" . $page . ".php")) {
                 include "pages/" . $page . ".php";
             } else {
-                echo "Halaman tidak ditemukan.";
+                echo '
+    <div class="container-fluid d-flex align-items-center justify-content-center" style="min-height: 80vh;">
+        <div class="text-center">
+            <div class="error-code display-1 fw-bold text-muted mb-2">404</div>
+            <h2 class="h3 text-muted mb-3">Halaman Tidak Ditemukan</h2>
+            <p class="text-muted mb-4">Halaman yang Anda cari tidak tersedia dalam sistem.</p>
+            <a href="dashboard.php" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-2"></i>Kembali ke Aplikasi
+            </a>
+        </div>
+    </div>';
             }
             ?>
         </div>

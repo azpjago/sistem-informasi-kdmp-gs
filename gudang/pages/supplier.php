@@ -1,14 +1,4 @@
 <?php
-session_start();
-if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
-    header("Location: ../dashboard.php");
-    exit;
-}
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
 require_once 'functions/history_log.php';
 
 // TAMBAH SUPPLIER
@@ -43,7 +33,7 @@ if (isset($_POST['tambah'])) {
                 $lead_time = $_POST['lead_time'] ?? [];
                 $status = $_POST['status'] ?? [];
                 $notes = $_POST['notes'] ?? [];
-                $grade = $_POST['grade'] ?? [];
+                $isi = $_POST['isi'] ?? [];
                 $merk = $_POST['merk'] ?? [];
                 $berat = $_POST['berat'] ?? [];
                 $volume = $_POST['volume'] ?? [];
@@ -51,26 +41,26 @@ if (isset($_POST['tambah'])) {
 
                 foreach ($nama_produk as $index => $nama) {
                     if (!empty($nama)) {
-                        $nama_clean         = $conn->real_escape_string($nama);
-                        $harga_clean        = $conn->real_escape_string($harga_beli[$index] ?? 0);
-                        $satuan_clean       = $conn->real_escape_string($satuan[$index] ?? '');
-                        $kategori_clean     = $conn->real_escape_string($kategori[$index] ?? '');
-                        $min_order_clean    = $conn->real_escape_string($min_order[$index] ?? 1);
-                        $lead_time_clean    = $conn->real_escape_string($lead_time[$index] ?? 0);
-                        $status_clean       = $conn->real_escape_string($status[$index] ?? 'active');
-                        $notes_clean        = $conn->real_escape_string($notes[$index] ?? '');
-                        $grade_clean        = $conn->real_escape_string($grade[$index] ?? '');
-                        $merk_clean         = $conn->real_escape_string($merk[$index] ?? '');
-                        $berat_clean        = $conn->real_escape_string($berat[$index] ?? '');
-                        $volume_clean       = $conn->real_escape_string($volume[$index] ?? '');
-                        $kemasan_clean      = $conn->real_escape_string($kemasan[$index] ?? '');
+                        $nama_clean = $conn->real_escape_string($nama);
+                        $harga_clean = $conn->real_escape_string($harga_beli[$index] ?? 0);
+                        $satuan_clean = $conn->real_escape_string($satuan[$index] ?? '');
+                        $kategori_clean = $conn->real_escape_string($kategori[$index] ?? '');
+                        $min_order_clean = $conn->real_escape_string($min_order[$index] ?? 1);
+                        $lead_time_clean = $conn->real_escape_string($lead_time[$index] ?? 0);
+                        $status_clean = $conn->real_escape_string($status[$index] ?? 'active');
+                        $notes_clean = $conn->real_escape_string($notes[$index] ?? '');
+                        $isi_clean = $conn->real_escape_string($isi[$index] ?? '');
+                        $merk_clean = $conn->real_escape_string($merk[$index] ?? '');
+                        $berat_clean = $conn->real_escape_string($berat[$index] ?? '');
+                        $volume_clean = $conn->real_escape_string($volume[$index] ?? '');
+                        $kemasan_clean = $conn->real_escape_string($kemasan[$index] ?? '');
 
                         $query_produk = "INSERT INTO supplier_produk 
                                         (id_supplier, nama_produk, harga_beli, satuan_besar, kategori, 
-                                        min_order, lead_time, grade, merk, berat, volume, kemasan, status, notes) 
+                                        min_order, lead_time, isi, merk, berat, volume, kemasan, status, notes) 
                                         VALUES ('$id_supplier', '$nama_clean', '$harga_clean', 
                                                 '$satuan_clean', '$kategori_clean', '$min_order_clean', 
-                                                '$lead_time_clean', '$grade_clean','$merk_clean', 
+                                                '$lead_time_clean', '$isi_clean','$merk_clean', 
                                                 '$berat_clean', '$volume_clean', '$kemasan_clean', '$status_clean', '$notes_clean')";
 
                         if ($conn->query($query_produk)) {
@@ -78,11 +68,11 @@ if (isset($_POST['tambah'])) {
                             $id_supplier_produk = $conn->insert_id;
                             $description_produk = "Menambahkan produk: " . $nama_clean . " dengan harga Rp " . number_format($harga_clean, 0, ',', '.') . " per " . $satuan_clean;
                             log_supplier_product_activity($id_supplier_produk, 'create', $description_produk, 'gudang');
-                            
+
                             // Insert juga ke tabel history
                             $query_history = "INSERT INTO supplier_harga_history (id_supplier_produk, harga_beli, tanggal_berlaku) 
                                             VALUES ('$id_supplier_produk', '$harga_clean', NOW())";
-                            
+
                             if (!$conn->query($query_history)) {
                                 error_log("Error menyimpan history: " . $conn->error);
                                 throw new Exception("Gagal menyimpan history harga: " . $conn->error);
@@ -141,13 +131,19 @@ if (isset($_POST['edit'])) {
         if ($conn->query($query)) {
             // Log perubahan data supplier
             $changes = [];
-            if ($old_data['nama_supplier'] != $nama_supplier) $changes[] = "nama dari '" . $old_data['nama_supplier'] . "' ke '" . $nama_supplier . "'";
-            if ($old_data['alamat'] != $alamat) $changes[] = "alamat";
-            if ($old_data['no_telp'] != $no_telp) $changes[] = "no. telepon";
-            if ($old_data['email'] != $email) $changes[] = "email";
-            if ($old_data['jenis_supplier'] != $jenis_supplier) $changes[] = "jenis dari '" . $old_data['jenis_supplier'] . "' ke '" . $jenis_supplier . "'";
-            if ($old_data['status_supplier'] != $status_supplier) $changes[] = "status dari '" . $old_data['status_supplier'] . "' ke '" . $status_supplier . "'";
-            
+            if ($old_data['nama_supplier'] != $nama_supplier)
+                $changes[] = "nama dari '" . $old_data['nama_supplier'] . "' ke '" . $nama_supplier . "'";
+            if ($old_data['alamat'] != $alamat)
+                $changes[] = "alamat";
+            if ($old_data['no_telp'] != $no_telp)
+                $changes[] = "no. telepon";
+            if ($old_data['email'] != $email)
+                $changes[] = "email";
+            if ($old_data['jenis_supplier'] != $jenis_supplier)
+                $changes[] = "jenis dari '" . $old_data['jenis_supplier'] . "' ke '" . $jenis_supplier . "'";
+            if ($old_data['status_supplier'] != $status_supplier)
+                $changes[] = "status dari '" . $old_data['status_supplier'] . "' ke '" . $status_supplier . "'";
+
             if (!empty($changes)) {
                 $description = "Mengubah data supplier " . $nama_supplier . ": " . implode(", ", $changes);
                 log_supplier_activity($id_supplier, 'update', $description, 'gudang');
@@ -163,7 +159,7 @@ if (isset($_POST['edit'])) {
                 $min_order = $_POST['min_order'] ?? [];
                 $lead_time = $_POST['lead_time'] ?? [];
                 $status = $_POST['status'] ?? [];
-                $grade = $_POST['grade'] ?? [];
+                $isi = $_POST['isi'] ?? [];
                 $merk = $_POST['merk'] ?? [];
                 $berat = $_POST['berat'] ?? [];
                 $volume = $_POST['volume'] ?? [];
@@ -179,7 +175,7 @@ if (isset($_POST['edit'])) {
                         $kategori_clean = $conn->real_escape_string($kategori[$index] ?? '');
                         $min_order_clean = $conn->real_escape_string($min_order[$index] ?? 1);
                         $lead_time_clean = $conn->real_escape_string($lead_time[$index] ?? 0);
-                        $grade_clean = $conn->real_escape_string($grade[$index] ?? '');
+                        $isi_clean = $conn->real_escape_string($isi[$index] ?? '');
                         $merk_clean = $conn->real_escape_string($merk[$index] ?? '');
                         $berat_clean = $conn->real_escape_string($berat[$index] ?? '');
                         $volume_clean = $conn->real_escape_string($volume[$index] ?? '');
@@ -193,9 +189,9 @@ if (isset($_POST['edit'])) {
                             $query_old_produk = "SELECT * FROM supplier_produk WHERE id_supplier_produk = '$id_produk_clean'";
                             $result_old_produk = $conn->query($query_old_produk);
                             $old_produk = $result_old_produk->fetch_assoc();
-                            
+
                             $old_price = $old_produk['harga_beli'];
-                            
+
                             // Update produk yang sudah ada
                             $query_produk = "UPDATE supplier_produk SET 
                                     nama_produk = '$nama_clean', 
@@ -204,7 +200,7 @@ if (isset($_POST['edit'])) {
                                     kategori = '$kategori_clean', 
                                     min_order = '$min_order_clean',
                                     lead_time = '$lead_time_clean', 
-                                    grade = '$grade_clean', 
+                                    isi = '$isi_clean', 
                                     merk = '$merk_clean',
                                     berat = '$berat_clean', 
                                     volume = '$volume_clean', 
@@ -217,23 +213,27 @@ if (isset($_POST['edit'])) {
                             if ($conn->query($query_produk)) {
                                 // Log perubahan produk
                                 $produk_changes = [];
-                                if ($old_produk['nama_produk'] != $nama_clean) $produk_changes[] = "nama produk";
-                                if ($old_produk['harga_beli'] != $harga_clean) $produk_changes[] = "harga dari Rp " . number_format($old_produk['harga_beli'], 0, ',', '.') . " ke Rp " . number_format($harga_clean, 0, ',', '.');
-                                if ($old_produk['satuan_besar'] != $satuan_clean) $produk_changes[] = "satuan";
-                                if ($old_produk['status'] != $status_clean) $produk_changes[] = "status dari '" . $old_produk['status'] . "' ke '" . $status_clean . "'";
-                                
+                                if ($old_produk['nama_produk'] != $nama_clean)
+                                    $produk_changes[] = "nama produk";
+                                if ($old_produk['harga_beli'] != $harga_clean)
+                                    $produk_changes[] = "harga dari Rp " . number_format($old_produk['harga_beli'], 0, ',', '.') . " ke Rp " . number_format($harga_clean, 0, ',', '.');
+                                if ($old_produk['satuan_besar'] != $satuan_clean)
+                                    $produk_changes[] = "satuan";
+                                if ($old_produk['status'] != $status_clean)
+                                    $produk_changes[] = "status dari '" . $old_produk['status'] . "' ke '" . $status_clean . "'";
+
                                 if (!empty($produk_changes)) {
                                     $description_produk = "Mengubah data produk " . $nama_clean . ": " . implode(", ", $produk_changes);
                                     log_supplier_product_activity($id_produk_clean, 'update', $description_produk, 'gudang');
                                 }
-                                
+
                                 // Jika harga berubah, simpan ke history
                                 if ($harga_clean != $old_price) {
                                     log_supplier_price_change($id_produk_clean, $old_price, $harga_clean, 'gudang');
-                                    
+
                                     $query_history = "INSERT INTO supplier_harga_history (id_supplier_produk, harga_beli, tanggal_berlaku)
                                                     VALUES ('$id_produk_clean', '$harga_clean', NOW())";
-                                    
+
                                     if (!$conn->query($query_history)) {
                                         throw new Exception("Gagal menyimpan history harga: " . $conn->error);
                                     }
@@ -245,25 +245,25 @@ if (isset($_POST['edit'])) {
                             // Insert produk baru
                             $query_produk = "INSERT INTO supplier_produk 
                                     (id_supplier, nama_produk, harga_beli, satuan_besar, kategori, 
-                                    min_order, lead_time, grade, merk,
+                                    min_order, lead_time, isi, merk,
                                     berat, volume, kemasan, status, notes) 
                                     VALUES ('$id_supplier', '$nama_clean', '$harga_clean', 
                                             '$satuan_clean', '$kategori_clean', '$min_order_clean',
-                                            '$lead_time_clean', '$grade_clean', '$merk_clean',
+                                            '$lead_time_clean', '$isi_clean', '$merk_clean',
                                             '$berat_clean', '$volume_clean', 
                                             '$kemasan_clean', '$status_clean', '$notes_clean')";
 
                             if ($conn->query($query_produk)) {
                                 $id_supplier_produk = $conn->insert_id;
-                                
+
                                 // Log produk baru
                                 $description_produk = "Menambahkan produk baru: " . $nama_clean . " dengan harga Rp " . number_format($harga_clean, 0, ',', '.') . " per " . $satuan_clean;
                                 log_supplier_product_activity($id_supplier_produk, 'create', $description_produk, 'gudang');
-                                
+
                                 // Simpan ke tabel history harga
                                 $query_history = "INSERT INTO supplier_harga_history (id_supplier_produk, harga_beli, tanggal_berlaku)
                                                 VALUES ('$id_supplier_produk', '$harga_clean', NOW())";
-                                
+
                                 if (!$conn->query($query_history)) {
                                     throw new Exception("Gagal menyimpan history harga: " . $conn->error);
                                 }
@@ -329,28 +329,33 @@ if (isset($_GET['hapus'])) {
 
 ?>
 <!-- HTML CONTENT TIDAK BERUBAH -->
+
 <head>
-        <style>
-    .produk-section {
-        transition: all 0.3s ease;
-    }
-    .form-check-input:checked {
-        background-color: #0d6efd;
-        border-color: #0d6efd;
-    }
-    .produk-supplier-item {
-        border: 1px solid #e9ecef;
-        border-radius: 5px;
-        padding: 15px;
-        margin-bottom: 15px;
-        background-color: #f8f9fa;
-    }
-    .produk-supplier-item:hover {
-        background-color: #e9ecef;
-    }
-    .hapus-produk-supplier {
-        margin-top: 32px;
-    }
+    <style>
+        .produk-section {
+            transition: all 0.3s ease;
+        }
+
+        .form-check-input:checked {
+            background-color: #0d6efd;
+            border-color: #0d6efd;
+        }
+
+        .produk-supplier-item {
+            border: 1px solid #e9ecef;
+            border-radius: 5px;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #f8f9fa;
+        }
+
+        .produk-supplier-item:hover {
+            background-color: #e9ecef;
+        }
+
+        .hapus-produk-supplier {
+            margin-top: 32px;
+        }
     </style>
 </head>
 <!-- Konten Halaman Supplier -->
@@ -413,7 +418,7 @@ if (isset($_GET['hapus'])) {
                         </tr>
                     </thead>
                     <tbody>
-    <?php
+                        <?php
                         $query = "SELECT s.*, COUNT(sp.id_supplier_produk) as jumlah_produk 
               FROM supplier s 
               LEFT JOIN supplier_produk sp ON s.id_supplier = sp.id_supplier 
@@ -492,8 +497,10 @@ if (isset($_GET['hapus'])) {
                 <div class="modal-body">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label for="nama_supplier" class="form-label">Nama Supplier <span class="text-danger">*</span></label>
-                            <input type="text" id="nama_supplier" class="form-control" name="nama_supplier" required maxlength="100">
+                            <label for="nama_supplier" class="form-label">Nama Supplier <span
+                                    class="text-danger">*</span></label>
+                            <input type="text" id="nama_supplier" class="form-control" name="nama_supplier" required
+                                maxlength="100">
                         </div>
                         <div class="col-md-6 mb-3">
                             <label for="jenis_supplier" class="form-label">Tipe Supplier</label>
@@ -507,11 +514,12 @@ if (isset($_GET['hapus'])) {
                         </div>
                     </div>
                     <div class="row">
-                    <div class="col-md-6 mb-9">
-                        <label for="alamat" class="form-label">Alamat</label>
-                        <textarea class="form-control" id="alamat" name="alamat" rows="2" maxlength="500"></textarea>
-                    </div>
-                    <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-9">
+                            <label for="alamat" class="form-label">Alamat</label>
+                            <textarea class="form-control" id="alamat" name="alamat" rows="2"
+                                maxlength="500"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label for="status_supplier" class="form-label">Status Supplier</label>
                             <select id="status_supplier" name="status_supplier" class="form-select">
                                 <option value="active">Aktif</option>
@@ -529,18 +537,20 @@ if (isset($_GET['hapus'])) {
                             <input type="email" class="form-control" name="email" maxlength="100">
                         </div>
                     </div>
-                    
+
                     <h6 class="mt-4 mb-3">Produk yang Dijual</h6>
-                    
+
                     <div id="produk-supplier-container">
                         <div class="row produk-supplier-item mb-3">
                             <div class="col-md-2">
                                 <label for="nama_produk[]" class="form-label">Nama Prouk</label>
-                                <input type="text" class="form-control" name="nama_produk[]" placeholder="Nama Produk" required>
+                                <input type="text" class="form-control" name="nama_produk[]" placeholder="Nama Produk"
+                                    required>
                             </div>
                             <div class="col-md-2">
                                 <label for="harga_beli[]" class="form-label">Harga beli</label>
-                                <input type="number" class="form-control" name="harga_beli[]" placeholder="Harga" min="0" step="0.01" required>
+                                <input type="number" class="form-control" name="harga_beli[]" placeholder="Harga"
+                                    min="0" step="0.01" required>
                             </div>
                             <div class="col-md-2">
                                 <label for="satuan[]" class="form-label">Satuan</label>
@@ -572,11 +582,13 @@ if (isset($_GET['hapus'])) {
                             </div>
                             <div class="col-md-2">
                                 <label for="min_order[]" class="form-label">Min. Order</label>
-                                <input type="number" class="form-control" name="min_order[]" value="1" placeholder="Min Order" min="1" required>
+                                <input type="number" class="form-control" name="min_order[]" value="1"
+                                    placeholder="Min Order" min="1" required>
                             </div>
                             <div class="col-md-2">
                                 <label for="lead_time[]" class="form-label">Waktu Pengiriman</label>
-                                <input type="number" class="form-control" name="lead_time[]" value="0" placeholder="Hari" min="0">
+                                <input type="number" class="form-control" name="lead_time[]" value="0"
+                                    placeholder="Hari" min="0">
                             </div>
                             <div class="col-md-2">
                                 <label for="status[]" class="form-label">Status</label>
@@ -587,37 +599,37 @@ if (isset($_GET['hapus'])) {
                                 </select>
                             </div>
                             <div class="col-md-2">
-                                <label for="grade[]" class="form-label">Grade</label>
-                                <select class="form-select" name="grade[]">
-                                    <option value="A" selected>A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
-                                    <option value="Premium">Premium</option>
-                                </select>
+                                <label for="isi[]" class="form-label">Isi produk</label>
+                                <input class='form-control' name="isi[]" type="number" placeholder="Isi produk" required>
                             </div>
                             <div class="col-md-2">
-                                <label for="merk[]"class="form-label" >Merk</label>
-                                <input type="text" class="form-control" name="merk[]" value="" placeholder="Merk" min="1">
+                                <label for="merk[]" class="form-label">Merk</label>
+                                <input type="text" class="form-control" name="merk[]" value="" placeholder="Merk"
+                                    min="1">
                             </div>
                             <div class="col-md-2">
                                 <label for="berat[]" class="form-label">Berat</label>
-                                <input type="text" class="form-control" name="berat[]" value="" placeholder="Berat" min="1">
+                                <input type="text" class="form-control" name="berat[]" value="" placeholder="Berat"
+                                    min="1">
                             </div>
                             <div class="col-md-2">
                                 <label for="volume[]" class="form-label">Volume</label>
-                                <input type="text" class="form-control" name="volume[]" value="" placeholder="Volume" min="1">
+                                <input type="text" class="form-control" name="volume[]" value="" placeholder="Volume"
+                                    min="1">
                             </div>
                             <div class="col-md-2">
                                 <label for="kemasan[]" class="form-label">Kemasan</label>
-                                <input type="text" class="form-control" name="kemasan[]" value="" placeholder="Kemasan" min="1" required>
+                                <input type="text" class="form-control" name="kemasan[]" value="" placeholder="Kemasan"
+                                    min="1" required>
                             </div>
                             <div class="col-md-12 mt-2">
                                 <label for="notes[]" class="form-label"></label>
-                                <textarea class="form-control" name="notes[]" placeholder="Catatan tambahan" rows="2"></textarea>
+                                <textarea class="form-control" name="notes[]" placeholder="Catatan tambahan"
+                                    rows="2"></textarea>
                             </div>
                         </div>
                     </div>
-                    
+
                     <button type="button" class="btn btn-sm btn-outline-primary" id="tambah-produk-supplier">
                         <i class="fas fa-plus me-1"></i>Tambah Produk Lain
                     </button>
@@ -659,11 +671,12 @@ if (isset($_GET['hapus'])) {
                         </div>
                     </div>
                     <div class="row">
-                    <div class="col-md-6 mb-9">
-                        <label for="alamat" class="form-label">Alamat</label>
-                        <textarea class="form-control" id="edit_alamat" name="alamat" rows="2" maxlength="500"></textarea>
-                    </div>
-                    <div class="col-md-6 mb-3">
+                        <div class="col-md-6 mb-9">
+                            <label for="alamat" class="form-label">Alamat</label>
+                            <textarea class="form-control" id="edit_alamat" name="alamat" rows="2"
+                                maxlength="500"></textarea>
+                        </div>
+                        <div class="col-md-6 mb-3">
                             <label for="edit_status" class="form-label">Status Supplier</label>
                             <select id="edit_status" name="status_supplier" class="form-select">
                                 <option value="active">Aktif</option>
@@ -746,25 +759,25 @@ if (isset($_GET['hapus'])) {
 <script>
     $(document).ready(function () {
         // Inisialisasi DataTables
-            if ($('#tabelProduk').length && !$.fn.DataTable.isDataTable('#tabelProduk')) {
-        $('#tabelProduk').DataTable({
-            pageLength: 10,
-            lengthMenu: [10, 25, 50, 100],
-            language: {
-                search: "Cari Produk : ",
-                lengthMenu: "Tampilkan _MENU_ data per halaman",
-                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-                zeroRecords: "Tidak ada data yang cocok",
-                infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-                infoFiltered: "(disaring dari _MAX_ total data)",
-                paginate: { first: "Awal", last: "Akhir", next: "Berikutnya", previous: "Sebelumnya" }
-            }
-        });
-    }
-});
-// Tambah baris produk supplier edit
-$('#edit-produk-supplier').click(function() {
-    const newRow = `
+        if ($('#tabelProduk').length && !$.fn.DataTable.isDataTable('#tabelProduk')) {
+            $('#tabelProduk').DataTable({
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                language: {
+                    search: "Cari Produk : ",
+                    lengthMenu: "Tampilkan _MENU_ data per halaman",
+                    info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                    zeroRecords: "Tidak ada data yang cocok",
+                    infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                    infoFiltered: "(disaring dari _MAX_ total data)",
+                    paginate: { first: "Awal", last: "Akhir", next: "Berikutnya", previous: "Sebelumnya" }
+                }
+            });
+        }
+    });
+    // Tambah baris produk supplier edit
+    $('#edit-produk-supplier').click(function () {
+        const newRow = `
     <div class="row produk-supplier-item mb-3">
     <input type="hidden" name="id_supplier_produk[]" value="new">
         <div class="col-md-2">
@@ -820,13 +833,8 @@ $('#edit-produk-supplier').click(function() {
             </select>
         </div>
         <div class="col-md-2">
-                                <label for="grade[]">Grade</label>
-                                <select class="form-select" name="grade[]">
-                                    <option value="A" selected>A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
-                                    <option value="Premium">Premium</option>
-                                </select>
+                                <label for="isi[]" class="form-label">Isi produk</label>
+                                <input class='form-control' name='isi[]' type="number" placeholder="Isi produk" required>
                             </div>
                             <div class="col-md-2">
                                 <label for="merk[]">Merk</label>
@@ -854,13 +862,13 @@ $('#edit-produk-supplier').click(function() {
             </button>
         </div>
     </div>`;
-    
-    $('#edit-produk-supplier-container').append(newRow);
-    updateHapusButtonState();
-        });
-        // Tambah baris produk supplier
-$('#tambah-produk-supplier').click(function() {
-    const newRow = `
+
+        $('#edit-produk-supplier-container').append(newRow);
+        updateHapusButtonState();
+    });
+    // Tambah baris produk supplier
+    $('#tambah-produk-supplier').click(function () {
+        const newRow = `
     <div class="row produk-supplier-item mb-3">
         <div class="col-md-2">
         <label for="nama_produk[]">Nama Produk</label>
@@ -915,13 +923,8 @@ $('#tambah-produk-supplier').click(function() {
             </select>
         </div>
         <div class="col-md-2">
-                                <label for="grade[]">Grade</label>
-                                <select class="form-select" name="grade[]">
-                                    <option value="A" selected>A</option>
-                                    <option value="B">B</option>
-                                    <option value="C">C</option>
-                                    <option value="Premium">Premium</option>
-                                </select>
+                                <label for="isi[]" class="form-label">Isi produk</label>
+                                <input class='form-control' name='isi[]' type="number" placeholder="Isi produk" required>
                             </div>
                             <div class="col-md-2">
                                 <label for="merk[]">Merk</label>
@@ -949,93 +952,93 @@ $('#tambah-produk-supplier').click(function() {
             </button>
         </div>
     </div>`;
-    
-    $('#produk-supplier-container').append(newRow);
-    updateHapusButtonState();
-        });
-        
-        // Hapus baris produk supplier
-        $(document).on('click', '.hapus-produk-supplier', function() {
-            if ($('.produk-supplier-item').length > 1) {
-                $(this).closest('.produk-supplier-item').remove();
-            }
-            updateHapusButtonState();
-        });
-        
-        // Update state tombol hapus
-        function updateHapusButtonState() {
-            $('.hapus-produk-supplier').prop('disabled', $('.produk-supplier-item').length <= 1);
+
+        $('#produk-supplier-container').append(newRow);
+        updateHapusButtonState();
+    });
+
+    // Hapus baris produk supplier
+    $(document).on('click', '.hapus-produk-supplier', function () {
+        if ($('.produk-supplier-item').length > 1) {
+            $(this).closest('.produk-supplier-item').remove();
         }
-        
-        // Inisialisasi state tombol hapus
         updateHapusButtonState();
+    });
 
-        // Handle edit button click - Load produk supplier
-        $(document).on('click', '.edit-supplier', function() {
-            const id = $(this).data('id');
-            $('#edit_id').val(id);
-            $('#edit_nama').val($(this).data('nama'));
-            $('#edit_alamat').val($(this).data('alamat') || '');
-            $('#edit_telp').val($(this).data('telp') || '');
-            $('#edit_email').val($(this).data('email') || '');
-            $('#edit_jenis').val($(this).data('jenis') || '');
-            $('#edit_status').val($(this).data('status_supplier') || 'active');
-            
-            // Load produk supplier via AJAX
-            $.ajax({
-                url: 'pages/ajax/get_supplier_produk.php',
-                type: 'GET',
-                data: { id_supplier: id },
-                success: function(response) {
-                    $('#edit-produk-supplier-container').html(response);
-                    updateHapusButtonState();
-                },
-                error: function(xhr, status, error) {
-                    console.error("AJAX Error:", status, error);
-                    $('#edit-produk-supplier-container').html('<div class="alert alert-danger">Gagal memuat data produk</div>');
-                }
-            });
-            
-            $('#editSupplierModal').modal('show');
-        });
+    // Update state tombol hapus
+    function updateHapusButtonState() {
+        $('.hapus-produk-supplier').prop('disabled', $('.produk-supplier-item').length <= 1);
+    }
 
-        // Handle view button click
-        $(document).on('click', '.view-supplier', function () {
-            $('#detail_nama').text($(this).data('nama'));
-            $('#detail_alamat').text($(this).data('alamat') || '-');
-            $('#detail_telp').text($(this).data('telp') || '-');
-            $('#detail_email').text($(this).data('email') || '-');
-            $('#detail_jenis').text($(this).data('jenis') || '-');
-            $('#detail_status').text($(this).data('status') || '-');
-            $('#detailSupplierModal').modal('show');
-        });
+    // Inisialisasi state tombol hapus
+    updateHapusButtonState();
 
-        // Handle delete button click
-        $(document).on('click', '.delete-supplier', function () {
-            const id = $(this).data('id');
-            const nama = $(this).data('nama');
+    // Handle edit button click - Load produk supplier
+    $(document).on('click', '.edit-supplier', function () {
+        const id = $(this).data('id');
+        $('#edit_id').val(id);
+        $('#edit_nama').val($(this).data('nama'));
+        $('#edit_alamat').val($(this).data('alamat') || '');
+        $('#edit_telp').val($(this).data('telp') || '');
+        $('#edit_email').val($(this).data('email') || '');
+        $('#edit_jenis').val($(this).data('jenis') || '');
+        $('#edit_status').val($(this).data('status_supplier') || 'active');
 
-            if (confirm(`Apakah Anda yakin ingin menghapus supplier: ${nama}?`)) {
-                window.location.href = 'dashboard.php?page=supplier&hapus=' + id;
+        // Load produk supplier via AJAX
+        $.ajax({
+            url: 'pages/ajax/get_supplier_produk.php',
+            type: 'GET',
+            data: { id_supplier: id },
+            success: function (response) {
+                $('#edit-produk-supplier-container').html(response);
+                updateHapusButtonState();
+            },
+            error: function (xhr, status, error) {
+                console.error("AJAX Error:", status, error);
+                $('#edit-produk-supplier-container').html('<div class="alert alert-danger">Gagal memuat data produk</div>');
             }
         });
 
-        // Inisialisasi state tombol hapus
-        updateHapusButtonState();
+        $('#editSupplierModal').modal('show');
+    });
 
-        // Toggle antara pilih produk exist dan tambah produk baru
+    // Handle view button click
+    $(document).on('click', '.view-supplier', function () {
+        $('#detail_nama').text($(this).data('nama'));
+        $('#detail_alamat').text($(this).data('alamat') || '-');
+        $('#detail_telp').text($(this).data('telp') || '-');
+        $('#detail_email').text($(this).data('email') || '-');
+        $('#detail_jenis').text($(this).data('jenis') || '-');
+        $('#detail_status').text($(this).data('status') || '-');
+        $('#detailSupplierModal').modal('show');
+    });
+
+    // Handle delete button click
+    $(document).on('click', '.delete-supplier', function () {
+        const id = $(this).data('id');
+        const nama = $(this).data('nama');
+
+        if (confirm(`Apakah Anda yakin ingin menghapus supplier: ${nama}?`)) {
+            window.location.href = 'dashboard.php?page=supplier&hapus=' + id;
+        }
+    });
+
+    // Inisialisasi state tombol hapus
+    updateHapusButtonState();
+
+    // Toggle antara pilih produk exist dan tambah produk baru
     //$('#tambahProdukBaruCheck').change(function() {
-        //if ($(this).is(':checked')) {
-            //$('#pilihProdukExist').hide();
-            //$('#tambahProdukBaru').show();
-        //} else {
-            //$('#pilihProdukExist').show();
-            //$('#tambahProdukBaru').hide();
-        //}
+    //if ($(this).is(':checked')) {
+    //$('#pilihProdukExist').hide();
+    //$('#tambahProdukBaru').show();
+    //} else {
+    //$('#pilihProdukExist').show();
+    //$('#tambahProdukBaru').hide();
+    //}
     //});
-    
+
     // Tambah baris produk exist
-    $('#tambah-produk-exist').click(function() {
+    $('#tambah-produk-exist').click(function () {
         const newRow = `
         <div class="row produk-supplier-item mb-3">
             <div class="col-md-6">
@@ -1060,13 +1063,13 @@ $('#tambah-produk-supplier').click(function() {
             </div>
         </div>`;
 
-            $('#produk-supplier-container').append(newRow);
-            updateHapusButtonState('.hapus-produk-supplier', '.produk-supplier-item');
-        });
+        $('#produk-supplier-container').append(newRow);
+        updateHapusButtonState('.hapus-produk-supplier', '.produk-supplier-item');
+    });
 
-        // Tambah baris produk baru
-        $('#tambah-produk-baru').click(function () {
-            const newRow = `
+    // Tambah baris produk baru
+    $('#tambah-produk-baru').click(function () {
+        const newRow = `
         <div class="row produk-baru-item mb-3">
             <div class="col-md-5">
                 <input type="text" class="form-control" name="nama_produk_baru[]" placeholder="Nama Produk Baru">
@@ -1098,71 +1101,71 @@ $('#tambah-produk-supplier').click(function() {
             </div>
         </div>`;
 
-            $('#produk-baru-container').append(newRow);
-            updateHapusButtonState('.hapus-produk-baru', '.produk-baru-item');
-        });
+        $('#produk-baru-container').append(newRow);
+        updateHapusButtonState('.hapus-produk-baru', '.produk-baru-item');
+    });
 
-        // Hapus baris produk
-        $(document).on('click', '.hapus-produk-supplier, .hapus-produk-baru', function () {
-            $(this).closest('.row').remove();
-            updateHapusButtonState('.hapus-produk-supplier', '.produk-supplier-item');
-            updateHapusButtonState('.hapus-produk-baru', '.produk-baru-item');
-        });
-
-        // Update state tombol hapus
-        function updateHapusButtonState(buttonSelector, itemSelector) {
-            $(buttonSelector).prop('disabled', $(itemSelector).length <= 1);
-        }
-
-        // Validasi form
-        $('#formTambahSupplier').on('submit', function (e) {
-            let valid = true;
-            let errorMessage = "";
-
-            // Validasi supplier
-            const namaSupplier = $('input[name="nama_supplier"]');
-            if (namaSupplier.val() === '') {
-                valid = false;
-                namaSupplier.addClass('is-invalid');
-                errorMessage += "- Nama supplier harus diisi\n";
-            }
-
-            // Validasi produk
-            if ($('#tambahProdukBaruCheck').is(':checked')) {
-                // Validasi produk baru
-                $('input[name="nama_produk_baru[]"]').each(function (index) {
-                    if ($(this).val() === '') {
-                        valid = false;
-                        $(this).addClass('is-invalid');
-                        errorMessage += "- Nama produk baru harus diisi untuk baris " + (index + 1) + "\n";
-                    }
-                });
-            } else {
-                // Validasi produk exist
-                $('select[name="produk_exist[]"]').each(function (index) {
-                    if ($(this).val() === '') {
-                        valid = false;
-                        $(this).addClass('is-invalid');
-                        errorMessage += "- Pilih produk yang sudah ada untuk baris " + (index + 1) + "\n";
-                    }
-                });
-            }
-
-            if (!valid) {
-                e.preventDefault();
-                alert('Harap perbaiki kesalahan berikut:\n' + errorMessage);
-                return false;
-            }
-
-            return true;
-        });
-
-        // Hapus kelas invalid saat input diubah
-        $(document).on('change', 'input, select', function () {
-            $(this).removeClass('is-invalid');
-        });
-
-        // Inisialisasi state tombol hapus
+    // Hapus baris produk
+    $(document).on('click', '.hapus-produk-supplier, .hapus-produk-baru', function () {
+        $(this).closest('.row').remove();
         updateHapusButtonState('.hapus-produk-supplier', '.produk-supplier-item');
         updateHapusButtonState('.hapus-produk-baru', '.produk-baru-item');
+    });
+
+    // Update state tombol hapus
+    function updateHapusButtonState(buttonSelector, itemSelector) {
+        $(buttonSelector).prop('disabled', $(itemSelector).length <= 1);
+    }
+
+    // Validasi form
+    $('#formTambahSupplier').on('submit', function (e) {
+        let valid = true;
+        let errorMessage = "";
+
+        // Validasi supplier
+        const namaSupplier = $('input[name="nama_supplier"]');
+        if (namaSupplier.val() === '') {
+            valid = false;
+            namaSupplier.addClass('is-invalid');
+            errorMessage += "- Nama supplier harus diisi\n";
+        }
+
+        // Validasi produk
+        if ($('#tambahProdukBaruCheck').is(':checked')) {
+            // Validasi produk baru
+            $('input[name="nama_produk_baru[]"]').each(function (index) {
+                if ($(this).val() === '') {
+                    valid = false;
+                    $(this).addClass('is-invalid');
+                    errorMessage += "- Nama produk baru harus diisi untuk baris " + (index + 1) + "\n";
+                }
+            });
+        } else {
+            // Validasi produk exist
+            $('select[name="produk_exist[]"]').each(function (index) {
+                if ($(this).val() === '') {
+                    valid = false;
+                    $(this).addClass('is-invalid');
+                    errorMessage += "- Pilih produk yang sudah ada untuk baris " + (index + 1) + "\n";
+                }
+            });
+        }
+
+        if (!valid) {
+            e.preventDefault();
+            alert('Harap perbaiki kesalahan berikut:\n' + errorMessage);
+            return false;
+        }
+
+        return true;
+    });
+
+    // Hapus kelas invalid saat input diubah
+    $(document).on('change', 'input, select', function () {
+        $(this).removeClass('is-invalid');
+    });
+
+    // Inisialisasi state tombol hapus
+    updateHapusButtonState('.hapus-produk-supplier', '.produk-supplier-item');
+    updateHapusButtonState('.hapus-produk-baru', '.produk-baru-item');
 </script>

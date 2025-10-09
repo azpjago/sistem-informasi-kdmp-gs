@@ -24,7 +24,7 @@ $pendapatan_bulan_ini = $result->fetch_assoc()['total'] ?? 0;
 <div class="container-fluid">
     <!-- Header -->
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Dashboard Ketua 📊</h2>
+        <h3 class="mb-4">Dashboard Ketua 📊</h3>
         <div class="btn-toolbar mb-2 mb-md-0">
             <span class="text-muted me-3"><?php echo date('d F Y'); ?></span>
         </div>

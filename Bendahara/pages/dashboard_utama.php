@@ -1,9 +1,4 @@
 <?php
-// Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
 // --- Menghitung Data Untuk Kartu Statistik ---
 $result_anggota = $conn->query("SELECT COUNT(id) as total_anggota FROM anggota");
 $total_anggota = $result_anggota->fetch_assoc()['total_anggota'];

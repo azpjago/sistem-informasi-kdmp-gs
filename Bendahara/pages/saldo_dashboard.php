@@ -1,9 +1,6 @@
-<?php
-date_default_timezone_set('Asia/Jakarta');
-?>
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2 class="h4 mb-0 text-dark">Dashboard Saldo</h2>
+        <h3 class="mb-4">💵Dashboard Saldo</h3>
         <button class="btn btn-outline-primary btn-sm" onclick="refreshSaldo()">
             <i class="fas fa-sync-alt me-1"></i> Refresh
         </button>
@@ -82,7 +79,7 @@ date_default_timezone_set('Asia/Jakarta');
         <div class="col-md-3 mb-3">
             <div class="card h-100 border-0 shadow-sm">
                 <div class="card-body text-center py-3">
-                    <h6 class="card-title text-muted small mb-2">Tarik Sukarela</h6>
+                    <h6 class="card-title text-muted small mb-2">Tarik Simpanan</h6>
                     <h5 class="text-danger fw-bold mb-1" id="saldoTarik">Rp 0</h5>
                     <small class="text-muted">Pengurangan</small>
                 </div>
@@ -164,7 +161,7 @@ date_default_timezone_set('Asia/Jakarta');
                     $('#saldoOperasional').text('Rp ' + formatNumber(response.dana_operasional));
 
                     // Update Pengurangan
-                    $('#saldoTarik').text('Rp ' + formatNumber(response.tarik_sukarela));
+                    $('#saldoTarik').text('Rp ' + formatNumber(response.tarik_simpanan));
                     $('#saldoPengeluaran').text('Rp ' + formatNumber(response.total_pengeluaran));
                     $('#saldoPinjaman').text('Rp ' + formatNumber(response.total_pinjaman_approved));
                     $('#saldoSelisih').text('Rp ' + formatNumber(response.selisih));
@@ -195,7 +192,7 @@ date_default_timezone_set('Asia/Jakarta');
                             </div>
                             <div class="col-md-4">
                                 <div class="mb-1"><i class="fas fa-minus-circle text-danger me-2"></i><strong>PENGURANGAN:</strong></div>
-                                <div class="mb-1"><i class="fas fa-hand-holding-usd me-2"></i>Tarik Sukarela: <span class="fw-bold text-danger">Rp ${formatNumber(response.tarik_sukarela)}</span></div>
+                                <div class="mb-1"><i class="fas fa-hand-holding-usd me-2"></i>Tarik Simpanan: <span class="fw-bold text-danger">Rp ${formatNumber(response.tarik_simpanan)}</span></div>
                                 <div class="mb-1"><i class="fas fa-receipt me-2"></i>Pengeluaran: <span class="fw-bold text-danger">Rp ${formatNumber(response.total_pengeluaran)}</span></div>
                                 <div class="mb-1"><i class="fas fa-hand-holding-heart me-2"></i>Pinjaman: <span class="fw-bold text-danger">Rp ${formatNumber(response.total_pinjaman_approved)}</span></div>
                             </div>
@@ -258,7 +255,7 @@ date_default_timezone_set('Asia/Jakarta');
     function refreshSaldo() {
         loadSaldoDashboard();
         // Tampilkan loading indicator
-        $('#saldoUtama').html('<span class="spinner-border spinner-border-sm"></span> Loading...');
+        $('#saldoUtama').html('<span class="spinner-border spinner-border-sm"></span> Memuat Data...');
     }
 
     // Load pertama kali

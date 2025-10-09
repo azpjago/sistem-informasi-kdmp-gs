@@ -33,6 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 $id_anggota = (int) ($_POST['id'] ?? 0);
 $wajib_baru = (int) ($_POST['simpanan_baru'] ?? 0);
 $metode = trim($_POST['metode'] ?? '');
+$bank_tujuan = trim($_POST['bank_tujuan'] ?? '');
 $opsi = $_POST['opsi'] ?? null;
 
 if ($id_anggota <= 0 || $wajib_baru <= 0 || !in_array($metode, ['cash', 'transfer'], true)) {
@@ -156,8 +157,8 @@ try {
     $id_transaksi = generate_id_transaksi_manual($conn, $jenis_simpanan);
     $bukti = save_bukti('bukti_file', $id_transaksi, $jenis_transaksi);
 
-    $stmt = $conn->prepare("INSERT INTO pembayaran (id_transaksi, anggota_id, jenis_simpanan, jenis_transaksi, jumlah, tanggal_bayar, bulan_periode, metode, status, bukti) VALUES (?,?,?,?,?,?,?,?,?,?)");
-    $stmt->bind_param('sissdsssss', $id_transaksi, $id_anggota, $jenis_simpanan, $jenis_transaksi, $jumlah, $tanggal_bayar, $bulan_periode, $metode, $status, $bukti);
+    $stmt = $conn->prepare("INSERT INTO pembayaran (id_transaksi, anggota_id, jenis_simpanan, jenis_transaksi, jumlah, tanggal_bayar, bulan_periode, metode, bank_tujuan, status, bukti) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    $stmt->bind_param('sissdssssss', $id_transaksi, $id_anggota, $jenis_simpanan, $jenis_transaksi, $jumlah, $tanggal_bayar, $bulan_periode, $metode, $bank_tujuan, $status, $bukti);
     $stmt->execute();
     $pembayaran_id = $conn->insert_id;
     $stmt->close();
@@ -183,7 +184,7 @@ try {
     );
 
   } else {
-    $jenis_simpanan = "Simpanan Sukarela";
+    $jenis_simpanan = "Simpanan Wajib";
     $jumlah = ($wajib_lama - $wajib_baru) * $jml_periode;
     $jenis_transaksi = 'tarik';
     $status = "Menarik kelebihan simpanan wajib. Periode: {$periode_teks}";
@@ -191,8 +192,8 @@ try {
     $id_transaksi = generate_id_transaksi_manual($conn, $jenis_simpanan);
     $bukti = save_bukti('bukti_file', $id_transaksi, $jenis_transaksi);
 
-    $stmt = $conn->prepare("INSERT INTO pembayaran (id_transaksi, anggota_id, jenis_simpanan, jenis_transaksi, jumlah, tanggal_bayar, bulan_periode, metode, status, bukti) VALUES (?,?,?,?,?,?,?,?,?,?)");
-    $stmt->bind_param('sissdsssss', $id_transaksi, $id_anggota, $jenis_simpanan, $jenis_transaksi, $jumlah, $tanggal_bayar, $bulan_periode, $metode, $status, $bukti);
+    $stmt = $conn->prepare("INSERT INTO pembayaran (id_transaksi, anggota_id, jenis_simpanan, jenis_transaksi, jumlah, tanggal_bayar, bulan_periode, metode, bank_tujuan, status, bukti) VALUES (?,?,?,?,?,?,?,?,?,?)");
+    $stmt->bind_param('sissdssssss', $id_transaksi, $id_anggota, $jenis_simpanan, $jenis_transaksi, $jumlah, $tanggal_bayar, $bulan_periode, $bank_tujuan, $metode, $status, $bukti);
     $stmt->execute();
     $pembayaran_id = $conn->insert_id;
     $stmt->close();
