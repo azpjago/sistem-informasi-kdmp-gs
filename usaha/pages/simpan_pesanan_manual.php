@@ -13,11 +13,6 @@ header('Content-Type: application/json');
 error_reporting(0);
 ini_set('display_errors', 0);
 
-function log_error($message)
-{
-    file_put_contents('error_log.txt', date('Y-m-d H:i:s') . ' - ' . $message . PHP_EOL, FILE_APPEND);
-}
-
 try {
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Invalid request method');
@@ -167,8 +162,6 @@ try {
 
     if (isset($conn) && mysqli_thread_id($conn))
         mysqli_rollback($conn);
-
-    log_error($e->getMessage());
     echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
 } finally {
     if (isset($conn))
