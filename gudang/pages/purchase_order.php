@@ -467,6 +467,7 @@ if (isset($_GET['ubah_status'])) {
             $('#tabelOrder').DataTable({
                 pageLength: 10,
                 lengthMenu: [10, 25, 50, 100],
+                order: [[2, 'desc']],
                 language: {
                     search: "Cari Order : ",
                     lengthMenu: "Tampilkan _MENU_ data per halaman",
