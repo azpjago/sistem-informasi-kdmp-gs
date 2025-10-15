@@ -12,6 +12,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'usaha') {
     exit;
 }
 ?>
+
 <head>
     <title>Dashboard Usaha</title>
     <!-- CSS -->
@@ -54,8 +55,10 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'usaha') {
                         <span>Pembayaran Cicilan</span></a></li>
                 <li class="nav-item"><a href="?page=laporan" class="nav-link"><i class="fas fa-file-text"></i>
                         <span>Laporan</span></a></li>
+                <li class="nav-item"><a href="?page=broadcast_wa" class="nav-link"><i class="fas fa-whatsapp"></i>
+                        <span>Broadcast WA</span></a></li>
                 <li class="nav-item logout-item"><a href="../logout.php" class="nav-link"><i
-                            class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>
+                            class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>            
             </ul>
 
             <div class="user-info">
@@ -71,7 +74,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'usaha') {
         <div class="content-wrapper">
             <?php
             $page = $_GET['page'] ?? "dashboard_utama";
-            $allowed_pages = ['dashboard_utama', 'monitoring', 'produk', 'history', 'pengiriman', 'laporan', 'kurir', 'selesai', 'pinjaman', 'pembayaran_cicilan'];
+            $allowed_pages = ['dashboard_utama', 'monitoring', 'produk', 'history', 'pengiriman', 'laporan', 'kurir', 'selesai', 'pinjaman', 'pembayaran_cicilan', 'broadcast_wa'];
 
             if (in_array($page, $allowed_pages) && file_exists("pages/" . $page . ".php")) {
                 include "pages/" . $page . ".php";
