@@ -1,17 +1,47 @@
 <?php
-// Ambil pengaturan jam kerja
-$query_jam_kerja = "SELECT * FROM pengaturan_jam_kerja ORDER BY id DESC LIMIT 1";
+// Ambil pengaturan jam kerja per hari
+$query_jam_kerja = "
+    SELECT * FROM pengaturan_jam_kerja 
+    WHERE hari_enum = LOWER(DAYNAME(CURDATE()))
+    LIMIT 1
+";
 $result_jam_kerja = mysqli_query($conn, $query_jam_kerja);
 $jam_kerja = mysqli_fetch_assoc($result_jam_kerja);
 
+// Jika tidak ada setting untuk hari ini, gunakan default
 if (!$jam_kerja) {
-    // Default jam kerja jika tidak ada setting
-    $jam_kerja = ['buka' => '07:00:00', 'tutup' => '15:00:00'];
+    $hari_ini = strtolower(date('l'));
+    
+    // Default jam kerja berdasarkan hari
+    $default_jam_kerja = [
+        'monday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
+        'tuesday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
+        'wednesday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
+        'thursday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
+        'friday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
+        'saturday' => ['buka' => '08:00:00', 'tutup' => '12:00:00', 'is_libur' => false], // Sabtu setengah hari
+        'sunday' => ['buka' => '00:00:00', 'tutup' => '00:00:00', 'is_libur' => true]  // Minggu libur
+    ];
+    
+    $hari_key = strtolower(date('l'));
+    if (isset($default_jam_kerja[$hari_key])) {
+        $jam_kerja = $default_jam_kerja[$hari_key];
+    } else {
+        $jam_kerja = ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false];
+    }
 }
 
 // Cek status sistem (buka/tutup)
 $waktu_sekarang = date('H:i:s');
-$sistem_buka = ($waktu_sekarang >= $jam_kerja['buka'] && $waktu_sekarang <= $jam_kerja['tutup']);
+$hari_ini = strtolower(date('l'));
+
+// Jika hari libur, sistem selalu tutup
+if (isset($jam_kerja['is_libur']) && $jam_kerja['is_libur']) {
+    $sistem_buka = false;
+} else {
+    // Cek berdasarkan jam operasional
+    $sistem_buka = ($waktu_sekarang >= $jam_kerja['buka'] && $waktu_sekarang <= $jam_kerja['tutup']);
+}
 
 // Filter yang tersedia
 $filter_jadwal = $_GET['jadwal'] ?? '';
@@ -45,6 +75,32 @@ if ($filter_status && $filter_status != 'semua') {
 $query .= " ORDER BY p.tanggal_pesan DESC";
 
 $pesanan = mysqli_query($conn, $query);
+
+// Fungsi untuk mendapatkan info hari
+function getHariInfo($jam_kerja) {
+    $hari_indo = [
+        'monday' => 'Senin',
+        'tuesday' => 'Selasa', 
+        'wednesday' => 'Rabu',
+        'thursday' => 'Kamis',
+        'friday' => 'Jumat',
+        'saturday' => 'Sabtu',
+        'sunday' => 'Minggu'
+    ];
+    
+    $hari_inggris = strtolower(date('l'));
+    $hari_indonesia = $hari_indo[$hari_inggris] ?? $hari_inggris;
+    
+    $info = $hari_indonesia;
+    
+    if (isset($jam_kerja['is_libur']) && $jam_kerja['is_libur']) {
+        $info .= " (LIBUR)";
+    } elseif ($hari_inggris == 'saturday') {
+        $info .= " (SETENGAH HARI)";
+    }
+    
+    return $info;
+}
 ?>
 
 <div class="card">
@@ -60,12 +116,17 @@ $pesanan = mysqli_query($conn, $query);
                     <div class="alert <?= $sistem_buka ? 'alert-success' : 'alert-danger' ?>">
                         <i class="fas fa-clock me-2"></i>
                         <strong>Sistem Pemesanan: <?= $sistem_buka ? 'BUKA' : 'TUTUP' ?></strong>
-                        <span class="ms-2">(Jam Operasional: <?= date('H:i', strtotime($jam_kerja['buka'])) ?> -
-                            <?= date('H:i', strtotime($jam_kerja['tutup'])) ?>)</span>
+                        <span class="ms-2">
+                            Hari: <?= getHariInfo($jam_kerja) ?> | 
+                            Jam Operasional: <?= date('H:i', strtotime($jam_kerja['buka'])) ?> - <?= date('H:i', strtotime($jam_kerja['tutup'])) ?>
+                        </span>
 
                         <?php if (!$sistem_buka): ?>
-                            <span class="ms-2">- Sistem akan buka kembali besok jam
-                                <?= date('H:i', strtotime($jam_kerja['buka'])) ?></span>
+                            <?php if (isset($jam_kerja['is_libur']) && $jam_kerja['is_libur']): ?>
+                                <span class="ms-2">- Hari ini libur</span>
+                            <?php else: ?>
+                                <span class="ms-2">- Sistem akan buka kembali besok jam <?= date('H:i', strtotime($jam_kerja['buka'])) ?></span>
+                            <?php endif; ?>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -221,7 +282,7 @@ $pesanan = mysqli_query($conn, $query);
                         <?php endwhile; ?>
                     <?php else: ?>
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-3">
+                            <td colspan="9" class="text-center text-muted py-3">
                                 Tidak ada pesanan untuk tanggal <?= date('d F Y', strtotime($filter_tanggal)) ?>
                             </td>
                         </tr>
@@ -298,8 +359,16 @@ $pesanan = mysqli_query($conn, $query);
                         <div class="alert <?= $sistem_buka ? 'alert-success' : 'alert-danger' ?> mb-3">
                             <i class="fas fa-clock me-2"></i>
                             <strong>Sistem Pemesanan: <?= $sistem_buka ? 'BUKA' : 'TUTUP' ?></strong>
-                            <span class="ms-2">(Jam Operasional: <?= date('H:i', strtotime($jam_kerja['buka'])) ?> -
-                                <?= date('H:i', strtotime($jam_kerja['tutup'])) ?>)</span>
+                            <span class="ms-2">
+                                Hari: <?= getHariInfo($jam_kerja) ?> | 
+                                Jam: <?= date('H:i', strtotime($jam_kerja['buka'])) ?> - <?= date('H:i', strtotime($jam_kerja['tutup'])) ?>
+                            </span>
+                            
+                            <?php if (!$sistem_buka && isset($jam_kerja['is_libur']) && $jam_kerja['is_libur']): ?>
+                                <div class="mt-1">
+                                    <small>Hari ini libur. Pemesanan manual tidak tersedia.</small>
+                                </div>
+                            <?php endif; ?>
                         </div>
 
                         <?php if ($sistem_buka): ?>
@@ -525,10 +594,44 @@ $pesanan = mysqli_query($conn, $query);
                             <div class="text-center py-4">
                                 <i class="fas fa-store-slash fa-3x text-muted mb-3"></i>
                                 <h4 class="text-muted">Sistem Pemesanan Sedang Tutup</h4>
-                                <p class="text-muted">Pemesanan manual hanya dapat dilakukan pada jam operasional:</p>
-                                <p class="fw-bold"><?= date('H:i', strtotime($jam_kerja['buka'])) ?> -
-                                    <?= date('H:i', strtotime($jam_kerja['tutup'])) ?></p>
+                                
+                                <?php if (isset($jam_kerja['is_libur']) && $jam_kerja['is_libur']): ?>
+                                    <p class="text-muted">Hari ini (<strong><?= getHariInfo($jam_kerja) ?></strong>) adalah hari libur.</p>
+                                <?php else: ?>
+                                    <p class="text-muted">Pemesanan manual hanya dapat dilakukan pada jam operasional:</p>
+                                    <p class="fw-bold"><?= date('H:i', strtotime($jam_kerja['buka'])) ?> - <?= date('H:i', strtotime($jam_kerja['tutup'])) ?></p>
+                                <?php endif; ?>
+                                
                                 <p class="text-muted">Silakan kembali pada jam operasional untuk input pesanan manual.</p>
+                                
+                                <?php 
+                                // Tampilkan jadwal besok
+                                $besok = date('Y-m-d', strtotime('+1 day'));
+                                $hari_besok = strtolower(date('l', strtotime($besok)));
+                                
+                                $jadwal_besok = [
+                                    'monday' => ['buka' => '07:00', 'tutup' => '15:00'],
+                                    'tuesday' => ['buka' => '07:00', 'tutup' => '15:00'],
+                                    'wednesday' => ['buka' => '07:00', 'tutup' => '15:00'],
+                                    'thursday' => ['buka' => '07:00', 'tutup' => '15:00'],
+                                    'friday' => ['buka' => '07:00', 'tutup' => '15:00'],
+                                    'saturday' => ['buka' => '08:00', 'tutup' => '12:00'],
+                                    'sunday' => ['buka' => '00:00', 'tutup' => '00:00', 'libur' => true]
+                                ];
+                                
+                                if (isset($jadwal_besok[$hari_besok])): 
+                                ?>
+                                    <div class="mt-3 p-2 bg-light rounded">
+                                        <small>
+                                            <strong>Besok (<?= ucfirst($hari_besok) ?>):</strong> 
+                                            <?php if (isset($jadwal_besok[$hari_besok]['libur']) && $jadwal_besok[$hari_besok]['libur']): ?>
+                                                Libur
+                                            <?php else: ?>
+                                                <?= $jadwal_besok[$hari_besok]['buka'] ?> - <?= $jadwal_besok[$hari_besok]['tutup'] ?>
+                                            <?php endif; ?>
+                                        </small>
+                                    </div>
+                                <?php endif; ?>
                             </div>
                         <?php endif; ?>
                     </div>
@@ -637,7 +740,6 @@ $pesanan = mysqli_query($conn, $query);
             }
 
             // Single order processing
-            // Single order processing
             function processOrder(id, status) {
                 if (confirm(`Update pesanan #${id} ke status "${status}"?`)) {
                     $.post('pages/update_status.php', {
@@ -662,7 +764,6 @@ $pesanan = mysqli_query($conn, $query);
             }
 
             // Detail modal
-            // Detail modal - PERBAIKAN
             function showDetail(id) {
                 console.log('Loading detail for order ID:', id);
 
@@ -735,6 +836,7 @@ $pesanan = mysqli_query($conn, $query);
                     }
                 });
             }
+
             // Fungsi pembantu untuk format tanggal
             function formatDateTime(dateTimeStr) {
                 const date = new Date(dateTimeStr);
@@ -759,6 +861,7 @@ $pesanan = mysqli_query($conn, $query);
 
             // Terapkan filter on change
             $('#filterTanggal, #filterJadwal, #filterStatus').change(applyFilter);
+
             // Fungsi pencarian anggota
             function cariDataAnggota() {
                 const keyword = $('#cariAnggota').val();
@@ -828,201 +931,6 @@ $pesanan = mysqli_query($conn, $query);
                 $('#hasilPencarian').hide();
             }
 
-            // Fungsi ketika produk dipilih
-            $('#pilihProduk').change(function () {
-                const selectedOption = $(this).find('option:selected');
-                const harga = selectedOption.data('harga');
-                const satuan = selectedOption.data('satuan');
-
-                $('#hargaProduk').val('Rp ' + parseInt(harga).toLocaleString('id-ID'));
-                if (satuan) {
-                    $('#satuanProduk').val(satuan);
-
-                    // Non-aktifkan dropdown jika produk sudah punya satuan tetap
-                    $('#satuanProduk').prop('disabled', true);
-                } else {
-                    // Aktifkan dropdown jika produk tidak punya satuan tetap
-                    $('#satuanProduk').prop('disabled', false);
-                }
-            });
-
-            // Fungsi menambah produk ke daftar
-            function tambahProduk() {
-                const selectedOption = $('#pilihProduk option:selected');
-                const idProduk = selectedOption.val();
-                const namaProduk = selectedOption.text();
-                const harga = selectedOption.data('harga');
-                const satuanDefault = selectedOption.data('satuan');
-                const qty = $('#qtyProduk').val();
-                const satuan = $('#satuanProduk').val();
-
-                if (!idProduk) {
-                    alert('Pilih produk terlebih dahulu');
-                    return;
-                }
-
-                if (qty < 1) {
-                    alert('Quantity minimal 1');
-                    return;
-                }
-
-                const subtotal = harga * qty;
-
-                // Cek apakah produk sudah ada di daftar
-                const existingRow = $(`#tabelProdukDipilih tr[data-produk="${idProduk}"]`);
-                if (existingRow.length > 0 && existingRow.data('satuan') === satuan) {
-                    // Update quantity jika sudah ada
-                    const existingQty = parseFloat(existingRow.find('.qty-item').val());
-                    const newQty = existingQty + parseFloat(qty);
-                    existingRow.find('.qty-item').val(newQty);
-
-                    const newSubtotal = harga * newQty;
-                    existingRow.find('.subtotal-item').text('Rp ' + newSubtotal.toLocaleString('id-ID'));
-                    existingRow.find('input[name="qty[]"]').val(newQty);
-                } else {
-                    // Tambah baru jika belum ada
-                    const newRow = `
-            <tr data-produk="${idProduk}" data-satuan="${satuan}">
-                <td>${namaProduk}<input type="hidden" name="id_produk[]" value="${idProduk}"></td>
-                <td>${satuan}<input type="hidden" name="satuan[]" value="${satuan}"></td>
-                <td>Rp ${parseInt(harga).toLocaleString('id-ID')}<input type="hidden" name="harga[]" value="${harga}"></td>
-                <td>
-                    <input type="number" class="form-control form-control-sm qty-item" 
-                           value="${qty}" min="1" onchange="updateSubtotal(this, ${harga})">
-                    <input type="hidden" name="qty[]" value="${qty}">
-                </td>
-                <td class="subtotal-item">Rp ${subtotal.toLocaleString('id-ID')}</td>
-                <td>
-                    <button type="button" class="btn btn-sm btn-danger" onclick="hapusProduk(this)">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>datt
-            </tr>
-        `;
-                    $('#tabelProdukDipilih tbody').append(newRow);
-                }
-
-                // Update total
-                updateTotalHarga();
-
-                // Reset form
-                $('#pilihProduk').val('');
-                $('#hargaProduk').val('');
-                $('#qtyProduk').val(1);
-                $('#satuanProduk').val('');
-            }
-
-            // Fungsi update subtotal
-            function updateSubtotal(input, harga) {
-                const qty = $(input).val();
-                const subtotal = harga * qty;
-                $(input).closest('tr').find('.subtotal-item').text('Rp ' + subtotal.toLocaleString('id-ID'));
-                $(input).next('input[name="qty[]"]').val(qty);
-                updateTotalHarga();
-            }
-
-            // Fungsi hapus produk
-            function hapusProduk(button) {
-                $(button).closest('tr').remove();
-                updateTotalHarga();
-            }
-
-            // Fungsi update total harga
-            function updateTotalHarga() {
-                let total = 0;
-                $('.subtotal-item').each(function () {
-                    const subtotalText = $(this).text().replace('Rp ', '').replace(/\./g, '');
-                    total += parseInt(subtotalText);
-                });
-
-                $('#totalHarga').text('Rp ' + total.toLocaleString('id-ID'));
-                $('#inputTotalHarga').val(total);
-            }
-
-            // Fungsi simpan pesanan
-            function simpanPesanan() {
-                if (!$('#selectedIdAnggota').val()) {
-                    alert('Pilih anggota terlebih dahulu');
-                    return;
-                }
-
-                if ($('#tabelProdukDipilih tbody tr').length === 0) {
-                    alert('Tambahkan minimal satu produk');
-                    return;
-                }
-
-                // Siapkan data items untuk dikirim
-                const items = [];
-                $('#tabelProdukDipilih tbody tr').each(function () {
-                    const id_produk = $(this).find('input[name="id_produk[]"]').val();
-                    const harga = $(this).find('input[name="harga[]"]').val();
-                    const satuan = $(this).find('input[name="satuan[]"]').val();
-                    const qty = $(this).find('input[name="qty[]"]').val();
-
-                    items.push({
-                        id_produk: id_produk,
-                        harga: harga,
-                        qty: qty
-                    });
-                });
-
-                $('#inputItems').val(JSON.stringify(items));
-
-                // Submit form
-                $('#formInputPesanan').submit();
-            }
-            // Di bagian akhir script
-            $('#formInputPesanan').on('submit', function (e) {
-                e.preventDefault();
-
-                // Tampilkan loading state
-                const submitBtn = $(this).find('button[type="button"]');
-                const originalText = submitBtn.html();
-                submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...').prop('disabled', true);
-
-                $.ajax({
-                    url: $(this).attr('action'),
-                    type: 'POST',
-                    data: $(this).serialize(),
-                    dataType: 'json', // Explicitly expect JSON
-                    success: function (result) {
-                        // dataType: 'json' akan otomatis parse JSON
-                        if (result.success) {
-                            alert('Pesanan berhasil disimpan dengan ID pemesanan: ' + result.id_pemesanan);
-                            $('#inputPesananModal').modal('hide');
-                            location.reload();
-                        } else {
-                            alert('Error: ' + result.message);
-                        }
-                    },
-                    error: function (xhr, status, error) {
-                        console.error('AJAX Error:', status, error);
-                        console.error('Response:', xhr.responseText);
-
-                        // Cek jika response mengandung error PHP
-                        if (xhr.responseText.includes('<b>') || xhr.responseText.includes('<br />')) {
-                            alert('Terjadi error pada server. Silakan cek console untuk detail.');
-                        } else {
-                            try {
-                                // Coba parse response sebagai JSON
-                                const response = JSON.parse(xhr.responseText);
-                                if (response.message) {
-                                    alert('Error: ' + response.message);
-                                } else {
-                                    alert('Terjadi kesalahan tidak diketahui. Silakan coba lagi.');
-                                }
-                            } catch (e) {
-                                // Jika bukan JSON, tampilkan error umum
-                                alert('Terjadi kesalahan pada server. Data mungkin sudah tersimpan tetapi ada masalah dengan response.');
-                            }
-                        }
-                    },
-                    complete: function () {
-                        // Restore button state
-                        submitBtn.html(originalText).prop('disabled', false);
-                    }
-                });
-            });
             // Variabel global untuk menyimpan info produk yang dipilih
             let produkTerpilih = null;
 
@@ -1174,23 +1082,34 @@ $pesanan = mysqli_query($conn, $query);
                 $('#pesanStok').hide();
             }
 
-            // Fungsi untuk cek stok real-time via AJAX (opsional, untuk stok yang sering berubah)
-            function cekStokRealTime(idProduk, callback) {
-                $.ajax({
-                    url: 'pages/cek_stok.php',
-                    type: 'GET',
-                    data: { id_produk: idProduk },
-                    dataType: 'json',
-                    success: function (response) {
-                        if (callback) callback(response);
-                    },
-                    error: function () {
-                        console.error('Gagal memeriksa stok');
-                    }
-                });
+            // Fungsi update subtotal
+            function updateSubtotal(input, harga) {
+                const qty = $(input).val();
+                const subtotal = harga * qty;
+                $(input).closest('tr').find('.subtotal-item').text('Rp ' + subtotal.toLocaleString('id-ID'));
+                $(input).next('input[name="qty[]"]').val(qty);
+                updateTotalHarga();
             }
 
-            // Update fungsi simpan pesanan untuk validasi stok final
+            // Fungsi hapus produk
+            function hapusProduk(button) {
+                $(button).closest('tr').remove();
+                updateTotalHarga();
+            }
+
+            // Fungsi update total harga
+            function updateTotalHarga() {
+                let total = 0;
+                $('.subtotal-item').each(function () {
+                    const subtotalText = $(this).text().replace('Rp ', '').replace(/\./g, '');
+                    total += parseInt(subtotalText);
+                });
+
+                $('#totalHarga').text('Rp ' + total.toLocaleString('id-ID'));
+                $('#inputTotalHarga').val(total);
+            }
+
+            // Fungsi simpan pesanan
             function simpanPesanan() {
                 if (!$('#selectedIdAnggota').val()) {
                     alert('Pilih anggota terlebih dahulu');
@@ -1249,9 +1168,55 @@ $pesanan = mysqli_query($conn, $query);
 
                 $('#inputItems').val(JSON.stringify(items));
 
-                // Submit form
-                $('#formInputPesanan').submit();
+                // Submit form via AJAX
+                const submitBtn = $('#formInputPesanan').find('button[type="button"]');
+                const originalText = submitBtn.html();
+                submitBtn.html('<i class="fas fa-spinner fa-spin"></i> Menyimpan...').prop('disabled', true);
+
+                $.ajax({
+                    url: $('#formInputPesanan').attr('action'),
+                    type: 'POST',
+                    data: $('#formInputPesanan').serialize(),
+                    dataType: 'json', // Explicitly expect JSON
+                    success: function (result) {
+                        // dataType: 'json' akan otomatis parse JSON
+                        if (result.success) {
+                            alert('Pesanan berhasil disimpan dengan ID pemesanan: ' + result.id_pemesanan);
+                            $('#inputPesananModal').modal('hide');
+                            location.reload();
+                        } else {
+                            alert('Error: ' + result.message);
+                        }
+                    },
+                    error: function (xhr, status, error) {
+                        console.error('AJAX Error:', status, error);
+                        console.error('Response:', xhr.responseText);
+
+                        // Cek jika response mengandung error PHP
+                        if (xhr.responseText.includes('<b>') || xhr.responseText.includes('<br />')) {
+                            alert('Terjadi error pada server. Silakan cek console untuk detail.');
+                        } else {
+                            try {
+                                // Coba parse response sebagai JSON
+                                const response = JSON.parse(xhr.responseText);
+                                if (response.message) {
+                                    alert('Error: ' + response.message);
+                                } else {
+                                    alert('Terjadi kesalahan tidak diketahui. Silakan coba lagi.');
+                                }
+                            } catch (e) {
+                                // Jika bukan JSON, tampilkan error umum
+                                alert('Terjadi kesalahan pada server. Data mungkin sudah tersimpan tetapi ada masalah dengan response.');
+                            }
+                        }
+                    },
+                    complete: function () {
+                        // Restore button state
+                        submitBtn.html(originalText).prop('disabled', false);
+                    }
+                });
             }
+
             // Fungsi untuk toggle bank tujuan berdasarkan metode pembayaran
             function toggleBankTujuan() {
                 const metode = $('#metodePembayaran').val();

@@ -3,9 +3,9 @@ $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
+
 // Fungsi untuk mendapatkan semua produk yang tersedia
-function getAllProdukTersedia($conn)
-{
+function getAllProdukTersedia($conn) {
     $query = "
         SELECT 
             p.id_produk,
@@ -24,96 +24,72 @@ function getAllProdukTersedia($conn)
     return $result;
 }
 
-// Fungsi untuk mendapatkan produk dengan stok menipis (untuk statistik)
-function getProdukStokMenipis($conn, $threshold = 10)
-{
-    $query = "
-        SELECT 
-            p.id_produk,
-            p.nama_produk,
-            ir.jumlah_tersedia as stok
-        FROM produk p
-        INNER JOIN inventory_ready ir ON p.id_inventory = ir.id_inventory
-        WHERE ir.jumlah_tersedia <= ? AND ir.jumlah_tersedia > 0
-        ORDER BY ir.jumlah_tersedia ASC
-    ";
-    $stmt = $conn->prepare($query);
-    $stmt->bind_param("i", $threshold);
-    $stmt->execute();
-    return $stmt->get_result();
-}
-
-// Fungsi untuk mendapatkan produk habis (untuk statistik)
-function getProdukStokHabis($conn)
-{
-    $query = "
-        SELECT 
-            p.id_produk,
-            p.nama_produk
-        FROM produk p
-        INNER JOIN inventory_ready ir ON p.id_inventory = ir.id_inventory
-        WHERE ir.jumlah_tersedia = 0
-        ORDER BY p.nama_produk ASC
-    ";
-    $result = $conn->query($query);
-    return $result;
-}
-
-// Fungsi untuk mendapatkan semua anggota dengan nomor WA
-function getAnggotaWithWA($conn)
-{
-    $query = "
-        SELECT nama, no_hp 
-        FROM anggota 
-        WHERE no_hp IS NOT NULL AND no_hp != ''
-        ORDER BY nama ASC
-    ";
-    $result = $conn->query($query);
-    return $result;
+// Fungsi untuk mendapatkan grup WA 
+function getGrupWA($conn) {
+    // === KONFIGURASI GRUP WA ANDA ===
+    $grup_wa = [
+        [
+            'nama_grup' => 'Anggota KDMP Ganjar Sabar',
+            'group_id' => '120363420762315139@g.us' // ID grup
+        ]
+    ];
+    
+    return $grup_wa;
 }
 
 // Fungsi untuk format pesan broadcast
-function formatPesanBroadcast($produkTersedia)
-{
+function formatPesanBroadcast($produkTersedia) {
     $date = date('d/m/Y');
-    $pesan = "🛍️ *DAFTAR PRODUK TERSEDIA KOPERASI*\n";
-    $pesan .= "Tanggal: $date\n\n";
-
+    $pesan = "🛍️ *INFORMASI PRODUK KOPERASI TERBARU*\n";
+    $pesan .= "📅 Tanggal: $date\n\n";
+    
     if ($produkTersedia->num_rows > 0) {
+        $pesan .= "🎯 *PRODUK TERSEDIA SAAT INI:*\n\n";
+        
         while ($produk = $produkTersedia->fetch_assoc()) {
-            $pesan .= "✅ *{$produk['nama_produk']}*\n";
-            $pesan .= "   Stok: {$produk['stok']} {$produk['satuan']}\n";
-            $pesan .= "   Harga: Rp " . number_format($produk['harga'], 0, ',', '.') . "\n";
-
-            if (!empty($produk['deskripsi'])) {
-                $pesan .= "   Deskripsi: {$produk['deskripsi']}\n";
+            $status_emoji = $produk['stok'] <= 5 ? '⚠️' : '✅';
+            $pesan .= "{$status_emoji} *{$produk['nama_produk']}*\n";
+            $pesan .= "   📦 Stok: {$produk['stok']} {$produk['satuan_kecil']}\n";
+            $pesan .= "   💰 Harga: Rp " . number_format($produk['harga'], 0, ',', '.') . "\n";
+            
+            if (!empty($produk['keterangan'])) {
+                $pesan .= "   📝 {$produk['keterangan']}\n";
             }
-
             $pesan .= "\n";
         }
-
-        $pesan .= "📞 *Info & Pemesanan:*\n";
-        $pesan .= "Hubungi admin koperasi untuk pemesanan.\n\n";
-        $pesan .= "Terima kasih 🙏";
+        
+        $pesan .= "🛒 *CARA PEMESANAN:*\n";
+        $pesan .= "1. Langsung ke kantor koperasi\n";
+        $pesan .= "2. Hubungi admin\n"; 
+        $pesan .= "3. Via WhatsApp dengan format:\n";
+        $pesan .= "   *NAMA - PRODUK - JUMLAH*\n\n";
+        
+        $pesan .= "📞 *KONTAK ADMIN:*\n";
+        $pesan .= "Usaha (Hendra Suparman): 085220703417\n";
+        $pesan .= "Bendahara (Yeyes Resti): 08978190899\n";
+        $pesan .= "Ketua (Purnama): 082117587151\n\n";
+        
+        $pesan .= "Terima kasih atas perhatiannya 🙏\n";
+        $pesan .= "_*Koperasi Desa Merah Putih Bersinar Bersama*_";
     } else {
-        $pesan .= "❌ *Tidak ada produk yang tersedia saat ini.*\n";
+        $pesan .= "❌ *Saat ini tidak ada produk yang tersedia.*\n";
         $pesan .= "Silakan hubungi admin untuk informasi lebih lanjut.";
     }
-
+    
     return $pesan;
 }
 
 // Proses form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
-
+    
     if ($action === 'broadcast_stok') {
         $custom_message = trim($_POST['custom_message'] ?? '');
-
+        
         // Get data
         $produkTersedia = getAllProdukTersedia($conn);
-        $anggota = getAnggotaWithWA($conn);
-
+        $grup_wa = getGrupWA($conn);
+        
         if ($produkTersedia->num_rows === 0) {
             $response = [
                 'status' => 'info',
@@ -122,103 +98,165 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         } else {
             // Format pesan
             $pesan = formatPesanBroadcast($produkTersedia);
-
+            
             // Tambahkan custom message jika ada
             if (!empty($custom_message)) {
-                $pesan .= "\n\n📝 *Pesan Tambahan:*\n" . $custom_message;
+                $pesan .= "\n\n📢 *PENGUMUMAN:*\n" . $custom_message;
             }
-
-            // Simpan pesan untuk ditampilkan
-            $_SESSION['broadcast_message'] = $pesan;
-            $_SESSION['total_anggota'] = $anggota->num_rows;
-
+            
             $response = [
                 'status' => 'success',
                 'message' => 'Pesan broadcast berhasil dibuat!',
                 'preview' => $pesan,
-                'total_anggota' => $anggota->num_rows,
-                'total_produk' => $produkTersedia->num_rows
+                'total_grup' => count($grup_wa),
+                'total_produk' => $produkTersedia->num_rows,
+                'grup_list' => $grup_wa
             ];
         }
-
+        
         header('Content-Type: application/json');
         echo json_encode($response);
         exit;
     }
-
+    
     if ($action === 'send_broadcast') {
-        // Implementasi pengiriman WA sebenarnya
         $pesan = $_POST['message'] ?? '';
-        $anggota = getAnggotaWithWA($conn);
-
+        $grup_wa = getGrupWA($conn);
+        
         $results = [];
         $success_count = 0;
         $failed_count = 0;
-
-        while ($member = $anggota->fetch_assoc()) {
-            $phone = $member['no_hp'];
-            $nama = $member['nama'];
-
-            // Format nomor telepon (hapus +, spasi, dll)
-            $phone_clean = preg_replace('/[^0-9]/', '', $phone);
-
-            if (strlen($phone_clean) >= 10) {
-                // Kirim WA (implementasi sesuai API yang digunakan)
-                $send_result = sendWhatsAppMessage($phone_clean, $pesan, $nama);
-
-                if ($send_result['success']) {
-                    $success_count++;
-                    $results[] = "✅ {$nama}: Berhasil";
-                } else {
-                    $failed_count++;
-                    $results[] = "❌ {$nama}: Gagal - " . $send_result['error'];
-                }
-
-                // Delay antar pengiriman untuk menghindari spam
-                usleep(500000); // 0.5 detik
+        
+        foreach ($grup_wa as $grup) {
+            $group_id = $grup['group_id'];
+            $nama_grup = $grup['nama_grup'];
+            
+            // Kirim ke grup WA menggunakan Fonnte API
+            $send_result = sendViaFonnteGroup($group_id, $pesan, $nama_grup);
+            
+            if ($send_result['success']) {
+                $success_count++;
+                $results[] = "✅ {$nama_grup}: Berhasil dikirim";
             } else {
                 $failed_count++;
-                $results[] = "❌ {$nama}: Nomor tidak valid";
+                $results[] = "❌ {$nama_grup}: Gagal - " . $send_result['error'];
             }
+            
+            // Delay antar pengiriman (2 detik)
+            sleep(2);
         }
-
+        
         $response = [
             'status' => 'success',
-            'message' => "Broadcast selesai! Berhasil: {$success_count}, Gagal: {$failed_count}",
+            'message' => "Broadcast selesai! Berhasil: {$success_count} grup, Gagal: {$failed_count} grup",
             'results' => $results
         ];
-
+        
         header('Content-Type: application/json');
         echo json_encode($response);
         exit;
     }
 }
 
-// Fungsi untuk mengirim WA (contoh implementasi)
-function sendWhatsAppMessage($phone, $message, $nama)
-{
-    // Untuk demo/testing tanpa API
-    return sendViaDemo($phone, $message, $nama);
+// ================================
+// FUNGSI UTAMA: FONNTE API KE GRUP
+// ================================
+
+function sendViaFonnteGroup($group_id, $message, $nama_grup) {
+    // === KONFIGURASI FONNTE API ===
+    $token = "5zo4wWs6ceWmqQjBWjDF"; // Ganti dengan token dari fonnte.com
+    
+    $url = "https://api.fonnte.com/send";
+    
+    $data = [
+        'target' => $group_id,
+        'message' => $message,
+        'countryCode' => '62',
+        // 'delay' => '2', // Optional: delay antara pesan
+        // 'typing' => '5', // Optional: simulate typing
+    ];
+    
+    $curl = curl_init();
+    curl_setopt_array($curl, [
+        CURLOPT_URL => $url,
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_ENCODING => '',
+        CURLOPT_MAXREDIRS => 10,
+        CURLOPT_TIMEOUT => 30, // Timeout 30 detik
+        CURLOPT_FOLLOWLOCATION => true,
+        CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+        CURLOPT_CUSTOMREQUEST => 'POST',
+        CURLOPT_POSTFIELDS => http_build_query($data),
+        CURLOPT_HTTPHEADER => [
+            "Authorization: $token"
+        ],
+    ]);
+    
+    $response = curl_exec($curl);
+    $http_code = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+    $error = curl_error($curl);
+    curl_close($curl);
+    
+    // Debug logging
+    error_log("Fonnte API Response: " . $response);
+    error_log("HTTP Code: " . $http_code);
+    
+    if ($error) {
+        return ['success' => false, 'error' => 'CURL Error: ' . $error];
+    }
+    
+    $result = json_decode($response, true);
+    
+    if ($result && isset($result['status']) && $result['status'] === true) {
+        return [
+            'success' => true, 
+            'message_id' => $result['message_id'] ?? 'unknown',
+            'response' => $result
+        ];
+    } else {
+        $error_msg = $result['message'] ?? 'Unknown API error';
+        return ['success' => false, 'error' => $error_msg];
+    }
 }
 
-// Untuk demo/testing tanpa API
-function sendViaDemo($phone, $message, $nama)
-{
-    // Simulasi pengiriman
-    sleep(1);
-
-    // 80% success rate untuk demo
-    if (rand(1, 100) <= 80) {
-        return ['success' => true, 'message_id' => 'demo_' . uniqid()];
-    } else {
-        return ['success' => false, 'error' => 'Timeout'];
-    }
+// Fungsi fallback jika Fonnte gagal
+function sendViaDemoFallback($group_id, $message, $nama_grup) {
+    sleep(2);
+    
+    // Simpan ke file sebagai backup
+    $filename = "broadcast_backup_" . date('Y-m-d_H-i-s') . ".txt";
+    $file_content = "GRUP: $nama_grup\nID: $group_id\n\n$message";
+    
+    file_put_contents($filename, $file_content);
+    
+    return [
+        'success' => true, 
+        'message' => "Pesan disimpan ke file: $filename",
+        'file_path' => $filename
+    ];
 }
 ?>
 
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
-        <h3 class="mb-4">📢 Broadcast Info Produk</h3>
+        <h3 class="mb-4">📢 Broadcast Grup WA (Fonnte API)</h3>
+    </div>
+
+    <!-- Info Konfigurasi -->
+    <div class="alert alert-warning">
+        <h6><i class="fas fa-cog"></i> Konfigurasi Fonnte API</h6>
+        <p class="mb-1"><strong>Status:</strong> 
+            <?php
+            // Test koneksi Fonnte
+            $test_token = "5zo4wWs6ceWmqQjBWjDF";
+            if ($test_token === "YOUR_FONNTE_TOKEN") {
+                echo '<span class="badge bg-danger">Token belum diatur</span>';
+            } else {
+                echo '<span class="badge bg-success">Token siap</span>';
+            }
+            ?>
+        </p>
+        <p class="mb-0"><small>Pastikan Anda sudah memiliki token dari <a href="https://fonnte.com" target="_blank">fonnte.com</a> dan mengganti <code>YOUR_FONNTE_TOKEN</code> di kode.</small></p>
     </div>
 
     <!-- Card Statistik -->
@@ -228,7 +266,7 @@ function sendViaDemo($phone, $message, $nama)
                 <div class="card-body">
                     <h6 class="card-title text-success">📦 Produk Tersedia</h6>
                     <h4 class="card-text fw-bold">
-                        <?php
+                        <?php 
                         $produkTersedia = getAllProdukTersedia($conn);
                         echo $produkTersedia->num_rows;
                         ?>
@@ -238,44 +276,39 @@ function sendViaDemo($phone, $message, $nama)
             </div>
         </div>
         <div class="col-md-3">
-            <div class="card bg-warning bg-opacity-10 border-warning">
-                <div class="card-body">
-                    <h6 class="card-title text-warning">🔄 Stok Menipis</h6>
-                    <h4 class="card-text fw-bold">
-                        <?php
-                        $stokMenipis = getProdukStokMenipis($conn, 10);
-                        echo $stokMenipis->num_rows;
-                        ?>
-                    </h4>
-                    <small class="text-muted">Stok ≤ 10</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
-            <div class="card bg-danger bg-opacity-10 border-danger">
-                <div class="card-body">
-                    <h6 class="card-title text-danger">❌ Stok Habis</h6>
-                    <h4 class="card-text fw-bold">
-                        <?php
-                        $stokHabis = getProdukStokHabis($conn);
-                        echo $stokHabis->num_rows;
-                        ?>
-                    </h4>
-                    <small class="text-muted">Stok = 0</small>
-                </div>
-            </div>
-        </div>
-        <div class="col-md-3">
             <div class="card bg-info bg-opacity-10 border-info">
                 <div class="card-body">
-                    <h6 class="card-title text-info">👥 Anggota Terdaftar</h6>
+                    <h6 class="card-title text-info">👥 Grup WA</h6>
                     <h4 class="card-text fw-bold">
-                        <?php
-                        $anggota = getAnggotaWithWA($conn);
-                        echo $anggota->num_rows;
+                        <?php 
+                        $grup_wa = getGrupWA($conn);
+                        echo count($grup_wa);
                         ?>
                     </h4>
-                    <small class="text-muted">Dengan nomor WhatsApp</small>
+                    <small class="text-muted">Grup aktif</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-primary bg-opacity-10 border-primary">
+                <div class="card-body">
+                    <h6 class="card-title text-primary">⚡ API</h6>
+                    <h4 class="card-text fw-bold">Fonnte</h4>
+                    <small class="text-muted">Metode pengiriman</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning bg-opacity-10 border-warning">
+                <div class="card-body">
+                    <h6 class="card-title text-warning">⏱️ Estimasi</h6>
+                    <h4 class="card-text fw-bold">
+                        <?php 
+                        $grup_wa = getGrupWA($conn);
+                        echo (count($grup_wa) * 2) . 's';
+                        ?>
+                    </h4>
+                    <small class="text-muted">Waktu pengiriman</small>
                 </div>
             </div>
         </div>
@@ -284,16 +317,35 @@ function sendViaDemo($phone, $message, $nama)
     <!-- Form Broadcast -->
     <div class="card">
         <div class="card-header">
-            <strong>Buat Pesan Broadcast Produk Tersedia</strong>
+            <strong>Broadcast ke Grup WA via Fonnte API</strong>
         </div>
         <div class="card-body">
+            <!-- Daftar Grup -->
+            <div class="mb-3">
+                <label class="form-label"><strong>Grup Tujuan:</strong></label>
+                <div class="border rounded p-3 bg-light">
+                    <?php
+                    $grup_wa = getGrupWA($conn);
+                    foreach ($grup_wa as $grup):
+                    ?>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" checked disabled>
+                        <label class="form-check-label">
+                            <strong><?= htmlspecialchars($grup['nama_grup']) ?></strong>
+                            <small class="text-muted">(<?= $grup['group_id'] ?>)</small>
+                        </label>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+
             <form id="formBroadcast">
                 <input type="hidden" name="action" value="broadcast_stok">
                 
                 <div class="mb-3">
-                    <label for="custom_message" class="form-label">Pesan Tambahan (Opsional)</label>
+                    <label for="custom_message" class="form-label">Pesan Tambahan/Promosi (Opsional)</label>
                     <textarea class="form-control" id="custom_message" name="custom_message" 
-                              rows="3" placeholder="Contoh: 'Segera pesan sebelum kehabisan!' atau info promo..."></textarea>
+                              rows="3" placeholder="Contoh: 'Diskon spesial akhir bulan!' atau 'Buruan pesan, stok terbatas!'"></textarea>
                 </div>
 
                 <button type="submit" class="btn btn-primary" id="btnPreview">
@@ -311,7 +363,7 @@ function sendViaDemo($phone, $message, $nama)
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted" id="previewInfo"></small>
                     <button type="button" class="btn btn-success" id="btnSendBroadcast">
-                        <i class="fab fa-whatsapp"></i> Kirim Broadcast
+                        <i class="fab fa-whatsapp"></i> Kirim via Fonnte API
                     </button>
                 </div>
             </div>
@@ -319,56 +371,8 @@ function sendViaDemo($phone, $message, $nama)
             <!-- Results -->
             <div id="resultsSection" class="mt-4" style="display: none;">
                 <hr>
-                <h5>Hasil Pengiriman</h5>
+                <h5>Hasil Pengiriman ke Grup</h5>
                 <div id="resultsContent" class="border rounded p-3" style="max-height: 300px; overflow-y: auto;"></div>
-            </div>
-        </div>
-    </div>
-
-    <!-- Daftar Semua Produk Tersedia -->
-    <div class="card mt-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
-            <strong>Daftar Semua Produk Tersedia</strong>
-            <span class="badge bg-success"><?php echo getAllProdukTersedia($conn)->num_rows; ?> Produk</span>
-        </div>
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm table-bordered">
-                    <thead class="table-success">
-                        <tr>
-                            <th>Nama Produk</th>
-                            <th>Stok</th>
-                            <th>Satuan</th>
-                            <th>Harga</th>
-                            <th>Deskripsi</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php
-                        $produkTersedia = getAllProdukTersedia($conn);
-                        if ($produkTersedia->num_rows > 0):
-                            while ($produk = $produkTersedia->fetch_assoc()):
-                                $status = $produk['stok'] <= 5 ? 'warning' : 'success';
-                                $status_text = $produk['stok'] <= 5 ? 'Menipis' : 'Tersedia';
-                                ?>
-                                <tr>
-                                    <td><?= htmlspecialchars($produk['nama_produk']) ?></td>
-                                    <td class="text-center"><?= $produk['stok'] ?></td>
-                                    <td class="text-center"><?= htmlspecialchars($produk['satuan']) ?></td>
-                                    <td class="text-end">Rp <?= number_format($produk['harga'], 0, ',', '.') ?></td>
-                                    <td><?= htmlspecialchars($produk['deskripsi'] ?? '-') ?></td>
-                                    <td class="text-center">
-                                        <span class="badge bg-<?= $status ?>"><?= $status_text ?></span>
-                                    </td>
-                                </tr>
-                            <?php endwhile; else: ?>
-                            <tr>
-                                <td colspan="6" class="text-center text-muted">Tidak ada produk yang tersedia</td>
-                            </tr>
-                        <?php endif; ?>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
@@ -394,7 +398,7 @@ $(document).ready(function() {
         .then(data => {
             if (data.status === 'success') {
                 $('#previewContent').text(data.preview);
-                $('#previewInfo').text(`Akan dikirim ke ${data.total_anggota} anggota (${data.total_produk} produk tersedia)`);
+                $('#previewInfo').text(`Akan dikirim ke ${data.total_grup} grup WA via Fonnte API (${data.total_produk} produk tersedia)`);
                 $('#previewSection').show();
             } else {
                 alert(data.message);
@@ -409,15 +413,15 @@ $(document).ready(function() {
         });
     });
     
-    // Kirim broadcast
+    // Kirim broadcast ke grup via Fonnte API
     $('#btnSendBroadcast').on('click', function() {
-        if (!confirm('Kirim broadcast info produk ke semua anggota? Pastikan pesan sudah benar.')) {
+        if (!confirm('Kirim broadcast ke semua grup WA menggunakan Fonnte API?')) {
             return;
         }
         
         const btn = $(this);
         const originalText = btn.html();
-        btn.html('<i class="fas fa-spinner fa-spin"></i> Mengirim...').prop('disabled', true);
+        btn.html('<i class="fas fa-spinner fa-spin"></i> Mengirim via API...').prop('disabled', true);
         
         const message = $('#previewContent').text();
         
@@ -434,7 +438,7 @@ $(document).ready(function() {
             $('#resultsContent').html('');
             if (data.results) {
                 data.results.forEach(result => {
-                    $('#resultsContent').append('<div>' + result + '</div>');
+                    $('#resultsContent').append('<div class="mb-1">' + result + '</div>');
                 });
             }
             $('#resultsSection').show();

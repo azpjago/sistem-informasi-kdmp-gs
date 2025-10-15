@@ -55,7 +55,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'usaha') {
                         <span>Pembayaran Cicilan</span></a></li>
                 <li class="nav-item"><a href="?page=laporan" class="nav-link"><i class="fas fa-file-text"></i>
                         <span>Laporan</span></a></li>
-                <li class="nav-item"><a href="?page=broadcast_wa" class="nav-link"><i class="fas fa-whatsapp"></i>
+                <li class="nav-item"><a href="?page=broadcast_wa" class="nav-link"><i class="fab fa-whatsapp"></i>
                         <span>Broadcast WA</span></a></li>
                 <li class="nav-item logout-item"><a href="../logout.php" class="nav-link"><i
                             class="fas fa-sign-out-alt"></i> <span>Logout</span></a></li>            
