@@ -93,7 +93,7 @@ function generateJadwalCicilan($conn, $id_pinjaman)
         $stmt = $conn->prepare("
             INSERT INTO cicilan (
                 id_pinjaman, angsuran_ke, jatuh_tempo, 
-                jumlah_pokok, jumlah_bunga, total_cicilan, status
+                jumlah_pokok,jumlah_bunga, total_cicilan, status
             ) VALUES (?, ?, ?, ?, ?, ?, 'pending')
         ");
 
