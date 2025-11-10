@@ -5,6 +5,7 @@ require_once 'functions/history_log.php';
 if (isset($_POST['submit_qc'])) {
     $id_barang_masuk = intval($_POST['id_barang_masuk']);
     $id_items = $_POST['id_item'];
+    $qty_kecil = $_POST['qty_kecil_asli'];
     $qty_diterima = $_POST['qty_diterima'];
     $qty_bagus = $_POST['qty_bagus'];
     $qty_reject = $_POST['qty_reject'];
@@ -41,6 +42,7 @@ if (isset($_POST['submit_qc'])) {
         $id_item = intval($id_item);
         $q_diterima = intval($qty_diterima[$i]);
         $q_bagus = intval($qty_bagus[$i]);
+        $q_dipesan = intVal($qty_kecil[$i]);
         $q_reject = intval($qty_reject[$i]);
         $st_qc = $conn->real_escape_string($status_qc[$i]);
         $ctt = $conn->real_escape_string($catatan[$i]);
@@ -68,8 +70,8 @@ if (isset($_POST['submit_qc'])) {
             $nama_produk = $conn->real_escape_string($item_data['nama_produk']);
 
             // 1. Insert ke qc_result
-            $sql = "INSERT INTO qc_result (id_barang_masuk, id_item, id_supplier_produk, qty_diterima, qty_bagus, qty_reject, status_qc, catatan, bukti_qc, qc_by)
-                VALUES ('$id_barang_masuk', '$id_item', '$id_supplier_produk', '$q_diterima', '$q_bagus', '$q_reject', '$st_qc', '$ctt', '$bukti_qc', '{$_SESSION['user_id']}')";
+            $sql = "INSERT INTO qc_result (id_barang_masuk, id_item, id_supplier_produk, qty_dipesan, qty_diterima, qty_bagus, qty_reject, status_qc, catatan, bukti_qc, qc_by)
+                VALUES ('$id_barang_masuk', '$id_item', '$id_supplier_produk', '$q_dipesan', '$q_diterima', '$q_bagus', '$q_reject', '$st_qc', '$ctt', '$bukti_qc', '{$_SESSION['user_id']}')";
             $conn->query($sql);
             $id_qc = $conn->insert_id;
 
@@ -495,8 +497,10 @@ $result_barang_masuk = $conn->query($query_barang_masuk);
                         <input type="hidden" name="id_item[]" value="${item.id_item || ''}">
                     </td>
                     <td>
-                        ${item.qty_kecil || 0} ${item.satuan_kecil || ''} 
-                        <br><small class="text-muted">${item.qty || 0} ${item.satuan || ''}</small>
+						${item.qty || 0} ${item.satuan || ''}
+                        <br>atau
+                        <br><small class="text-muted">${item.qty_kecil || 0} ${item.satuan_kecil || ''} </small>
+                        <input type="hidden" name="qty_kecil_asli[]" value="${item.qty_kecil || 0}">
                     </td>
                     <td>
                         <input type="number" class="form-control" name="qty_diterima[]" 
