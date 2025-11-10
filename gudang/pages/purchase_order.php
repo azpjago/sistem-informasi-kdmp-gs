@@ -412,12 +412,12 @@ if (isset($_GET['ubah_status'])) {
                             <div class="col-md-1">
                                 <label class="form-label">Qty Kecil <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control qty-kecil" name="qty_kecil[]"
-                                    placeholder="Qty kecil" required min="0.001" step="0.001" value="1">
+                                    placeholder="Qty kecil" required>
                             </div>
                             <div class="col-md-1">
                                 <label class="form-label">Satuan Kecil <span class="text-danger">*</span></label>
                                 <input type="text" class="form-control satuan-kecil" name="satuan_kecil[]"
-                                    placeholder="Kg, Pcs, dll" required value="Pcs">
+                                    placeholder="Kg, Pcs, dll" required>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Harga Satuan</label>
@@ -627,11 +627,11 @@ if (isset($_GET['ubah_status'])) {
 
             <div class="col-md-1">
                 <label class="form-label">Qty Kecil <span class="text-danger">*</span></label>
-                <input type="number" class="form-control qty-kecil" name="qty_kecil[]" value="1" required min="0.001" step="0.001">
+                <input type="number" class="form-control qty-kecil" name="qty_kecil[]" required>
             </div>
             <div class="col-md-1">
                 <label class="form-label">Satuan Kecil <span class="text-danger">*</span></label>
-                <input type="text" class="form-control satuan-kecil" name="satuan_kecil[]" value="Pcs" required>
+                <input type="text" class="form-control satuan-kecil" name="satuan_kecil[]" required>
             </div>
             <div class="col-md-2">
                 <label class="form-label">Harga Satuan</label>
