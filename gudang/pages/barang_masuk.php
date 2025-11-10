@@ -498,7 +498,7 @@ $result_barang_masuk = $conn->query($query_barang_masuk);
                     </td>
                     <td>
 						${item.qty || 0} ${item.satuan || ''}
-                        <br>atau
+                        <br>berisi
                         <br><small class="text-muted">${item.qty_kecil || 0} ${item.satuan_kecil || ''} </small>
                         <input type="hidden" name="qty_kecil_asli[]" value="${item.qty_kecil || 0}">
                     </td>
