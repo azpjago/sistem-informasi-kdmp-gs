@@ -56,8 +56,10 @@ if (isset($_GET['id_barang_masuk'])) {
             $items[] = [
                 'id_item' => $row['id_item'] ?? '',
                 'nama_produk' => $row['nama_produk'] ?? 'Unknown',
-                'qty_kecil' => $row['qty_kecil'] ?? 0,
-                'satuan_kecil' => $row['satuan_kecil'] ?? '',
+                'qty_kecil' => $row['qty_kecil'] ?? 0, // Quantity kecil
+                'qty' => $row['qty']?? 0, // Quantity besar
+                'satuan_kecil' => $row['satuan_kecil'] ?? 'pcs',
+                'satuan' => $row['satuan'] ?? 'unit',
                 'kode_produk' => $kode_produk, // Generated kode
                 'harga_satuan' => $row['harga_satuan'] ?? 0,
                 'id_supplier_produk' => $row['id_supplier_produk'] ?? ''
