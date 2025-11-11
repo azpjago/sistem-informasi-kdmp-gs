@@ -1,5 +1,10 @@
 <?php
-// Fungsi untuk cek dan set broadcast lock
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+/ Fungsi untuk cek dan set broadcast lock
 function setBroadcastLock() {
     $_SESSION['broadcast_lock'] = time();
     return true;
@@ -25,10 +30,6 @@ function hasBroadcastLock() {
 
 function clearBroadcastLock() {
     unset($_SESSION['broadcast_lock']);
-}
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
 }
 
 // TAMBAHKAN FUNGSI PRODUK FILTER
@@ -68,6 +69,26 @@ function getProdukWithFilter($conn, $filters = []) {
     $stmt->close();
     
     return $result;
+}
+
+// TAMBAHKAN FUNGSI VALIDASI PANJANG PESAN
+function validateMessageLength($message) {
+    $max_length = 4096; // Batas maksimal pesan WhatsApp
+    
+    if (strlen($message) > $max_length) {
+        return [
+            'valid' => false,
+            'length' => strlen($message),
+            'max_length' => $max_length,
+            'exceeded_by' => strlen($message) - $max_length
+        ];
+    }
+    
+    return [
+        'valid' => true,
+        'length' => strlen($message),
+        'max_length' => $max_length
+    ];
 }
 // Fungsi untuk mendapatkan semua produk yang tersedia
 function getAllProdukTersedia($conn) {
@@ -223,8 +244,8 @@ if ($action === 'send_broadcast') {
         }
         
         // Delay antar pengiriman (3 detik untuk lebih aman)
-        sleep(3);
     }
+        sleep(3);
     
     // Clear lock setelah selesai
     clearBroadcastLock();
