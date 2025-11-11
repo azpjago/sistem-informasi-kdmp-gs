@@ -532,126 +532,237 @@ if (isset($_POST['buat_rencana_penjualan'])) {
     </div>
 
     <!-- Daftar Produk -->
-    <div class="section-title">📦 Daftar Produk Siap Jual</div>
+    <div class="section-title">Daftar Produk Siap Jual</div>
     <div class="row" id="productGrid">
-    <?php
-    // Query data inventory
-    $query = "SELECT * FROM inventory_ready ORDER BY updated_at DESC";
-    $result = $conn->query($query);
+        <?php
+        // Query data inventory
+        $query = "SELECT * FROM inventory_ready ORDER BY updated_at DESC";
+        $result = $conn->query($query);
 
-    if ($result && $result->num_rows > 0) {
-        while ($row = $result->fetch_assoc()) {
-            // Tentukan class berdasarkan stok
-            $stock_class = '';
-            if ($row['jumlah_tersedia'] == 0) {
-                $stock_class = 'out-of-stock';
-            } else if ($row['jumlah_tersedia'] <= 5) {
-                $stock_class = 'low-stock';
-            } else if ($row['status'] == 'sold') {
-                $stock_class = 'sold';
-            } else {
-                $stock_class = 'available';
-            }
+        if ($result && $result->num_rows > 0) {
+            while ($row = $result->fetch_assoc()) {
+                // Tentukan class berdasarkan stok
+                $stock_class = '';
+                if ($row['jumlah_tersedia'] == 0) {
+                    $stock_class = 'out-of-stock';
+                } else if ($row['jumlah_tersedia'] <= 5) {
+                    $stock_class = 'low-stock';
+                } else if ($row['status'] == 'sold') {
+                    $stock_class = 'sold';
+                } else {
+                    $stock_class = 'available';
+                }
 
-            // Tentukan badge warna berdasarkan status
-            $status_class = '';
-            $status_text = '';
-            switch ($row['status']) {
-                case 'available':
-                    $status_class = 'bg-success';
-                    $status_text = 'Tersedia';
-                    break;
-                case 'sold':
-                    $status_class = 'bg-secondary';
-                    $status_text = 'Terjual';
-                    break;
-                case 'returned':
-                    $status_class = 'bg-warning';
-                    $status_text = 'Dikembalikan';
-                    break;
-                case 'damaged':
-                    $status_class = 'bg-danger';
-                    $status_text = 'Rusak';
-                    break;
-                default:
-                    $status_class = 'bg-secondary';
-                    $status_text = 'Unknown';
-            }
+                // Tentukan badge warna berdasarkan status
+                $status_class = '';
+                $status_text = '';
+                switch ($row['status']) {
+                    case 'available':
+                        $status_class = 'bg-success';
+                        $status_text = 'Tersedia';
+                        break;
+                    case 'sold':
+                        $status_class = 'bg-secondary';
+                        $status_text = 'Terjual';
+                        break;
+                    case 'returned':
+                        $status_class = 'bg-warning';
+                        $status_text = 'Dikembalikan';
+                        break;
+                    case 'damaged':
+                        $status_class = 'bg-danger';
+                        $status_text = 'Rusak';
+                        break;
+                    default:
+                        $status_class = 'bg-secondary';
+                        $status_text = 'Unknown';
+                }
 
-            // Tentukan badge warna berdasarkan stok
-            $stock_badge = '';
-            $stock_text = '';
-            if ($row['jumlah_tersedia'] == 0) {
-                $stock_badge = 'bg-danger';
-                $stock_text = 'HABIS';
-            } else if ($row['jumlah_tersedia'] <= 5) {
-                $stock_badge = 'bg-warning';
-                $stock_text = 'RENDAH';
-            } else {
-                $stock_badge = 'bg-success';
-                $stock_text = 'AMAN';
-            }
+                // Tentukan badge warna berdasarkan stok
+                $stock_badge = '';
+                $stock_text = '';
+                if ($row['jumlah_tersedia'] == 0) {
+                    $stock_badge = 'bg-danger';
+                    $stock_text = 'Habis';
+                } else if ($row['jumlah_tersedia'] <= 5) {
+                    $stock_badge = 'bg-warning';
+                    $stock_text = 'Rendah';
+                } else {
+                    $stock_badge = 'bg-success';
+                    $stock_text = 'Aman';
+                }
 
-            echo "
-            <div class='col-xl-3 col-lg-4 col-md-6 mb-4 product-item'>
-                <div class='product-card {$stock_class}'>
-                    <div class='product-header'>
-                        <span class='product-code'>{$row['kode_produk']}</span>
-                        <span class='badge {$status_class} status-badge'>{$status_text}</span>
+                echo "
+                <div class='col-xl-3 col-lg-4 col-md-6 mb-4 product-item'>
+    <div class='product-card {$stock_class}'>
+        <div class='product-header'>
+            <span class='product-code'>{$row['kode_produk']}</span>
+            <span class='badge {$status_class} status-badge'>{$status_text}</span>
+        </div>
+        
+        <div class='product-body'>
+            <div class='d-flex justify-content-between align-items-center mb-2'>
+                <h6 class='product-title mb-0'>{$row['nama_produk']}</h6>
+                <span class='product-unit text-uppercase fw-bold fs-5 text-primary'>{$row['satuan_kecil']}</span>
+            </div>
+            
+            <div class='mb-3'>
+                <span class='batch-number'><i class='fas fa-barcode me-1'></i> {$row['no_batch']}</span>
+            </div>
+            
+            <div class='product-detail'>
+                <span class='product-label'>Stok Awal:</span>
+                <span class='product-value'>{$row['jumlah_awal']} {$row['satuan_kecil']}</span>
+            </div>
+            
+            <div class='product-detail'>
+                <span class='product-label'>Stok Tersedia:</span>
+                <div class='stock-info'>
+                    <span class='product-value'>{$row['jumlah_tersedia']} {$row['satuan_kecil']}</span>
+                    <span class='badge {$stock_badge} stock-badge'>{$stock_text}</span>
+                </div>
+            </div>
+            
+            <div class='product-detail'>
+                <span class='product-label'>Harga/Satuan Besar:</span>
+                <span class='price-tag'>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</span>
+            </div>
+        </div>
+        
+        <div class='product-footer'>
+            <button type='button' class='btn btn-sm btn-outline-primary action-btn' data-bs-toggle='modal' data-bs-target='#detailModal{$row['id_inventory']}' title='Lihat Detail'>
+                <i class='fas fa-eye'></i>
+            </button>
+            <button type='button' class='btn btn-sm btn-outline-warning action-btn' data-bs-toggle='modal' data-bs-target='#statusModal{$row['id_inventory']}' title='Ubah Status'>
+                <i class='fas fa-edit'></i>
+            </button>
+            <button type='button' class='btn btn-sm btn-outline-success action-btn' data-bs-toggle='modal' data-bs-target='#penjualanModal{$row['id_inventory']}' title='Buat Rencana Penjualan'>
+                <i class='fas fa-cart-plus'></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Detail -->
+<div class='modal fade' id='detailModal{$row['id_inventory']}' tabindex='-1' aria-hidden='true'>
+    <div class='modal-dialog'>
+        <div class='modal-content'>
+            <div class='modal-header'>
+                <h5 class='modal-title'>Detail Produk</h5>
+                <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
+            </div>
+            <div class='modal-body'>
+                <div class='row'>
+                    <div class='col-md-6'>
+                        <p><strong>Kode Produk:</strong><br>{$row['kode_produk']}</p>
+                        <p><strong>Nama Produk:</strong><br>{$row['nama_produk']}</p>
+                        <p><strong>Satuan:</strong><br><span class='text-uppercase fw-bold'>{$row['satuan_kecil']}</span></p>
+                        <p><strong>No. Batch:</strong><br>{$row['no_batch']}</p>
                     </div>
-                    
-                    <div class='product-body'>
-                        <div class='d-flex justify-content-between align-items-start mb-3'>
-                            <h6 class='product-title'>{$row['nama_produk']}</h6>
-                            <span class='product-unit'>{$row['satuan_kecil']}</span>
-                        </div>
-                        
-                        <div class='mb-3'>
-                            <span class='batch-number'><i class='fas fa-barcode me-1'></i> {$row['no_batch']}</span>
-                        </div>
-                        
-                        <div class='product-detail'>
-                            <span class='product-label'>Stok Awal</span>
-                            <span class='product-value'>{$row['jumlah_awal']}</span>
-                        </div>
-                        
-                        <div class='product-detail'>
-                            <span class='product-label'>Stok Tersedia</span>
-                            <div class='stock-info'>
-                                <span class='product-value'>{$row['jumlah_tersedia']}</span>
-                                <span class='badge {$stock_badge} stock-badge'>{$stock_text}</span>
-                            </div>
-                        </div>
-                        
-                        <div class='product-detail'>
-                            <span class='product-label'>Harga Satuan</span>
-                            <span class='price-tag'>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</span>
-                        </div>
-                    </div>
-                    
-                    <div class='product-footer'>
-                        <button type='button' class='btn btn-sm btn-outline-primary action-btn' data-bs-toggle='modal' data-bs-target='#detailModal{$row['id_inventory']}' title='Lihat Detail'>
-                            <i class='fas fa-eye'></i>
-                        </button>
-                        <button type='button' class='btn btn-sm btn-outline-warning action-btn' data-bs-toggle='modal' data-bs-target='#statusModal{$row['id_inventory']}' title='Ubah Status'>
-                            <i class='fas fa-edit'></i>
-                        </button>
-                        <button type='button' class='btn btn-sm btn-outline-success action-btn' data-bs-toggle='modal' data-bs-target='#penjualanModal{$row['id_inventory']}' title='Buat Rencana Penjualan'>
-                            <i class='fas fa-cart-plus'></i>
-                        </button>
+                    <div class='col-md-6'>
+                        <p><strong>Stok Awal:</strong><br>{$row['jumlah_awal']} {$row['satuan_kecil']}</p>
+                        <p><strong>Stok Tersedia:</strong><br>{$row['jumlah_tersedia']} {$row['satuan_kecil']}</p>
+                        <p><strong>Harga Satuan:</strong><br>Rp " . number_format($row['harga_satuan'], 0, ',', '.') . "</p>
                     </div>
                 </div>
-            </div>";
-        }
-    } else {
-        echo "<div class='col-12 text-center py-5'>
-                <i class='fas fa-box-open fa-4x text-muted mb-3'></i>
-                <h4 class='text-muted mb-2'>Tidak ada data inventory</h4>
-                <p class='text-muted'>Belum ada produk yang siap dijual</p>
-              </div>";
-    }
-    ?>
+                <p><strong>Status:</strong> <span class='badge {$status_class}'>" . ucfirst($row['status']) . "</span></p>
+                <p><strong>Update Terakhir:</strong><br>" . date('d/m/Y H:i', strtotime($row['updated_at'])) . "</p>
+            </div>
+            <div class='modal-footer'>
+                <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Tutup</button>
+            </div>
+        </div>
+    </div>
 </div>
+                
+                <!-- Modal Ubah Status -->
+                <div class='modal fade' id='statusModal{$row['id_inventory']}' tabindex='-1' aria-hidden='true'>
+                    <div class='modal-dialog'>
+                        <div class='modal-content'>
+                            <div class='modal-header'>
+                                <h5 class='modal-title'>Ubah Status Produk</h5>
+                                <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
+                            </div>
+                            <form method='POST'>
+                                <div class='modal-body'>
+                                    <input type='hidden' name='id_inventory' value='{$row['id_inventory']}'>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Produk</label>
+                                        <input type='text' class='form-control' value='{$row['nama_produk']}' readonly>
+                                    </div>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Status Saat Ini</label>
+                                        <input type='text' class='form-control' value='" . ucfirst($row['status']) . "' readonly>
+                                    </div>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Status Baru</label>
+                                        <select class='form-select' name='status' required>
+                                            <option value='available'" . ($row['status'] == 'available' ? ' selected' : '') . ">Available</option>
+                                            <option value='sold'" . ($row['status'] == 'sold' ? ' selected' : '') . ">Sold</option>
+                                            <option value='returned'" . ($row['status'] == 'returned' ? ' selected' : '') . ">Returned</option>
+                                            <option value='damaged'" . ($row['status'] == 'damaged' ? ' selected' : '') . ">Damaged</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class='modal-footer'>
+                                    <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Batal</button>
+                                    <button type='submit' class='btn btn-primary' name='update_status'>Simpan Perubahan</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Modal Rencana Penjualan -->
+                <div class='modal fade' id='penjualanModal{$row['id_inventory']}' tabindex='-1' aria-hidden='true'>
+                    <div class='modal-dialog'>
+                        <div class='modal-content'>
+                            <div class='modal-header'>
+                                <h5 class='modal-title'>Buat Rencana Penjualan</h5>
+                                <button type='button' class='btn-close' data-bs-dismiss='modal' aria-label='Close'></button>
+                            </div>
+                            <form method='POST'>
+                                <input type='hidden' name='id_inventory' value='{$row['id_inventory']}'>
+                                <div class='modal-body'>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Produk</label>
+                                        <input type='text' class='form-control' value='{$row['nama_produk']}' readonly>
+                                    </div>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Stok Tersedia</label>
+                                        <input type='text' class='form-control' value='{$row['jumlah_tersedia']} {$row['satuan_kecil']}' readonly>
+                                    </div>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Jumlah Penjualan</label>
+                                        <input type='number' class='form-control' name='jumlah_penjualan' required min='1' max='{$row['jumlah_tersedia']}'>
+                                    </div>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Tanggal Rencana Penjualan</label>
+                                        <input type='date' class='form-control' name='tanggal_rencana' required min='" . date('Y-m-d') . "'>
+                                    </div>
+                                    <div class='mb-3'>
+                                        <label class='form-label'>Keterangan (Opsional)</label>
+                                        <textarea class='form-control' name='keterangan_penjualan' rows='2'></textarea>
+                                    </div>
+                                </div>
+                                <div class='modal-footer'>
+                                    <button type='button' class='btn btn-secondary' data-bs-dismiss='modal'>Batal</button>
+                                    <button type='submit' class='btn btn-primary' name='buat_rencana_penjualan'>Buat Rencana</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>";
+            }
+        } else {
+            echo "<div class='col-12 text-center py-5'>
+                    <i class='fas fa-box-open fa-3x text-muted mb-3'></i>
+                    <h4 class='text-muted'>Tidak ada data inventory</h4>
+                    <p class='text-muted'>Belum ada produk yang siap dijual</p>
+                  </div>";
+        }
+        ?>
+    </div>
 </div>
 
 <script>
