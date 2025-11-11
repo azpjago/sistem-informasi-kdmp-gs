@@ -464,71 +464,71 @@ if (isset($_POST['buat_rencana_penjualan'])) {
     <?php endif; ?>
 
     <!-- Statistik Inventory -->
-    <div class="row mb-4">
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="stats-card total">
-                <div class="stats-icon total">
-                    <i class="fas fa-cubes"></i>
-                </div>
-                <div class="stats-total text-primary">
-                    <?php
-                    $query_total = "SELECT COUNT(*) as total FROM inventory_ready";
-                    $result_total = $conn->query($query_total);
-                    $total = $result_total->fetch_assoc()['total'];
-                    echo $total;
-                    ?>
-                </div>
-                <div class="stats-label">Total Produk</div>
+    <div class="row mb-5">
+        <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card total">
+            <div class="stats-icon">
+                <i class="fas fa-cubes"></i>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="stats-card available">
-                <div class="stats-icon available">
-                    <i class="fas fa-check-circle"></i>
-                </div>
-                <div class="stats-total text-success">
-                    <?php
-                    $query_available = "SELECT SUM(jumlah_tersedia) as total FROM inventory_ready WHERE status = 'available'";
-                    $result_available = $conn->query($query_available);
-                    $available = $result_available->fetch_assoc()['total'] ?? 0;
-                    echo $available;
-                    ?>
-                </div>
-                <div class="stats-label">Stok Produk Tersedia</div>
+            <div class="stats-total">
+                <?php
+                $query_total = "SELECT COUNT(*) as total FROM inventory_ready";
+                $result_total = $conn->query($query_total);
+                $total = $result_total->fetch_assoc()['total'];
+                echo $total;
+                ?>
             </div>
+            <div class="stats-label">Total Produk di Gudang</div>
         </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="stats-card limited">
-                <div class="stats-icon limited">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <div class="stats-total text-warning">
-                    <?php
-                    $query_limited = "SELECT COUNT(*) as total FROM inventory_ready WHERE jumlah_tersedia > 0 AND jumlah_tersedia <= 5";
-                    $result_limited = $conn->query($query_limited);
-                    $limited = $result_limited->fetch_assoc()['total'];
-                    echo $limited;
-                    ?>
-                </div>
-                <div class="stats-label">Stok Terbatas</div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card available">
+            <div class="stats-icon">
+                <i class="fas fa-check-circle"></i>
             </div>
-        </div>
-        <div class="col-xl-3 col-md-6 mb-3">
-            <div class="stats-card out">
-                <div class="stats-icon out">
-                    <i class="fas fa-times-circle"></i>
-                </div>
-                <div class="stats-total text-danger">
-                    <?php
-                    $query_out = "SELECT COUNT(*) as total FROM inventory_ready WHERE jumlah_tersedia = 0";
-                    $result_out = $conn->query($query_out);
-                    $out = $result_out->fetch_assoc()['total'];
-                    echo $out;
-                    ?>
-                </div>
-                <div class="stats-label">Stok Habis</div>
+            <div class="stats-total">
+                <?php
+                $query_available = "SELECT COUNT(*) as total FROM inventory_ready WHERE status = 'available' AND jumlah_tersedia > 0";
+                $result_available = $conn->query($query_available);
+                $available = $result_available->fetch_assoc()['total'] ?? 0;
+                echo $available;
+                ?>
             </div>
+            <div class="stats-label">Produk Tersedia</div>
         </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card limited">
+            <div class="stats-icon">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div class="stats-total">
+                <?php
+                $query_limited = "SELECT COUNT(*) as total FROM inventory_ready WHERE jumlah_tersedia > 0 AND jumlah_tersedia <= 5";
+                $result_limited = $conn->query($query_limited);
+                $limited = $result_limited->fetch_assoc()['total'];
+                echo $limited;
+                ?>
+            </div>
+            <div class="stats-label">Stok Menipis</div>
+        </div>
+    </div>
+    <div class="col-xl-3 col-md-6 mb-4">
+        <div class="stats-card out">
+            <div class="stats-icon">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div class="stats-total">
+                <?php
+                $query_out = "SELECT COUNT(*) as total FROM inventory_ready WHERE jumlah_tersedia = 0";
+                $result_out = $conn->query($query_out);
+                $out = $result_out->fetch_assoc()['total'];
+                echo $out;
+                ?>
+            </div>
+            <div class="stats-label">Stok Habis</div>
+        </div>
+    </div>
     </div>
 
     <!-- Daftar Produk -->
