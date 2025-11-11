@@ -547,7 +547,7 @@ function sendViaDemoFallback($group_id, $message, $nama_grup) {
                 <div class="col-md-4">
                     <label for="min_stok" class="form-label">Stok Minimum</label>
                     <input type="number" class="form-control" id="min_stok" name="min_stok" 
-                           value="1" min="1" max="100">
+                           value="1" min="1" max="1000">
                     <small class="text-muted">Hanya produk dengan stok ≥ nilai ini</small>
                 </div>
                 <div class="col-md-4">
@@ -557,6 +557,7 @@ function sendViaDemoFallback($group_id, $message, $nama_grup) {
                         <option value="LPG">LPG</option>
                         <option value="Pupuk">Pupuk</option>
                     </select>
+                    <small class="text-muted">Pilih kategori produk</small>
                 </div>
                 <div class="col-md-4">
                     <label for="max_produk" class="form-label">Max Produk</label>
