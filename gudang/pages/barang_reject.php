@@ -419,6 +419,9 @@ $result = $conn->query($query);
                     infoFiltered: "(disaring dari _MAX_ total data)",
                     paginate: { first: "Awal", last: "Akhir", next: "Berikutnya", previous: "Sebelumnya" }
                 }
+                columnDefs: [
+                { targets: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], orderable: true }
+            ]
             });
         }
 
