@@ -451,252 +451,238 @@ $result_barang_masuk = $conn->query($query_barang_masuk);
     <!-- Tambahkan di header -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <script>
-        $(document).on('click', '.btn-input-qc', function () {
-            const id_barang_masuk = $(this).data('id');
-            $('#id_barang_masuk_qc').val(id_barang_masuk);
+<script>
+    $(document).on('click', '.btn-input-qc', function () {
+        const id_barang_masuk = $(this).data('id');
+        $('#id_barang_masuk_qc').val(id_barang_masuk);
 
-            // Tampilkan loading state
-            $('#tbodyQC').html('<tr><td colspan="7" class="text-center">Loading data barang...</td></tr>');
+        // Tampilkan loading state
+        $('#tbodyQC').html('<tr><td colspan="7" class="text-center">Loading data barang...</td></tr>');
 
-            $.ajax({
-                url: 'pages/ajax/get_barang_qc.php',
-                method: 'GET',
-                data: { id_barang_masuk: id_barang_masuk },
-                dataType: 'json',
-                timeout: 10000,
-                success: function (response) {
-                    console.log('QC Data Response:', response);
+        $.ajax({
+            url: 'pages/ajax/get_barang_qc.php',
+            method: 'GET',
+            data: { id_barang_masuk: id_barang_masuk },
+            dataType: 'json',
+            timeout: 10000,
+            success: function (response) {
+                console.log('QC Data Response:', response);
 
-                    let html = '';
+                let html = '';
 
-                    // Handle error response
-                    if (response && response.error) {
-                        html = `<tr><td colspan="7" class="text-center text-danger">
-                    <i class="fas fa-exclamation-triangle"></i> Error: ${response.error}
-                </td></tr>`;
-                    }
-                    // Handle success - array of items
-                    // Handle success - array of items - MODIFIKASI
-                    else if (Array.isArray(response) && response.length > 0) {
-                        response.forEach((item, index) => {
-                            // GUNAKAN qty_kecil sebagai acuan maksimum, bukan qty besar
-                            const maxQty = item.qty_kecil || item.qty || 0;
-                            const satuanDisplay = item.satuan_kecil || item.satuan || '';
-
-                            html += `
-                <tr>
-                    <td>
-                        <strong>${item.nama_produk || 'Unknown Product'}</strong>
-                        ${item.kode_produk ? `<br><small class="text-muted">Kode: ${item.kode_produk}</small>` : ''}
-                        <!-- TAMBAHAN: Tampilkan informasi konversi -->
-                        <br><small class="text-info">
-                            PO: ${item.qty || 0} ${item.satuan || ''} 
-                            (${item.qty_kecil || 0} ${item.satuan_kecil || ''})
-                        </small>
-                        <input type="hidden" name="id_item[]" value="${item.id_item || ''}">
-                    </td>
-                    <td>
-						${item.qty || 0} ${item.satuan || ''}
-                        <br>berisi
-                        <br><small class="text-muted">${item.qty_kecil || 0} ${item.satuan_kecil || ''} </small>
-                        <input type="hidden" name="qty_kecil_asli[]" value="${item.qty_kecil || 0}">
-                    </td>
-                    <td>
-                        <input type="number" class="form-control" name="qty_diterima[]" 
-                            value="${item.qty_kecil || 0}" min="0" max="${maxQty}" 
-                            onchange="calculateQty(${index})">
-                    </td>
-                    <td>
-                        <input type="number" class="form-control qty-bagus" name="qty_bagus[]" 
-                            value="${item.qty_kecil || 0}" min="0" max="${maxQty}"
-                            onchange="calculateReject(${index})">
-                    </td>
-                    <td>
-                        <input type="number" class="form-control qty-reject" name="qty_reject[]" 
-                            value="0" min="0" max="${maxQty}"
-                            onchange="calculateBagus(${index})">
-                    </td>
-                    <td>
-                        <select name="status_qc[]" class="form-select" onchange="updateStatus(${index})">
-                            <option value="lulus">Lulus</option>
-                            <option value="ditolak_sebagian">Ditolak Sebagian</option>
-                            <option value="ditolak_semua">Ditolak Semua</option>
-                        </select>
-                    </td>
-                    <td>
-                        <input type="text" class="form-control" name="catatan[]" placeholder="Catatan" required>
-                    </td>
-                </tr>`;
-                        });
-                    } else {
-                        html = '<tr><td colspan="7" class="text-center">Tidak ada data barang untuk PO ini</td></tr>';
-                    }
-
-                    $('#tbodyQC').html(html);
-                },
-                error: function (xhr, status, error) {
-                    console.error('AJAX Error:', status, error);
-                    let errorMsg = 'Gagal memuat data dari server';
-
-                    if (xhr.responseText) {
-                        try {
-                            const response = JSON.parse(xhr.responseText);
-                            errorMsg = response.error || errorMsg;
-                        } catch (e) {
-                            errorMsg = 'Server error: ' + xhr.status;
-                        }
-                    }
-
-                    $('#tbodyQC').html(`
-                <tr>
-                    <td colspan="7" class="text-center text-danger">
-                        <i class="fas fa-exclamation-circle"></i> ${errorMsg}
-                    </td>
-                </tr>
-            `);
+                // Handle error response
+                if (response && response.error) {
+                    html = `<tr><td colspan="7" class="text-center text-danger">
+                        <i class="fas fa-exclamation-triangle"></i> Error: ${response.error}
+                    </td></tr>`;
                 }
-            });
+                // Handle success - array of items
+                else if (Array.isArray(response) && response.length > 0) {
+                    response.forEach((item, index) => {
+                        const maxQty = item.qty_kecil || item.qty || 0;
+                        const satuanDisplay = item.satuan_kecil || item.satuan || '';
 
-            if ($('#tabelBarangMasuk').length && !$.fn.DataTable.isDataTable('#tabelBarangMasuk')) {
-                $('#tabelBarangMasuk').DataTable({
-                    pageLength: 10,
-                    lengthMenu: [10, 25, 50, 100],
-                    language: {
-                        search: "Cari Barang Masuk : ",
-                        lengthMenu: "Tampilkan _MENU_ data per halaman",
-                        info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-                        zeroRecords: "Tidak ada data yang cocok",
-                        infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-                        infoFiltered: "(disaring dari _MAX_ total data)",
-                        paginate: { first: "Awal", last: "Akhir", next: "Berikutnya", previous: "Sebelumnya" }
-                    }
-                });
-            }
-
-            // Fungsi helper untuk kalkulasi quantity
-            function calculateReject(index) {
-                const row = $('tr').eq(index + 1); // +1 karena thead
-                const qtyDiterima = parseInt(row.find('input[name="qty_diterima[]"]').val()) || 0;
-                const qtyBagus = parseInt(row.find('.qty-bagus').val()) || 0;
-
-                const qtyReject = qtyDiterima - qtyBagus;
-                row.find('.qty-reject').val(qtyReject >= 0 ? qtyReject : 0);
-
-                updateStatus(index);
-            }
-
-            function calculateBagus(index) {
-                const row = $('tr').eq(index + 1);
-                const qtyDiterima = parseInt(row.find('input[name="qty_diterima[]"]').val()) || 0;
-                const qtyReject = parseInt(row.find('.qty-reject').val()) || 0;
-
-                const qtyBagus = qtyDiterima - qtyReject;
-                row.find('.qty-bagus').val(qtyBagus >= 0 ? qtyBagus : 0);
-
-                updateStatus(index);
-            }
-
-            function updateStatus(index) {
-                const row = $('tr').eq(index + 1);
-                const qtyDiterima = parseInt(row.find('input[name="qty_diterima[]"]').val()) || 0;
-                const qtyBagus = parseInt(row.find('.qty-bagus').val()) || 0;
-                const qtyReject = parseInt(row.find('.qty-reject').val()) || 0;
-                const select = row.find('select[name="status_qc[]"]');
-
-                // Auto update status berdasarkan quantity
-                if (qtyReject === 0) {
-                    select.val('lulus');
-                } else if (qtyReject === qtyDiterima) {
-                    select.val('ditolak_semua');
-                } else if (qtyReject > 0) {
-                    select.val('ditolak_sebagian');
-                }
-            }
-
-            // Fungsi validasi sebelum submit form QC
-            function validateQCForm() {
-                let isValid = true;
-                const errorMessages = [];
-
-                $('tr').each(function (index) {
-                    if (index > 0) { // Skip header row
-                        const qtyDiterima = parseInt($(this).find('input[name="qty_diterima[]"]').val()) || 0;
-                        const qtyBagus = parseInt($(this).find('input[name="qty_bagus[]"]').val()) || 0;
-                        const qtyReject = parseInt($(this).find('input[name="qty_reject[]"]').val()) || 0;
-                        const produk = $(this).find('td:first').text().trim();
-
-                        // Validasi: Qty Bagus + Qty Reject harus sama dengan Qty Diterima
-                        if (qtyBagus + qtyReject !== qtyDiterima) {
-                            isValid = false;
-                            errorMessages.push(`<b>${produk}</b>: Total bagus (${qtyBagus}) + reject (${qtyReject}) harus sama dengan diterima (${qtyDiterima})`);
-                        }
-
-                        // Validasi: Tidak boleh minus
-                        if (qtyBagus < 0 || qtyReject < 0 || qtyDiterima < 0) {
-                            isValid = false;
-                            errorMessages.push(`<b>${produk}</b>: Quantity tidak boleh minus`);
-                        }
-
-                        // Validasi: Tidak boleh lebih dari diterima
-                        if (qtyBagus > qtyDiterima || qtyReject > qtyDiterima) {
-                            isValid = false;
-                            errorMessages.push(`<b>${produk}</b>: Quantity bagus/reject tidak boleh lebih dari diterima`);
-                        }
-                    }
-                });
-
-                if (!isValid) {
-                    const errorHtml = errorMessages.join('<br>');
-                    Swal.fire({
-                        icon: 'error',
-                        title: 'Validasi Gagal',
-                        html: errorHtml,
-                        confirmButtonText: 'Mengerti'
+                        html += `
+                            <tr data-index="${index}">
+                                <td>
+                                    <strong>${item.nama_produk || 'Unknown Product'}</strong>
+                                    ${item.kode_produk ? `<br><small class="text-muted">Kode: ${item.kode_produk}</small>` : ''}
+                                    <br><small class="text-info">
+                                        PO: ${item.qty || 0} ${item.satuan || ''} 
+                                        (${item.qty_kecil || 0} ${item.satuan_kecil || ''})
+                                    </small>
+                                    <input type="hidden" name="id_item[]" value="${item.id_item || ''}">
+                                </td>
+                                <td>
+                                    ${item.qty || 0} ${item.satuan || ''}
+                                    <br>berisi
+                                    <br><small class="text-muted">${item.qty_kecil || 0} ${item.satuan_kecil || ''} </small>
+                                    <input type="hidden" name="qty_kecil_asli[]" value="${item.qty_kecil || 0}">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control qty-diterima" name="qty_diterima[]" 
+                                        value="${item.qty_kecil || 0}" min="0" max="${maxQty}" 
+                                        onchange="window.qcCalculator.calculateQty(${index})">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control qty-bagus" name="qty_bagus[]" 
+                                        value="${item.qty_kecil || 0}" min="0" max="${maxQty}"
+                                        onchange="window.qcCalculator.calculateReject(${index})">
+                                </td>
+                                <td>
+                                    <input type="number" class="form-control qty-reject" name="qty_reject[]" 
+                                        value="0" min="0" max="${maxQty}"
+                                        onchange="window.qcCalculator.calculateBagus(${index})">
+                                </td>
+                                <td>
+                                    <select name="status_qc[]" class="form-select status-qc" onchange="window.qcCalculator.updateStatus(${index})">
+                                        <option value="lulus">Lulus</option>
+                                        <option value="ditolak_sebagian">Ditolak Sebagian</option>
+                                        <option value="ditolak_semua">Ditolak Semua</option>
+                                    </select>
+                                </td>
+                                <td>
+                                    <input type="text" class="form-control" name="catatan[]" placeholder="Catatan" required>
+                                </td>
+                            </tr>`;
                     });
+                } else {
+                    html = '<tr><td colspan="7" class="text-center">Tidak ada data barang untuk PO ini</td></tr>';
                 }
 
-                return isValid;
-            }
+                $('#tbodyQC').html(html);
+            },
+            error: function (xhr, status, error) {
+                console.error('AJAX Error:', status, error);
+                let errorMsg = 'Gagal memuat data dari server';
 
-            // Event handler untuk form submission
-            $(document).on('submit', 'form', function (e) {
-                if (!validateQCForm()) {
-                    e.preventDefault(); // Stop form submission
-                }
-            });
-
-            // Fungsi auto-calculate untuk memastikan total selalu match
-            function calculateQty(index) {
-                const row = $('tr').eq(index + 1);
-                const qtyDiterima = parseInt(row.find('input[name="qty_diterima[]"]').val()) || 0;
-                const qtyBagus = parseInt(row.find('input[name="qty_bagus[]"]').val()) || 0;
-                const qtyReject = parseInt(row.find('input[name="qty_reject[]"]').val()) || 0;
-
-                // Auto-adjust reject jika bagus diubah
-                const newReject = qtyDiterima - qtyBagus;
-                if (newReject >= 0) {
-                    row.find('input[name="qty_reject[]"]').val(newReject);
+                if (xhr.responseText) {
+                    try {
+                        const response = JSON.parse(xhr.responseText);
+                        errorMsg = response.error || errorMsg;
+                    } catch (e) {
+                        errorMsg = 'Server error: ' + xhr.status;
+                    }
                 }
 
-                updateStatus(index);
-            }
-
-            function calculateReject(index) {
-                const row = $('tr').eq(index + 1);
-                const qtyDiterima = parseInt(row.find('input[name="qty_diterima[]"]').val()) || 0;
-                const qtyReject = parseInt(row.find('input[name="qty_reject[]"]').val()) || 0;
-
-                // Auto-adjust bagus jika reject diubah
-                const newBagus = qtyDiterima - qtyReject;
-                if (newBagus >= 0) {
-                    row.find('input[name="qty_bagus[]"]').val(newBagus);
-                }
-
-                updateStatus(index);
+                $('#tbodyQC').html(`
+                    <tr>
+                        <td colspan="7" class="text-center text-danger">
+                            <i class="fas fa-exclamation-circle"></i> ${errorMsg}
+                        </td>
+                    </tr>
+                `);
             }
         });
-    </script>
+
+        // Inisialisasi DataTable jika diperlukan
+        if ($('#tabelBarangMasuk').length && !$.fn.DataTable.isDataTable('#tabelBarangMasuk')) {
+            $('#tabelBarangMasuk').DataTable({
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                language: {
+                    search: "Cari Barang Masuk : ",
+                    lengthMenu: "Tampilkan _MENU_ data per halaman",
+                    info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                    zeroRecords: "Tidak ada data yang cocok",
+                    infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                    infoFiltered: "(disaring dari _MAX_ total data)",
+                    paginate: { first: "Awal", last: "Akhir", next: "Berikutnya", previous: "Sebelumnya" }
+                }
+            });
+        }
+    });
+
+    // ✅ FIX: BUAT OBJECT TERPISAH UNTUK MENGHINDARI DUPLIKASI DAN BENTROK
+    window.qcCalculator = {
+        // ✅ FIX: FUNGSI YANG LEBIH AMAN DENGAN SELECTOR DATA-ATTRIBUTE
+        getRow: function(index) {
+            return $(`tr[data-index="${index}"]`);
+        },
+
+        calculateQty: function(index) {
+            const row = this.getRow(index);
+            const qtyDiterima = parseInt(row.find('.qty-diterima').val()) || 0;
+            const qtyBagus = parseInt(row.find('.qty-bagus').val()) || 0;
+            
+            // Auto-adjust reject
+            const newReject = qtyDiterima - qtyBagus;
+            if (newReject >= 0) {
+                row.find('.qty-reject').val(newReject);
+            }
+            
+            this.updateStatus(index);
+        },
+
+        calculateReject: function(index) {
+            const row = this.getRow(index);
+            const qtyDiterima = parseInt(row.find('.qty-diterima').val()) || 0;
+            const qtyReject = parseInt(row.find('.qty-reject').val()) || 0;
+            
+            // Auto-adjust bagus
+            const newBagus = qtyDiterima - qtyReject;
+            if (newBagus >= 0) {
+                row.find('.qty-bagus').val(newBagus);
+            }
+            
+            this.updateStatus(index);
+        },
+
+        calculateBagus: function(index) {
+            // ✅ FIX: ALIAS UNTUK calculateReject UNTUK KONSISTENSI
+            this.calculateReject(index);
+        },
+
+        updateStatus: function(index) {
+            const row = this.getRow(index);
+            const qtyDiterima = parseInt(row.find('.qty-diterima').val()) || 0;
+            const qtyBagus = parseInt(row.find('.qty-bagus').val()) || 0;
+            const qtyReject = parseInt(row.find('.qty-reject').val()) || 0;
+            const select = row.find('.status-qc');
+
+            // Auto update status
+            if (qtyReject === 0) {
+                select.val('lulus');
+            } else if (qtyReject === qtyDiterima) {
+                select.val('ditolak_semua');
+            } else if (qtyReject > 0) {
+                select.val('ditolak_sebagian');
+            }
+        },
+
+        validateQCForm: function() {
+            let isValid = true;
+            const errorMessages = [];
+
+            $('tr[data-index]').each(function () {
+                const index = $(this).data('index');
+                const qtyDiterima = parseInt($(this).find('.qty-diterima').val()) || 0;
+                const qtyBagus = parseInt($(this).find('.qty-bagus').val()) || 0;
+                const qtyReject = parseInt($(this).find('.qty-reject').val()) || 0;
+                const produk = $(this).find('td:first').text().trim();
+
+                // Validasi 1: Total harus match
+                if (qtyBagus + qtyReject !== qtyDiterima) {
+                    isValid = false;
+                    errorMessages.push(`<b>${produk}</b>: Total bagus (${qtyBagus}) + reject (${qtyReject}) harus sama dengan diterima (${qtyDiterima})`);
+                }
+
+                // Validasi 2: Tidak boleh minus
+                if (qtyBagus < 0 || qtyReject < 0 || qtyDiterima < 0) {
+                    isValid = false;
+                    errorMessages.push(`<b>${produk}</b>: Quantity tidak boleh minus`);
+                }
+
+                // Validasi 3: Tidak boleh lebih dari diterima
+                if (qtyBagus > qtyDiterima || qtyReject > qtyDiterima) {
+                    isValid = false;
+                    errorMessages.push(`<b>${produk}</b>: Quantity bagus/reject tidak boleh lebih dari diterima`);
+                }
+            });
+
+            if (!isValid) {
+                const errorHtml = errorMessages.join('<br>');
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Validasi Gagal',
+                    html: errorHtml,
+                    confirmButtonText: 'Mengerti'
+                });
+            }
+
+            return isValid;
+        }
+    };
+
+    // FIX: EVENT HANDLER YANG SPESIFIK UNTUK FORM QC SAJA
+    $(document).on('submit', '#formQC', function (e) {
+        if (!window.qcCalculator.validateQCForm()) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+    });
+
+</script>
 </body>
 
 </html>
