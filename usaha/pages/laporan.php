@@ -106,15 +106,32 @@ $end_date_esc = $conn->real_escape_string($end_date);
 $filter_kategori_esc = $conn->real_escape_string($filter_kategori);
 
 // Laporan Penjualan
+// Calculate date range difference for chart
+$start = new DateTime($start_date);
+$end = new DateTime($end_date);
+$date_interval = $start->diff($end);
+$days_diff = $date_interval->days;
+
+// Generate sequence based on date range difference
+$seq_generator = "SELECT 0 as seq";
+for ($i = 1; $i <= $days_diff; $i++) {
+    $seq_generator .= " UNION SELECT $i";
+}
+
+// Query untuk data penjualan dengan semua tanggal dalam range
 $penjualan_query = "
     SELECT 
-        DATE(tanggal_pesan) as tanggal,
-        COUNT(*) as total_pesanan,
-        SUM(total_harga) as total_penjualan
-    FROM pemesanan 
-    WHERE DATE(tanggal_pesan) BETWEEN '$start_date_esc' AND '$end_date_esc' AND status = 'Terkirim'
-    GROUP BY DATE(tanggal_pesan)
-    ORDER BY tanggal
+        dr.tanggal,
+        COALESCE(COUNT(p.id_pemesanan), 0) as total_pesanan,
+        COALESCE(SUM(p.total_harga), 0) as total_penjualan
+    FROM (
+        SELECT DATE_ADD('$start_date_esc', INTERVAL seq.seq DAY) as tanggal
+        FROM ($seq_generator) seq
+        WHERE DATE_ADD('$start_date_esc', INTERVAL seq.seq DAY) <= '$end_date_esc'
+    ) dr
+    LEFT JOIN pemesanan p ON DATE(p.tanggal_pesan) = dr.tanggal AND p.status = 'Terkirim'
+    GROUP BY dr.tanggal
+    ORDER BY dr.tanggal
 ";
 
 // Produk Terlaris - PERBAIKAN: gunakan subtotal bukan harga
