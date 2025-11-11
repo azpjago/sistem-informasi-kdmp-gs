@@ -82,18 +82,23 @@ if (isset($_GET['delete'])) {
 
 // Query data barang reject dengan join untuk informasi lengkap
 $query = "SELECT 
-            br.*,
-            brj.nama_supplier,
+            br.id_reject,
+            br.created_at,
+            br.nama_produk,
+            br.kode_produk,
+            br.jumlah_reject,
+            br.satuan_kecil,
+            br.alasan_reject,
+            br.status_tindaklanjut,
+            br.catatan_tindaklanjut,
             po.no_invoice,
-            qc.qc_by,
-            u.username as nama_petugas_qc,
-            sp.nama_produk as nama_produk_supplier
+            s.nama_supplier,
+            u.username as nama_petugas_qc
           FROM barang_rejek br
           LEFT JOIN qc_result qc ON br.id_qc = qc.id_qc
           LEFT JOIN purchase_order_items poi ON br.id_po_item = poi.id_item
           LEFT JOIN purchase_order po ON poi.id_po = po.id_po
-          LEFT JOIN supplier brj ON po.id_supplier = brj.id_supplier
-          LEFT JOIN supplier_produk sp ON br.id_supplier_produk = sp.id_supplier_produk
+          LEFT JOIN supplier s ON po.id_supplier = s.id_supplier
           LEFT JOIN pengurus u ON qc.qc_by = u.id
           ORDER BY br.created_at DESC";
 
@@ -228,110 +233,115 @@ $result = $conn->query($query);
         </div>
 
         <!-- Tabel Data -->
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">Daftar Barang Reject</h5>
-            </div>
-            <div class="card-body">
-                <div class="table-responsive">
-                    <table id="tabelBarangReject" class="table table-striped table-hover">
-                        <thead>
-                            <tr>
-                                <th>No</th>
-                                <th>Tanggal</th>
-                                <th>No. Invoice</th>
-                                <th>Supplier</th>
-                                <th>Nama Produk</th>
-                                <th>Jumlah Reject</th>
-                                <th>Alasan Reject</th>
-                                <th>Status Tindakan</th>
-                                <th>Petugas QC</th>
-                                <th>Aksi</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php
-                            if ($result && $result->num_rows > 0) {
-                                $no = 1;
-                                while ($row = $result->fetch_assoc()) {
-                                    $status_class = '';
-                                    $status_text = '';
-                                    
-                                    switch ($row['status_tindaklanjut']) {
-                                        case 'return_supplier':
-                                            $status_class = 'badge-return_supplier';
-                                            $status_text = 'Return Supplier';
-                                            break;
-                                        case 'diperbaiki':
-                                            $status_class = 'badge-diperbaiki';
-                                            $status_text = 'Diperbaiki';
-                                            break;
-                                        case 'destroyed':
-                                            $status_class = 'badge-destroyed';
-                                            $status_text = 'Dimusnahkan';
-                                            break;
-                                        case 'digunakan':
-                                            $status_class = 'badge-digunakan';
-                                            $status_text = 'Digunakan Internal';
-                                            break;
-                                        case 'selesai':
-                                            $status_class = 'badge-selesai';
-                                            $status_text = 'Selesai';
-                                            break;
-                                        default:
-                                            $status_class = 'badge-return_supplier';
-                                            $status_text = 'Return Supplier';
-                                    }
-
-                                    echo "
-                                    <tr>
-                                        <td>{$no}</td>
-                                        <td>" . date('d/m/Y', strtotime($row['created_at'])) . "</td>
-                                        <td>{$row['no_invoice']}</td>
-                                        <td>{$row['nama_supplier']}</td>
-                                        <td>
-                                            <strong>{$row['nama_produk']}</strong>
-                                            <br><small class='text-muted'>Kode: {$row['kode_produk']}</small>
-                                        </td>
-                                        <td>
-                                            <span class='badge bg-danger'>{$row['jumlah_reject']} {$row['satuan_kecil']}</span>
-                                        </td>
-                                        <td>{$row['alasan_reject']}</td>
-                                        <td><span class='badge {$status_class}'>{$status_text}</span></td>
-                                        <td>{$row['nama_petugas_qc']}</td>
-                                        <td class='action-buttons'>
-                                            <button class='btn btn-sm btn-warning btn-edit' 
-                                                    data-bs-toggle='modal' 
-                                                    data-bs-target='#editModal'
-                                                    data-id='{$row['id_reject']}'
-                                                    data-status='{$row['status_tindaklanjut']}'>
-                                                <i class='fas fa-edit'></i>
-                                            </button>
-                                            <button class='btn btn-sm btn-info btn-detail' 
-                                                    data-bs-toggle='modal' 
-                                                    data-bs-target='#detailModal'
-                                                    data-id='{$row['id_reject']}'>
-                                                <i class='fas fa-eye'></i>
-                                            </button>
-                                            <a href='barang_rejek.php?delete={$row['id_reject']}' 
-                                               class='btn btn-sm btn-danger' 
-                                               onclick=\"return confirm('Yakin hapus data ini?')\">
-                                                <i class='fas fa-trash'></i>
-                                            </a>
-                                        </td>
-                                    </tr>";
-                                    $no++;
-                                }
-                            } else {
-                                echo "<tr><td colspan='10' class='text-center'>Tidak ada data barang reject</td></tr>";
+        <!-- Tabel Data -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="card-title mb-0">Daftar Barang Reject</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table id="tabelBarangReject" class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th>No</th>
+                        <th>Tanggal</th>
+                        <th>No. Invoice</th>
+                        <th>Supplier</th>
+                        <th>Nama Produk</th>
+                        <th>Jumlah Reject</th>
+                        <th>Alasan Reject</th>
+                        <th>Status Tindakan</th>
+                        <th>Petugas QC</th>
+                        <th>Aksi</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php
+                    if ($result && $result->num_rows > 0) {
+                        $no = 1;
+                        while ($row = $result->fetch_assoc()) {
+                            $status_class = '';
+                            $status_text = '';
+                            
+                            switch ($row['status_tindaklanjut']) {
+                                case 'return_supplier':
+                                    $status_class = 'badge-return_supplier';
+                                    $status_text = 'Return Supplier';
+                                    break;
+                                case 'diperbaiki':
+                                    $status_class = 'badge-diperbaiki';
+                                    $status_text = 'Diperbaiki';
+                                    break;
+                                case 'destroyed':
+                                    $status_class = 'badge-destroyed';
+                                    $status_text = 'Dimusnahkan';
+                                    break;
+                                case 'digunakan':
+                                    $status_class = 'badge-digunakan';
+                                    $status_text = 'Digunakan Internal';
+                                    break;
+                                case 'selesai':
+                                    $status_class = 'badge-selesai';
+                                    $status_text = 'Selesai';
+                                    break;
+                                default:
+                                    $status_class = 'badge-return_supplier';
+                                    $status_text = 'Return Supplier';
                             }
-                            ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+
+                            echo "
+                            <tr>
+                                <td>{$no}</td>
+                                <td>" . date('d/m/Y', strtotime($row['created_at'])) . "</td>
+                                <td>" . ($row['no_invoice'] ?? '-') . "</td>
+                                <td>" . ($row['nama_supplier'] ?? '-') . "</td>
+                                <td>
+                                    <strong>{$row['nama_produk']}</strong>
+                                    " . (!empty($row['kode_produk']) ? "<br><small class='text-muted'>Kode: {$row['kode_produk']}</small>" : "") . "
+                                </td>
+                                <td>
+                                    <span class='badge bg-danger'>{$row['jumlah_reject']} {$row['satuan_kecil']}</span>
+                                </td>
+                                <td>{$row['alasan_reject']}</td>
+                                <td><span class='badge {$status_class}'>{$status_text}</span></td>
+                                <td>" . ($row['nama_petugas_qc'] ?? '-') . "</td>
+                                <td class='action-buttons'>
+                                    <button class='btn btn-sm btn-warning btn-edit' 
+                                            data-bs-toggle='modal' 
+                                            data-bs-target='#editModal'
+                                            data-id='{$row['id_reject']}'
+                                            data-status='{$row['status_tindaklanjut']}'
+                                            data-catatan='" . ($row['catatan_tindaklanjut'] ?? '') . "'>
+                                        <i class='fas fa-edit'></i>
+                                    </button>
+                                    <button class='btn btn-sm btn-info btn-detail' 
+                                            data-bs-toggle='modal' 
+                                            data-bs-target='#detailModal'
+                                            data-id='{$row['id_reject']}'>
+                                        <i class='fas fa-eye'></i>
+                                    </button>
+                                    <a href='?delete={$row['id_reject']}' 
+                                       class='btn btn-sm btn-danger btn-delete' 
+                                       onclick=\"return confirm('Yakin hapus data ini?')\">
+                                        <i class='fas fa-trash'></i>
+                                    </a>
+                                </td>
+                            </tr>";
+                            $no++;
+                        }
+                    } else {
+                        // ✅ PASTIKAN COLSPAN SESUAI DENGAN JUMLAH KOLOM (10)
+                        echo "<tr><td colspan='10' class='text-center py-4'>
+                                <i class='fas fa-box-open fa-2x text-muted mb-2'></i><br>
+                                <span class='text-muted'>Tidak ada data barang reject</span>
+                              </td></tr>";
+                    }
+                    ?>
+                </tbody>
+            </table>
         </div>
     </div>
+</div>
 
     <!-- Modal Edit Status -->
     <div class="modal fade" id="editModal" tabindex="-1" aria-hidden="true">
