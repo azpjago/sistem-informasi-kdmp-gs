@@ -184,43 +184,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
         exit;
     }
     
-    if ($action === 'send_broadcast') {
-        $pesan = $_POST['message'] ?? '';
-        $grup_wa = getGrupWA($conn);
-        
-        $results = [];
-        $success_count = 0;
-        $failed_count = 0;
-        
-        foreach ($grup_wa as $grup) {
-            $group_id = $grup['group_id'];
-            $nama_grup = $grup['nama_grup'];
-            
-            // Kirim ke grup WA menggunakan Fonnte API
-            $send_result = sendViaFonnteGroup($group_id, $pesan, $nama_grup);
-            
-            if ($send_result['success']) {
-                $success_count++;
-                $results[] = "✅ {$nama_grup}: Berhasil dikirim";
-            } else {
-                $failed_count++;
-                $results[] = "❌ {$nama_grup}: Gagal - " . $send_result['error'];
-            }
-            
-            // Delay antar pengiriman (2 detik)
-            sleep(2);
-        }
-        
+    // GANTI BAGIAN INI dalam proses send_broadcast
+if ($action === 'send_broadcast') {
+    // Cek apakah ada broadcast yang sedang berjalan
+    if (hasBroadcastLock()) {
         $response = [
-            'status' => 'success',
-            'message' => "Broadcast selesai! Berhasil: {$success_count} grup, Gagal: {$failed_count} grup",
-            'results' => $results
+            'status' => 'error',
+            'message' => 'Broadcast sedang berjalan. Tunggu 5 menit sebelum mengirim lagi.'
         ];
-        
         header('Content-Type: application/json');
         echo json_encode($response);
         exit;
     }
+    
+    // Set lock
+    setBroadcastLock();
+    
+    $pesan = $_POST['message'] ?? '';
+    $grup_wa = getGrupWA($conn);
+    
+    $results = [];
+    $success_count = 0;
+    $failed_count = 0;
+    
+    foreach ($grup_wa as $grup) {
+        $group_id = $grup['group_id'];
+        $nama_grup = $grup['nama_grup'];
+        
+        // Kirim ke grup WA menggunakan Fonnte API
+        $send_result = sendViaFonnteGroup($group_id, $pesan, $nama_grup);
+        
+        if ($send_result['success']) {
+            $success_count++;
+            $results[] = "✅ {$nama_grup}: Berhasil dikirim";
+        } else {
+            $failed_count++;
+            $results[] = "❌ {$nama_grup}: Gagal - " . $send_result['error'];
+        }
+        
+        // Delay antar pengiriman (3 detik untuk lebih aman)
+        sleep(3);
+    }
+    
+    // Clear lock setelah selesai
+    clearBroadcastLock();
+    
+    $response = [
+        'status' => 'success',
+        'message' => "Broadcast selesai! Berhasil: {$success_count} grup, Gagal: {$failed_count} grup",
+        'results' => $results
+    ];
+    
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
 }
 
 // ================================
