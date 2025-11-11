@@ -1,4 +1,31 @@
 <?php
+// Fungsi untuk cek dan set broadcast lock
+function setBroadcastLock() {
+    $_SESSION['broadcast_lock'] = time();
+    return true;
+}
+
+function hasBroadcastLock() {
+    if (!isset($_SESSION['broadcast_lock'])) {
+        return false;
+    }
+    
+    $lock_time = $_SESSION['broadcast_lock'];
+    $current_time = time();
+    
+    // Lock berlaku selama 5 menit
+    if (($current_time - $lock_time) < 300) {
+        return true;
+    }
+    
+    // Hapus lock jika sudah expired
+    unset($_SESSION['broadcast_lock']);
+    return false;
+}
+
+function clearBroadcastLock() {
+    unset($_SESSION['broadcast_lock']);
+}
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
