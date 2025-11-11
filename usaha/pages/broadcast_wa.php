@@ -23,7 +23,6 @@ function hasBroadcastLock() {
     }
     
     $lock_time = $_SESSION['broadcast_lock'];
-    $lock_time = $_SESSION['broadcast_lock'];
     $current_time = time();
     
     // Lock berlaku selama 5 menit
@@ -193,6 +192,25 @@ function formatPesanBroadcast($produkTersedia) {
     return $pesan;
 }
 
+// ADD getallproduktersedia function
+function getAllProdukTersedia($conn) {
+    $query = "
+        SELECT 
+            p.id_produk,
+            p.nama_produk,
+            p.keterangan,
+            p.gambar,
+            p.harga,
+            ir.jumlah_tersedia as stok,
+            ir.satuan_kecil
+        FROM produk p
+        INNER JOIN inventory_ready ir ON p.id_inventory = ir.id_inventory
+        WHERE ir.jumlah_tersedia > 0
+        ORDER BY p.nama_produk ASC
+    ";
+    $result = $conn->query($query);
+    return $result;
+}
 // Proses form submission
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
