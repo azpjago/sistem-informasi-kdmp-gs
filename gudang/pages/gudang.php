@@ -81,206 +81,268 @@ if (isset($_POST['buat_rencana_penjualan'])) {
         --dark: #2c3e50;
     }
 
+    /* STATS CARD FULL COLOR */
     .stats-card {
-        background: white;
-        border-radius: 8px;
-        padding: 15px;
-        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+        border-radius: 12px;
+        padding: 20px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
         text-align: center;
         height: 100%;
-        border-left: 4px solid var(--primary);
+        color: white;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .stats-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    .stats-card::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
     }
 
     .stats-card.total {
-        border-left-color: #3498db;
+        background: linear-gradient(135deg, #3498db, #2980b9);
     }
 
     .stats-card.available {
-        border-left-color: #27ae60;
+        background: linear-gradient(135deg, #27ae60, #219a52);
     }
 
     .stats-card.limited {
-        border-left-color: #f39c12;
+        background: linear-gradient(135deg, #f39c12, #e67e22);
     }
 
     .stats-card.out {
-        border-left-color: #e74c3c;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
     }
 
     .stats-icon {
-        font-size: 20px;
-        margin-bottom: 10px;
-        width: 40px;
-        height: 40px;
+        font-size: 24px;
+        margin-bottom: 15px;
+        width: 60px;
+        height: 60px;
         border-radius: 50%;
         display: flex;
         align-items: center;
         justify-content: center;
-        margin: 0 auto 10px;
-        color: white;
-    }
-
-    .stats-icon.total {
-        background: #3498db;
-    }
-
-    .stats-icon.available {
-        background: #27ae60;
-    }
-
-    .stats-icon.limited {
-        background: #f39c12;
-    }
-
-    .stats-icon.out {
-        background: #e74c3c;
+        margin: 0 auto 15px;
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(10px);
     }
 
     .stats-total {
-        font-size: 24px;
+        font-size: 32px;
         font-weight: bold;
-        margin: 5px 0;
+        margin: 10px 0;
+        text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
     }
 
     .stats-label {
-        font-size: 13px;
-        color: #6c757d;
+        font-size: 14px;
         font-weight: 500;
+        opacity: 0.9;
+        text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
     }
 
+    /* PRODUCT CARD FULL COLOR */
     .product-card {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
-        transition: transform 0.2s ease;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
         height: 100%;
-        border: 1px solid #e9ecef;
+        border: none;
         overflow: hidden;
+        background: white;
     }
 
     .product-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+    }
+
+    /* Warna berbeda untuk setiap status produk */
+    .product-card.available {
+        border-top: 4px solid #27ae60;
+        background: linear-gradient(to bottom, #ffffff, #f8fff9);
     }
 
     .product-card.low-stock {
-        border-left: 4px solid var(--warning);
+        border-top: 4px solid #f39c12;
+        background: linear-gradient(to bottom, #ffffff, #fffaf2);
     }
 
     .product-card.out-of-stock {
-        border-left: 4px solid var(--danger);
+        border-top: 4px solid #e74c3c;
+        background: linear-gradient(to bottom, #ffffff, #fff5f5);
     }
 
     .product-card.sold {
-        border-left: 4px solid var(--secondary);
-    }
-
-    .product-card.available {
-        border-left: 4px solid var(--success);
+        border-top: 4px solid #7f8c8d;
+        background: linear-gradient(to bottom, #ffffff, #f8f9fa);
     }
 
     .product-header {
-        padding: 15px;
+        padding: 20px 20px 15px 20px;
         border-bottom: 1px solid #e9ecef;
-        background: #f8f9fa;
+        background: transparent;
         display: flex;
         justify-content: space-between;
-        align-items: center;
+        align-items: flex-start;
     }
 
     .product-body {
-        padding: 15px;
+        padding: 20px;
     }
 
     .product-footer {
-        padding: 12px 15px;
+        padding: 15px 20px;
         background: #f8f9fa;
         border-top: 1px solid #e9ecef;
         display: flex;
         justify-content: space-between;
+        gap: 8px;
     }
 
     .product-code {
         font-family: 'Courier New', monospace;
-        background: white;
-        padding: 3px 8px;
-        border-radius: 4px;
+        background: rgba(52, 152, 219, 0.1);
+        padding: 6px 12px;
+        border-radius: 8px;
         font-size: 12px;
-        color: var(--dark);
-        border: 1px solid #e9ecef;
+        color: #2c3e50;
+        border: 1px solid rgba(52, 152, 219, 0.2);
+        font-weight: 600;
     }
 
     .status-badge {
         font-size: 11px;
-        padding: 4px 8px;
-        border-radius: 12px;
-        font-weight: 500;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .product-title {
         font-size: 16px;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: var(--dark);
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #2c3e50;
+        line-height: 1.3;
+    }
+
+    .product-unit {
+        font-size: 18px !important;
+        font-weight: 800;
+        color: #3498db !important;
+        background: rgba(52, 152, 219, 0.1);
+        padding: 4px 8px;
+        border-radius: 6px;
+        min-width: 40px;
+        text-align: center;
     }
 
     .product-detail {
         display: flex;
         justify-content: space-between;
-        margin-bottom: 6px;
+        align-items: center;
+        margin-bottom: 8px;
+        padding: 8px 0;
+        border-bottom: 1px solid #f8f9fa;
+    }
+
+    .product-detail:last-child {
+        border-bottom: none;
     }
 
     .product-label {
-        font-size: 12px;
+        font-size: 13px;
         color: #6c757d;
         font-weight: 500;
     }
 
     .product-value {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--dark);
+        font-size: 14px;
+        font-weight: 700;
+        color: #2c3e50;
     }
 
     .batch-number {
         font-size: 12px;
-        background: #f8f9fa;
-        padding: 4px 8px;
-        border-radius: 4px;
+        background: rgba(108, 117, 125, 0.1);
+        padding: 6px 10px;
+        border-radius: 6px;
         display: inline-block;
         color: #6c757d;
-        border: 1px solid #e9ecef;
-        margin-bottom: 10px;
+        border: 1px solid rgba(108, 117, 125, 0.2);
+        margin-bottom: 15px;
+        font-weight: 500;
     }
 
     .price-tag {
-        font-weight: bold;
-        color: var(--success);
+        font-weight: 800;
+        color: #27ae60;
         font-size: 14px;
+        background: rgba(39, 174, 96, 0.1);
+        padding: 4px 8px;
+        border-radius: 6px;
     }
 
     .stock-info {
         font-size: 13px;
         display: flex;
         align-items: center;
+        gap: 8px;
     }
 
     .stock-badge {
-        font-size: 11px;
-        padding: 3px 8px;
-        border-radius: 10px;
-        font-weight: 500;
-        margin-left: 8px;
+        font-size: 10px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
     }
 
     .action-btn {
-        width: 32px;
-        height: 32px;
-        border-radius: 6px;
+        width: 36px;
+        height: 36px;
+        border-radius: 8px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 13px;
+        font-size: 14px;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+
+    .action-btn:hover {
+        transform: scale(1.1);
+        border-color: currentColor;
+    }
+
+    .btn-outline-primary.action-btn:hover {
+        background: #3498db;
+        color: white;
+    }
+
+    .btn-outline-warning.action-btn:hover {
+        background: #f39c12;
+        color: white;
+    }
+
+    .btn-outline-success.action-btn:hover {
+        background: #27ae60;
+        color: white;
     }
 
     .search-box {
@@ -288,37 +350,86 @@ if (isset($_POST['buat_rencana_penjualan'])) {
     }
 
     .search-box input {
-        padding-left: 40px;
-        border-radius: 20px;
-        height: 38px;
-        font-size: 14px;
+        padding-left: 45px;
+        border-radius: 25px;
+        height: 45px;
+        font-size: 15px;
+        border: 2px solid #e9ecef;
+        transition: all 0.3s ease;
+    }
+
+    .search-box input:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
     }
 
     .search-box i {
         position: absolute;
-        left: 15px;
-        top: 10px;
+        left: 18px;
+        top: 13px;
         color: #6c757d;
-        font-size: 14px;
+        font-size: 16px;
     }
 
     .section-title {
-        font-size: 18px;
-        font-weight: 600;
-        color: var(--black);
-        margin-bottom: 20px;
-        padding-bottom: 10px;
-        border-bottom: 2px solid #e9ecef;
+        font-size: 20px;
+        font-weight: 700;
+        color: #2c3e50;
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 3px solid #3498db;
+        position: relative;
+    }
+
+    .section-title::after {
+        content: '';
+        position: absolute;
+        bottom: -3px;
+        left: 0;
+        width: 80px;
+        height: 3px;
+        background: #27ae60;
     }
 
     .filter-btn {
-        border-radius: 20px;
-        padding: 8px 16px;
+        border-radius: 25px;
+        padding: 10px 20px;
         background: white;
-        border: 1px solid #ddd;
+        border: 2px solid #e9ecef;
         color: #6c757d;
-        height: 38px;
-        font-size: 14px;
+        height: 45px;
+        font-size: 15px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+    }
+
+    .filter-btn:hover {
+        border-color: #3498db;
+        color: #3498db;
+    }
+
+    /* Badge colors dengan variasi */
+    .bg-success {
+        background: linear-gradient(135deg, #27ae60, #219a52) !important;
+    }
+
+    .bg-warning {
+        background: linear-gradient(135deg, #f39c12, #e67e22) !important;
+    }
+
+    .bg-danger {
+        background: linear-gradient(135deg, #e74c3c, #c0392b) !important;
+    }
+
+    .bg-secondary {
+        background: linear-gradient(135deg, #7f8c8d, #6c757d) !important;
+    }
+
+    /* Header styling */
+    .header h2 {
+        font-weight: 800;
+        color: #2c3e50;
+        font-size: 28px;
     }
 </style>
 
