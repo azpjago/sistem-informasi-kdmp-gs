@@ -192,7 +192,7 @@ function formatPesanBroadcast($produkTersedia) {
         $pesan .= "Ketua (Purnama): 082117587151\n\n";
         
         $pesan .= "Terima kasih atas perhatiannya 🙏\n";
-        $pesan .= "_*Koperasi Desa Merah Putih Bersinar Bersama*_";
+        $pesan .= "_*Koperasi Desa Merah Putih Ganjar Sabar -  Bersinar Bersama*_";
     } else {
         $pesan .= "❌ *Saat ini tidak ada produk yang tersedia.*\n";
         $pesan .= "Silakan hubungi admin untuk informasi lebih lanjut.";
@@ -553,8 +553,7 @@ function sendViaDemoFallback($group_id, $message, $nama_grup) {
                 <div class="col-md-4">
                     <label for="kategori" class="form-label">Kategori</label>
                     <select class="form-select" id="kategori" name="kategori">
-                        <option value="">Semua Kategori</option>
-                        <option value="Sembako">Sembako</option>
+                        <option value="Sembako" selected>Sembako</option>
                         <option value="LPG">LPG</option>
                         <option value="Pupuk">Pupuk</option>
                     </select>
