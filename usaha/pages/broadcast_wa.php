@@ -95,7 +95,11 @@ function validateMessageLength($message) {
     ];
 }
 // Fungsi untuk mendapatkan semua produk yang tersedia
-function getAllProdukTersedia($conn) {
+function getProdukForBroadcast($conn, $filters = []) {
+    $min_stok = $filters['min_stok'] ?? 1;
+    $kategori = $filters['kategori'] ?? '';
+    $limit = $filters['max_produk'] ?? 20;
+    
     $query = "
         SELECT 
             p.id_produk,
@@ -103,16 +107,32 @@ function getAllProdukTersedia($conn) {
             p.keterangan,
             p.gambar,
             p.harga,
+            p.kategori,
             ir.jumlah_tersedia as stok,
             ir.satuan_kecil
         FROM produk p
         INNER JOIN inventory_ready ir ON p.id_inventory = ir.id_inventory
-        WHERE ir.jumlah_tersedia > 0
-        ORDER BY p.nama_produk ASC
+        WHERE ir.jumlah_tersedia >= ?
+        " . ($kategori ? " AND p.kategori = ?" : "") . "
+        ORDER BY ir.jumlah_tersedia ASC, p.nama_produk ASC
+        LIMIT ?
     ";
-    $result = $conn->query($query);
+    
+    $stmt = $conn->prepare($query);
+    
+    if ($kategori) {
+        $stmt->bind_param("isi", $min_stok, $kategori, $limit);
+    } else {
+        $stmt->bind_param("ii", $min_stok, $limit);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+    
     return $result;
 }
+
 
 // Fungsi untuk mendapatkan grup WA 
 function getGrupWA($conn) {
@@ -174,40 +194,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     $action = $_POST['action'];
     
     if ($action === 'broadcast_stok') {
-        $custom_message = trim($_POST['custom_message'] ?? '');
-        
-        // Get data
-        $produkTersedia = getAllProdukTersedia($conn);
-        $grup_wa = getGrupWA($conn);
-        
-        if ($produkTersedia->num_rows === 0) {
-            $response = [
-                'status' => 'info',
-                'message' => 'Tidak ada produk yang tersedia untuk di-broadcast.'
-            ];
-        } else {
-            // Format pesan
-            $pesan = formatPesanBroadcast($produkTersedia);
-            
-            // Tambahkan custom message jika ada
-            if (!empty($custom_message)) {
-                $pesan .= "\n\n📢 *PENGUMUMAN:*\n" . $custom_message;
-            }
-            
-            $response = [
-                'status' => 'success',
-                'message' => 'Pesan broadcast berhasil dibuat!',
-                'preview' => $pesan,
-                'total_grup' => count($grup_wa),
-                'total_produk' => $produkTersedia->num_rows,
-                'grup_list' => $grup_wa
-            ];
-        }
-        
+    $custom_message = trim($_POST['custom_message'] ?? '');
+    $min_stok = intval($_POST['min_stok'] ?? 1);
+    $kategori = trim($_POST['kategori'] ?? '');
+    $max_produk = intval($_POST['max_produk'] ?? 20);
+    
+    // Validasi custom message length
+    if (strlen($custom_message) > 500) {
+        $response = [
+            'status' => 'error',
+            'message' => 'Pesan tambahan terlalu panjang. Maksimal 500 karakter.'
+        ];
         header('Content-Type: application/json');
         echo json_encode($response);
         exit;
     }
+    
+    // Get data dengan filter
+    $filters = [
+        'min_stok' => $min_stok,
+        'kategori' => $kategori,
+        'max_produk' => $max_produk
+    ];
+    
+    $produkTersedia = getProdukForBroadcast($conn, $filters);
+    
+    if ($produkTersedia->num_rows === 0) {
+        $response = [
+            'status' => 'info',
+            'message' => 'Tidak ada produk yang sesuai dengan filter yang dipilih.'
+        ];
+    } else {
+        // Format pesan
+        $pesan = formatPesanBroadcast($produkTersedia);
+        
+        // Tambahkan custom message jika ada
+        if (!empty($custom_message)) {
+            $pesan .= "\n\n📢 *PENGUMUMAN:*\n" . $custom_message;
+        }
+        
+        // Validasi panjang pesan total
+        $validation = validateMessageLength($pesan);
+        if (!$validation['valid']) {
+            $response = [
+                'status' => 'error',
+                'message' => "Pesan terlalu panjang! ({$validation['length']}/{$validation['max_length']} karakter). Kurangi {$validation['exceeded_by']} karakter."
+            ];
+            header('Content-Type: application/json');
+            echo json_encode($response);
+            exit;
+        }
+        
+        $response = [
+            'status' => 'success',
+            'message' => 'Pesan broadcast berhasil dibuat!',
+            'preview' => $pesan,
+            'total_grup' => count($grup_wa),
+            'total_produk' => $produkTersedia->num_rows,
+            'grup_list' => $grup_wa,
+            'message_length' => $validation['length'],
+            'max_length' => $validation['max_length']
+        ];
+    }
+    
+    header('Content-Type: application/json');
+    echo json_encode($response);
+    exit;
+}
     
     // GANTI BAGIAN INI dalam proses send_broadcast
 if ($action === 'send_broadcast') {
