@@ -3,8 +3,6 @@ error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 
-session_start();
-
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -241,6 +239,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     
     $produkTersedia = getProdukForBroadcast($conn, $filters);
     
+    $grup_wa = getGrupWA($conn);
+    
     if ($produkTersedia->num_rows === 0) {
         $response = [
             'status' => 'info',
@@ -282,15 +282,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     echo json_encode($response);
     exit;
-}}
-    
+}
+   
     // GANTI BAGIAN INI dalam proses send_broadcast
-if ($action === 'send_broadcast') {
+	if ($action === 'send_broadcast') {
     // Cek apakah ada broadcast yang sedang berjalan
-    if (hasBroadcastLock()) {
-        $response = [
-            'status' => 'error',
-            'message' => 'Broadcast sedang berjalan. Tunggu 5 menit sebelum mengirim lagi.'
+		if (hasBroadcastLock()) {
+			$response = [
+				'status' => 'error',
+				'message' => 'Broadcast sedang berjalan. Tunggu 5 menit sebelum mengirim lagi.'
         ];
         header('Content-Type: application/json');
         echo json_encode($response);
