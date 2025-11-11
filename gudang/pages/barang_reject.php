@@ -396,24 +396,21 @@ $result = $conn->query($query);
     <script>
     $(document).ready(function() {
         // Initialize DataTable
-        $('#tabelBarangReject').DataTable({
-            pageLength: 10,
-            lengthMenu: [10, 25, 50, 100],
-            language: {
-                search: "Cari: ",
-                lengthMenu: "Tampilkan _MENU_ data per halaman",
-                info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
-                zeroRecords: "Tidak ada data yang cocok",
-                infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
-                infoFiltered: "(disaring dari _MAX_ total data)",
-                paginate: { 
-                    first: "Awal", 
-                    last: "Akhir", 
-                    next: "Berikutnya", 
-                    previous: "Sebelumnya" 
+        if ($('#tabelBarangReject').length && !$.fn.DataTable.isDataTable('#tabelBarangReject')) {
+            $('#tabelBarangReject').DataTable({
+                pageLength: 10,
+                lengthMenu: [10, 25, 50, 100],
+                language: {
+                    search: "Cari Barang Rejek : ",
+                    lengthMenu: "Tampilkan _MENU_ data per halaman",
+                    info: "Menampilkan _START_ sampai _END_ dari _TOTAL_ data",
+                    zeroRecords: "Tidak ada data yang cocok",
+                    infoEmpty: "Menampilkan 0 sampai 0 dari 0 data",
+                    infoFiltered: "(disaring dari _MAX_ total data)",
+                    paginate: { first: "Awal", last: "Akhir", next: "Berikutnya", previous: "Sebelumnya" }
                 }
-            }
-        });
+            });
+        }
 
         // Edit Modal Handler
         $('.btn-edit').on('click', function() {
