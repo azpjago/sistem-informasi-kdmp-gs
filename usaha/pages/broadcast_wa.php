@@ -31,6 +31,44 @@ if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
 
+// TAMBAHKAN FUNGSI PRODUK FILTER
+function getProdukWithFilter($conn, $filters = []) {
+    $min_stok = $filters['min_stok'] ?? 1;
+    $kategori = $filters['kategori'] ?? '';
+    $limit = $filters['limit'] ?? 50; // Batasi default 50 produk
+    
+    $query = "
+        SELECT 
+            p.id_produk,
+            p.nama_produk,
+            p.keterangan,
+            p.gambar,
+            p.harga,
+            p.kategori,
+            ir.jumlah_tersedia as stok,
+            ir.satuan_kecil
+        FROM produk p
+        INNER JOIN inventory_ready ir ON p.id_inventory = ir.id_inventory
+        WHERE ir.jumlah_tersedia >= ?
+        " . ($kategori ? " AND p.kategori = ?" : "") . "
+        ORDER BY p.nama_produk ASC
+        LIMIT ?
+    ";
+    
+    $stmt = $conn->prepare($query);
+    
+    if ($kategori) {
+        $stmt->bind_param("isi", $min_stok, $kategori, $limit);
+    } else {
+        $stmt->bind_param("ii", $min_stok, $limit);
+    }
+    
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $stmt->close();
+    
+    return $result;
+}
 // Fungsi untuk mendapatkan semua produk yang tersedia
 function getAllProdukTersedia($conn) {
     $query = "
