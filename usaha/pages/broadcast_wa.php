@@ -1,4 +1,7 @@
 <?php
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
@@ -15,6 +18,7 @@ function hasBroadcastLock() {
         return false;
     }
     
+    $lock_time = $_SESSION['broadcast_lock'];
     $lock_time = $_SESSION['broadcast_lock'];
     $current_time = time();
     
@@ -444,18 +448,58 @@ function sendViaDemoFallback($group_id, $message, $nama_grup) {
             </div>
 
             <form id="formBroadcast">
-                <input type="hidden" name="action" value="broadcast_stok">
-                
-                <div class="mb-3">
-                    <label for="custom_message" class="form-label">Pesan Tambahan/Promosi (Opsional)</label>
-                    <textarea class="form-control" id="custom_message" name="custom_message" 
-                              rows="3" placeholder="Contoh: 'Diskon spesial akhir bulan!' atau 'Buruan pesan, stok terbatas!'"></textarea>
+    <input type="hidden" name="action" value="broadcast_stok">
+    
+    <!-- FILTER PRODUK -->
+    <div class="card mb-3">
+        <div class="card-header bg-light">
+            <strong>🔧 Filter Produk yang Akan Dikirim</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="min_stok" class="form-label">Stok Minimum</label>
+                    <input type="number" class="form-control" id="min_stok" name="min_stok" 
+                           value="1" min="1" max="100">
+                    <small class="text-muted">Hanya produk dengan stok ≥ nilai ini</small>
                 </div>
+                <div class="col-md-4">
+                    <label for="kategori" class="form-label">Kategori</label>
+                    <select class="form-select" id="kategori" name="kategori">
+                        <option value="">Semua Kategori</option>
+                        <option value="Sembako">Sembako</option>
+                        <option value="LPG">LPG</option>
+                        <option value="Pupuk">Pupuk</option>
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="max_produk" class="form-label">Max Produk</label>
+                    <select class="form-select" id="max_produk" name="max_produk">
+                        <option value="10">10 Produk</option>
+                        <option value="20" selected>20 Produk</option>
+                        <option value="30">30 Produk</option>
+                        <option value="50">50 Produk</option>
+                    </select>
+                    <small class="text-muted">Batasi jumlah produk</small>
+                </div>
+            </div>
+        </div>
+    </div>
 
-                <button type="submit" class="btn btn-primary" id="btnPreview">
-                    <i class="fas fa-eye"></i> Preview Broadcast
-                </button>
-            </form>
+    <div class="mb-3">
+        <label for="custom_message" class="form-label">Pesan Tambahan/Promosi (Opsional)</label>
+        <textarea class="form-control" id="custom_message" name="custom_message" 
+                  rows="3" placeholder="Contoh: 'Diskon spesial akhir bulan!' atau 'Buruan pesan, stok terbatas!'"></textarea>
+        <small class="text-muted">Maksimal 500 karakter</small>
+        <div class="form-text">
+            <span id="charCount">0</span>/500 karakter
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-primary" id="btnPreview">
+        <i class="fas fa-eye"></i> Preview Broadcast
+    </button>
+</form>
 
             <!-- Preview Pesan -->
             <div id="previewSection" class="mt-4" style="display: none;">
