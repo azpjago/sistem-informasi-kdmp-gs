@@ -604,6 +604,18 @@ function sendViaDemoFallback($group_id, $message, $nama_grup) {
 
 <script>
 $(document).ready(function() {
+	// Character counter untuk custom message
+    $('#custom_message').on('input', function() {
+        const length = $(this).val().length;
+        $('#charCount').text(length);
+        
+        if (length > 500) {
+            $('#charCount').addClass('text-danger');
+        } else {
+            $('#charCount').removeClass('text-danger');
+        }
+    });
+	
     // Preview broadcast
     $('#formBroadcast').on('submit', function(e) {
         e.preventDefault();
@@ -676,18 +688,7 @@ $(document).ready(function() {
             btn.html(originalText).prop('disabled', false);
         });
     });
-    
-    // Character counter untuk custom message
-	$('#custom_message').on('input', function() {
-		const length = $(this).val().length;
-		$('#charCount').text(length);
-		
-		if (length > 500) {
-			$('#charCount').addClass('text-danger');
-		} else {
-			$('#charCount').removeClass('text-danger');
-		}
-	});
+});
 
 });
 
