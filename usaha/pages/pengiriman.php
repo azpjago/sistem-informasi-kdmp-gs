@@ -791,7 +791,8 @@ function getNamaKurir($conn, $id_kurir)
                 ids: selected,
                 status: 'Assign Kurir',
                 kurir_id: kurirId,
-                tanggal_pengiriman: tanggalPengiriman
+                tanggal_pengiriman: tanggalPengiriman,
+                action_type : 'bulk_update'
             }, function (result) {
                 $('#assignKurirModal .btn-primary').prop('disabled', false).html('<i class="fas fa-save me-1"></i> Simpan');
 
@@ -835,7 +836,8 @@ function getNamaKurir($conn, $id_kurir)
             if (confirm(`Mulai pengiriman untuk ${selected.length} pesanan?`)) {
                 $.post('pages/update_status.php', {
                     ids: selected,
-                    status: 'Dalam Perjalanan'
+                    status: 'Dalam Perjalanan',
+                    action_type: 'bulk_update'
                 }, function (result) {
                     if (result.success) {
                         alert('Pengiriman dimulai untuk ' + result.updated + ' pesanan');
@@ -876,7 +878,8 @@ function getNamaKurir($conn, $id_kurir)
             if (confirm(`Konfirmasi pengiriman selesai untuk ${selected.length} pesanan?`)) {
                 $.post('pages/update_status.php', {
                     ids: selected,
-                    status: 'Terkirim'
+                    status: 'Terkirim',
+                    action_type: 'bulk_update'
                 }, function (result) {
                     if (result.success) {
                         alert('✅ ' + result.updated + ' pesanan berhasil dikonfirmasi terkirim!');
@@ -914,7 +917,8 @@ function getNamaKurir($conn, $id_kurir)
                     data: {
                         ids: selected,
                         status: 'Gagal',
-                        alasan_gagal: alasan.trim()
+                        alasan_gagal: alasan.trim(),
+                        action_type: 'bulk_update'
                     },
                     dataType: 'json',
                     success: function (result) {
