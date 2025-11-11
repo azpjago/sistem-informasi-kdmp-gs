@@ -409,18 +409,18 @@ $total_summary = mysqli_fetch_assoc(mysqli_query($conn, "
     <script>
         // Prepare data for sales chart
         const salesData = {
-            labels: [<?php
-            mysqli_data_seek($penjualan, 0);
-            $labels = [];
-            $data = [];
-            while ($row = mysqli_fetch_assoc($penjualan)) {
-                $labels[] = "'" . date('d M', strtotime($row['tanggal'])) . "'";
-                $data[] = $row['total_penjualan'];
-            }
-            echo implode(', ', $labels);
-            ?>],
-            data: [<?php echo implode(', ', $data); ?>]
-        };
+			labels: [<?php
+			mysqli_data_seek($penjualan, 0);
+			$labels = [];
+			$data = [];
+			while ($row = mysqli_fetch_assoc($penjualan)) {
+				$labels[] = "'" . date('d M', strtotime($row['tanggal'])) . "'";
+				$data[] = $row['total_penjualan'];
+			}
+			echo implode(', ', $labels);
+			?>],
+			data: [<?php echo implode(', ', $data); ?>]
+		};
 
         // Sales Trend Chart
         const salesCtx = document.getElementById('salesChart').getContext('2d');
