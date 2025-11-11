@@ -1,14 +1,23 @@
 <?php
 session_start();
+
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+ini_set('log_errors', 1);
+ini_set('error_log', 'php_errors.log');
+
+// ✅ PASTIKAN HEADER JSON DI ATAS SEMUA OUTPUT
+header('Content-Type: application/json');
+
+// Debug langsung
+error_log("=== UPDATE_STATUS ACCESSED ===");
+
 require_once 'functions/history_log.php'; // Pastikan include history log
 
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
-header('Content-Type: application/json');
+// ✅ HAPUS HEADER JSON DUPLIKAT - sudah di atas
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'error' => 'Invalid request method']);
@@ -17,22 +26,37 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $ids = $_POST['ids'] ?? [];
 $status = $_POST['status'] ?? '';
+$action_type = $_POST['action_type'] ?? 'single_update';
 
-if (empty($ids) || empty($status)) {
-    echo json_encode(['success' => false, 'error' => 'Data tidak lengkap']);
+// ✅ Validasi IDs
+if (!is_array($ids) || empty($ids)) {
+    echo json_encode(['success' => false, 'error' => 'Tidak ada pesanan yang dipilih']);
     exit;
 }
+
+// ✅ FIX: Validasi dan sanitize user_type untuk history log
+$userType = $_SESSION['role'] ?? 'system';
+if (strlen($userType) > 50) {
+    $userType = substr($userType, 0, 50);
+}
+
+// DEBUG: Log incoming data
+error_log("=== UPDATE_STATUS REQUEST ===");
+error_log("IDs: " . implode(',', $ids));
+error_log("Status: $status");
+error_log("Action Type: $action_type");
+error_log("User Type: $userType");
 
 // Validasi status untuk SEMUA modul
 $allowed_statuses = [
     'Menunggu',
     'Disiapkan',
-    'Dibatalkan', // Monitoring
+    'Dibatalkan',
     'Belum Dikirim',
     'Assign Kurir',
     'Dalam Perjalanan',
     'Terkirim',
-    'Gagal' // Pengiriman
+    'Gagal'
 ];
 
 if (!in_array($status, $allowed_statuses)) {
@@ -40,9 +64,25 @@ if (!in_array($status, $allowed_statuses)) {
     exit;
 }
 
+// ✅ FIX: FUNGSI LOG YANG HILANG 
+function log_status_pemesanan_change($order_id, $old_status, $new_status, $description) {
+    global $conn;
+    
+    $query = "INSERT INTO pemesanan_status_log (id_pemesanan, status_lama, status_baru, keterangan, created_at) 
+              VALUES (?, ?, ?, ?, NOW())";
+    
+    $stmt = $conn->prepare($query);
+    if ($stmt) {
+        $stmt->bind_param("isss", $order_id, $old_status, $new_status, $description);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
+    }
+    return false;
+}
+
 // FUNCTION: Kurangi stok ketika status menjadi "Terkirim"
-function kurangiStokPesananTerkirim($conn, $id_pemesanan)
-{
+function kurangiStokPesananTerkirim($conn, $id_pemesanan) {
     // Ambil detail pesanan dengan quantity yang benar
     $query_detail = "
         SELECT pd.id_produk, pd.jumlah as qty_terjual, p.is_paket, p.jumlah as konversi_unit
@@ -125,8 +165,7 @@ function kurangiStokPesananTerkirim($conn, $id_pemesanan)
 }
 
 // FUNCTION: Ambil info pesanan untuk log
-function getPesananInfo($conn, $id_pemesanan)
-{
+function getPesananInfo($conn, $id_pemesanan) {
     $query = "
         SELECT p.id_pemesanan, p.total_harga, a.nama as nama_anggota, 
                p.metode, p.bank_tujuan, p.status as old_status
@@ -146,6 +185,11 @@ function getPesananInfo($conn, $id_pemesanan)
 }
 
 try {
+    // ✅ FIX: Definisikan variabel di luar loop
+    $kurir_id = $_POST['kurir_id'] ?? null;
+    $tanggal_pengiriman = $_POST['tanggal_pengiriman'] ?? date('Y-m-d');
+    $alasan_gagal = $_POST['alasan_gagal'] ?? 'Tidak disebutkan';
+
     $conn->begin_transaction();
 
     $updated = 0;
@@ -157,6 +201,11 @@ try {
 
         // Ambil info pesanan sebelum update untuk log
         $pesanan_info = getPesananInfo($conn, $id);
+        if (!$pesanan_info) {
+            $errors[] = "Pesanan #$id tidak ditemukan";
+            continue;
+        }
+
         $old_status = $pesanan_info['old_status'] ?? 'Unknown';
         $nama_anggota = $pesanan_info['nama_anggota'] ?? 'Unknown';
         $total_harga = $pesanan_info['total_harga'] ?? 0;
@@ -168,6 +217,8 @@ try {
                         SET status = ?, 
                             tanggal_pengiriman = CURDATE() 
                         WHERE id_pemesanan = ?";
+                $param_types = "si";
+                $params = [$status, $id];
                 break;
 
             case 'Dalam Perjalanan':
@@ -175,6 +226,8 @@ try {
                         SET status = ?, 
                             waktu_dikirim = NOW() 
                         WHERE id_pemesanan = ?";
+                $param_types = "si";
+                $params = [$status, $id];
                 break;
 
             case 'Terkirim':
@@ -183,125 +236,107 @@ try {
                             waktu_selesai = NOW(),
                             waktu_diterima = NOW() 
                         WHERE id_pemesanan = ?";
+                $param_types = "si";
+                $params = [$status, $id];
                 break;
 
             case 'Gagal':
-                $alasan_gagal = $_POST['alasan_gagal'] ?? 'Tidak disebutkan';
                 $sql = "UPDATE pemesanan 
                         SET status = ?, 
                             keterangan_gagal = ?,
                             waktu_selesai = NOW() 
                         WHERE id_pemesanan = ?";
+                $param_types = "ssi";
+                $params = [$status, $alasan_gagal, $id];
                 break;
 
             case 'Assign Kurir':
-                // PERBAIKAN KRITIS: Ambil tanggal_pengiriman dari POST dan gunakan untuk update
-                $kurir_id = $_POST['kurir_id'] ?? null;
-                $tanggal_pengiriman = $_POST['tanggal_pengiriman'] ?? date('Y-m-d');
-
                 if ($kurir_id) {
                     $sql = "UPDATE pemesanan 
                             SET status = ?, 
                                 id_kurir = ?,
                                 tanggal_pengiriman = ? 
                             WHERE id_pemesanan = ?";
+                    $param_types = "sisi";
+                    $params = [$status, $kurir_id, $tanggal_pengiriman, $id];
+                    error_log("Assign Kurir - ID: $id, Kurir: $kurir_id, Tanggal: $tanggal_pengiriman");
                 } else {
                     $errors[] = "Kurir ID diperlukan untuk status Assign Kurir";
-                    continue 2; // Skip ke pesanan berikutnya
+                    continue 2;
                 }
                 break;
 
             default:
                 $sql = "UPDATE pemesanan SET status = ? WHERE id_pemesanan = ?";
+                $param_types = "si";
+                $params = [$status, $id];
                 break;
         }
 
         $stmt = $conn->prepare($sql);
 
-        // Bind parameters berdasarkan status
-        if ($status == 'Assign Kurir' && isset($kurir_id)) {
-            // PERBAIKAN: Tambahkan parameter tanggal_pengiriman
-            $stmt->bind_param("sisi", $status, $kurir_id, $tanggal_pengiriman, $id);
-            error_log("Assign Kurir - ID: $id, Kurir: $kurir_id, Tanggal: $tanggal_pengiriman");
-        } else if ($status == 'Gagal') {
-            $stmt->bind_param("ssi", $status, $alasan_gagal, $id);
-        } else {
-            $stmt->bind_param("si", $status, $id);
-        }
+        if ($stmt) {
+            // Bind parameters secara dinamis
+            $stmt->bind_param($param_types, ...$params);
 
-        if ($stmt->execute()) {
-            // JIKA STATUS TERKIRIM, KURANGI STOK
-            if ($status === 'Terkirim') {
-                kurangiStokPesananTerkirim($conn, $id);
-            }
+            if ($stmt->execute()) {
+                // JIKA STATUS TERKIRIM, KURANGI STOK
+                if ($status === 'Terkirim') {
+                    kurangiStokPesananTerkirim($conn, $id);
+                }
 
-            $updated++;
+                $updated++;
 
-            // ================== HISTORY LOG PER PESANAN ==================
-            $additional_info = '';
+                // Log perubahan status
+                $additional_info = '';
 
-            // Tambahkan info khusus berdasarkan status
-            switch ($status) {
-                case 'Assign Kurir':
-                    $additional_info = " - Kurir ID: $kurir_id - Tanggal: $tanggal_pengiriman";
-                    break;
-                case 'Gagal':
-                    $additional_info = " - Alasan: $alasan_gagal";
-                    break;
-                case 'Terkirim':
-                    $additional_info = " - Stok otomatis dikurangi";
-                    break;
-            }
+                // Tambahkan info khusus berdasarkan status
+                switch ($status) {
+                    case 'Assign Kurir':
+                        $additional_info = " - Kurir ID: $kurir_id - Tanggal: $tanggal_pengiriman";
+                        break;
+                    case 'Gagal':
+                        $additional_info = " - Alasan: $alasan_gagal";
+                        break;
+                    case 'Terkirim':
+                        $additional_info = " - Stok otomatis dikurangi";
+                        break;
+                }
 
-            $log_description = "Update status pesanan #$id - " .
-                "Dari: $old_status → Ke: $status - " .
-                "Anggota: $nama_anggota - " .
-                "Total: Rp " . number_format($total_harga, 0, ',', '.') .
-                $additional_info;
+                $log_description = "Update status pesanan #$id - " .
+                    "Dari: $old_status → Ke: $status - " .
+                    "Anggota: $nama_anggota - " .
+                    "Total: Rp " . number_format($total_harga, 0, ',', '.') .
+                    $additional_info;
 
-            // Log perubahan status per pesanan
-            $log_result = log_status_pemesanan_change($id, $old_status, $status, $log_description);
+                // Log status change
+                log_status_pemesanan_change($id, $old_status, $status, $log_description);
+                
+                $log_details[] = "Pesanan #$id: $old_status → $status";
+                error_log("SUCCESS: Updated order #$id to status: $status");
 
-            if ($log_result) {
-                error_log("SUCCESS: Log status change for order #$id - Log ID: $log_result");
             } else {
-                error_log("WARNING: Failed to log status change for order #$id");
+                $error_msg = "Gagal update pesanan #$id: " . $conn->error;
+                $errors[] = $error_msg;
+                error_log("ERROR: " . $error_msg);
             }
-
-            $log_details[] = "Pesanan #$id: $old_status → $status";
-
-            error_log("SUCCESS: Updated order #$id to status: $status");
-
+            $stmt->close();
         } else {
-            $error_msg = "Gagal update pesanan #$id: " . $conn->error;
+            $error_msg = "Gagal prepare statement untuk pesanan #$id: " . $conn->error;
             $errors[] = $error_msg;
             error_log("ERROR: " . $error_msg);
         }
-        $stmt->close();
     }
 
     $conn->commit();
 
     if ($updated > 0) {
-        // ================== HISTORY LOG BULK ACTION ==================
-        if ($updated > 1) {
-            // Log bulk action untuk multiple pesanan
-            $bulk_description = "Bulk update $updated pesanan ke status '$status' - " .
-                "Pesanan: " . implode(', ', array_slice($log_details, 0, 5)) .
-                (count($log_details) > 5 ? " dan " . (count($log_details) - 5) . " lainnya" : "");
-
-            $bulk_log_result = log_bulk_action_activity($status, $updated, $bulk_description);
-
-            if ($bulk_log_result) {
-                error_log("SUCCESS: Bulk action logged - Log ID: $bulk_log_result");
-            }
-        }
-
         echo json_encode([
             'success' => true,
             'updated' => $updated,
             'message' => 'Status berhasil diupdate untuk ' . $updated . ' pesanan',
-            'log_details' => $log_details // Untuk debugging
+            'action_type' => $action_type,
+            'log_details' => $log_details
         ]);
 
     } else {
@@ -309,12 +344,9 @@ try {
     }
 
 } catch (Exception $e) {
-    $conn->rollback();
-
-    // HISTORY LOG: Error
-    $user_id = $_SESSION['id'] ?? 0;
-    $error_description = "Error update status: " . $e->getMessage() . " - Pesanan: " . implode(', ', $ids);
-    log_activity($user_id, 'pengurus', 'error', $error_description, 'pemesanan', null);
+    if (isset($conn)) {
+        $conn->rollback();
+    }
 
     error_log("TRANSACTION ERROR: " . $e->getMessage());
     echo json_encode([
@@ -323,6 +355,8 @@ try {
     ]);
 }
 
-$conn->close();
+if (isset($conn)) {
+    $conn->close();
+}
 exit;
 ?>
