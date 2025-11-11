@@ -1,4 +1,9 @@
 <?php
+// TAMBAHKAN INI DI PALING ATAS FILE
+error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+
 // Filter
 $filter_tanggal = $_GET['tanggal'] ?? date('Y-m-d');
 $filter_kurir = $_GET['kurir'] ?? '';
@@ -35,10 +40,6 @@ $query = "
         OR p.tanggal_pengiriman IS NULL
         -- Kondisi 3: Atau sesuai tanggal pesan (fallback untuk pesanan baru)
         OR DATE(p.tanggal_pesan) = '$filter_tanggal'
-        -- Kondisi 4: Atau tanggal pengiriman kosong string
-        OR p.tanggal_pengiriman = ''
-        -- Kondisi 5: Atau tidak ada tanggal pengiriman di database
-        OR p.tanggal_pengiriman = '0000-00-00'
     )
 ";
 
@@ -79,8 +80,6 @@ $summary_query = "
         tanggal_pengiriman = '$filter_tanggal' 
         OR tanggal_pengiriman IS NULL 
         OR DATE(tanggal_pesan) = '$filter_tanggal'
-        OR tanggal_pengiriman = ''
-        OR tanggal_pengiriman = '0000-00-00'
     )
 ";
 
