@@ -571,7 +571,7 @@ $result_barang_masuk = $conn->query($query_barang_masuk);
                 }
             });
         }
-    });
+    }); // ✅ PENUTUP YANG TEPAT UNTUK EVENT HANDLER CLICK
 
     // ✅ FIX: BUAT OBJECT TERPISAH UNTUK MENGHINDARI DUPLIKASI DAN BENTROK
     window.qcCalculator = {
@@ -674,14 +674,13 @@ $result_barang_masuk = $conn->query($query_barang_masuk);
         }
     };
 
-    // FIX: EVENT HANDLER YANG SPESIFIK UNTUK FORM QC SAJA
+    // ✅ FIX: EVENT HANDLER YANG SPESIFIK UNTUK FORM QC SAJA
     $(document).on('submit', '#formQC', function (e) {
         if (!window.qcCalculator.validateQCForm()) {
             e.preventDefault();
             e.stopPropagation();
         }
     });
-
 </script>
 </body>
 
