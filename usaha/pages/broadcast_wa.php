@@ -157,16 +157,27 @@ function formatPesanBroadcast($produkTersedia) {
     if ($produkTersedia->num_rows > 0) {
         $pesan .= "🎯 *PRODUK TERSEDIA SAAT INI:*\n\n";
         
+        $counter = 0;
         while ($produk = $produkTersedia->fetch_assoc()) {
+            $counter++;
             $status_emoji = $produk['stok'] <= 5 ? '⚠️' : '✅';
-            $pesan .= "{$status_emoji} *{$produk['nama_produk']}*\n";
+            $pesan .= "{$counter}. {$status_emoji} *{$produk['nama_produk']}*\n";
             $pesan .= "   📦 Stok: {$produk['stok']} {$produk['satuan_kecil']}\n";
             $pesan .= "   💰 Harga: Rp " . number_format($produk['harga'], 0, ',', '.') . "\n";
             
+            // ✅ BATASI KETERANGAN MAX 50 KARAKTER
             if (!empty($produk['keterangan'])) {
-                $pesan .= "   📝 {$produk['keterangan']}\n";
+                $keterangan = strlen($produk['keterangan']) > 50 ? 
+                    substr($produk['keterangan'], 0, 47) . '...' : $produk['keterangan'];
+                $pesan .= "   📝 {$keterangan}\n";
             }
             $pesan .= "\n";
+            
+            // ✅ BATAS DARURAT: JIKA SUDAH 2000 KARAKTER, BERHENTI
+            if (strlen($pesan) > 2000) {
+                $pesan .= "... dan masih ada " . ($produkTersedia->num_rows - $counter) . " produk lainnya.\n\n";
+                break;
+            }
         }
         
         $pesan .= "🛒 *CARA PEMESANAN:*\n";
@@ -689,7 +700,4 @@ $(document).ready(function() {
         });
     });
 });
-
-});
-
 </script>
