@@ -13,6 +13,7 @@ function setBroadcastLock() {
     return true;
 }
 
+
 function hasBroadcastLock() {
     if (!isset($_SESSION['broadcast_lock'])) {
         return false;
@@ -260,7 +261,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
     header('Content-Type: application/json');
     echo json_encode($response);
     exit;
-}
+}}
     
     // GANTI BAGIAN INI dalam proses send_broadcast
 if ($action === 'send_broadcast') {
@@ -301,8 +302,9 @@ if ($action === 'send_broadcast') {
         }
         
         // Delay antar pengiriman (3 detik untuk lebih aman)
-    }
         sleep(3);
+    }
+        
     
     // Clear lock setelah selesai
     clearBroadcastLock();
@@ -653,5 +655,19 @@ $(document).ready(function() {
             btn.html(originalText).prop('disabled', false);
         });
     });
+    
+    // Character counter untuk custom message
+	$('#custom_message').on('input', function() {
+		const length = $(this).val().length;
+		$('#charCount').text(length);
+		
+		if (length > 500) {
+			$('#charCount').addClass('text-danger');
+		} else {
+			$('#charCount').removeClass('text-danger');
+		}
+	});
+
 });
+
 </script>
