@@ -1,5 +1,16 @@
 <?php
+ob_start();
+
+// ✅ TAMBAHKAN ERROR REPORTING
+error_reporting(E_ALL);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
+
 session_start();
+
+// ✅ CLEAN OUTPUT BUFFER SEBELUM HEADER
+ob_clean();
+header('Content-Type: application/json');
 require_once 'functions/history_log.php'; // Pastikan include history log
 
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
@@ -7,8 +18,6 @@ $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }
-
-header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'error' => 'Invalid request method']);
@@ -54,22 +63,7 @@ if (!in_array($status, $allowed_statuses)) {
     exit;
 }
 
-// ✅ FIX: FUNGSI LOG YANG HILANG - Tambahkan fungsi ini
-function log_status_pemesanan_change($order_id, $old_status, $new_status, $description) {
-    global $conn;
-    
-    $query = "INSERT INTO pemesanan_status_log (id_pemesanan, status_lama, status_baru, keterangan, created_at) 
-              VALUES (?, ?, ?, ?, NOW())";
-    
-    $stmt = $conn->prepare($query);
-    if ($stmt) {
-        $stmt->bind_param("isss", $order_id, $old_status, $new_status, $description);
-        $result = $stmt->execute();
-        $stmt->close();
-        return $result;
-    }
-    return false;
-}
+
 
 // ✅ FIX: FUNGSI LOG BULK ACTION - Tambahkan fungsi ini
 function log_bulk_action_activity($action, $count, $description) {
