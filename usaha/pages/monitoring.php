@@ -707,7 +707,8 @@ function getHariInfo($jam_kerja) {
                     // AJAX request untuk update status
                     $.post('pages/update_status.php', {
                         ids: validSelected,
-                        status: status
+                        status: status,
+                        action_type: 'bulk_update'
                     }, function (response) {
                         try {
                             // PARSE RESPONSE JSON - INI YANG DIPERBAIKI
