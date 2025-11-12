@@ -64,24 +64,6 @@ if (!in_array($status, $allowed_statuses)) {
 }
 
 
-
-// ✅ FIX: FUNGSI LOG BULK ACTION - Tambahkan fungsi ini
-function log_bulk_action_activity($action, $count, $description) {
-    global $conn;
-    
-    $query = "INSERT INTO bulk_actions_log (action_type, item_count, description, created_at) 
-              VALUES (?, ?, ?, NOW())";
-    
-    $stmt = $conn->prepare($query);
-    if ($stmt) {
-        $stmt->bind_param("sis", $action, $count, $description);
-        $result = $stmt->execute();
-        $stmt->close();
-        return $result;
-    }
-    return false;
-}
-
 // FUNCTION: Kurangi stok ketika status menjadi "Terkirim"
 function kurangiStokPesananTerkirim($conn, $id_pemesanan) {
     // Ambil detail pesanan dengan quantity yang benar
