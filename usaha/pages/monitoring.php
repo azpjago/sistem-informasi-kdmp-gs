@@ -425,12 +425,12 @@ function getHariInfo($jam_kerja) {
 									</div>
 									<div class="col-md-4">
 										<label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
-										<textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required readonly></textarea>
+										<textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required></textarea>
 										<small class="text-muted">Otomatis terisi dari data anggota</small>
 									</div>
 									<div class="col-md-4">
 										<label class="form-label" style="font-weight: bold;">No. HP/WA</label>
-										<input type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required readonly>
+										<input type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required>
 										<small class="text-muted">Otomatis terisi dari data anggota</small>
 									</div>
 								</div>
@@ -932,6 +932,11 @@ function getHariInfo($jam_kerja) {
                 $('#selectedAlamat').text(alamat);
                 $('#infoAnggota').show();
                 $('#hasilPencarian').hide();
+                
+                // Isi data anggota otomatis
+                $('#namaPemesan').val(nama);
+				$('#alamatPemesan').val(alamat);
+				$('#noHpPemesan').val(nohp);
             }
 
             // Variabel global untuk menyimpan info produk yang dipilih
