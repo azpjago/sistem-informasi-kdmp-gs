@@ -417,21 +417,23 @@ function getHariInfo($jam_kerja) {
                                     </div>
                                 </div>
                                 <h6>Data Pemesan</h6>
-                                <div class="row mb-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label" style="font-weight: bold;">Nama Pemesan</label>
-                                        <input type="text" class="form-control" name="nama_pemesan" required>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
-                                        <textarea type="text" class="form-control" name="alamat_pemesan"
-                                            required></textarea>
-                                    </div>
-                                    <div class="col-md-4">
-                                        <label class="form-label" style="font-weight: bold;">No. HP/WA</label>
-                                        <input type="text" class="form-control" name="no_hp_pemesan" required>
-                                    </div>
-                                </div>
+								<div class="row mb-3">
+									<div class="col-md-4">
+										<label class="form-label" style="font-weight: bold;">Nama Pemesan</label>
+										<input type="text" class="form-control" name="nama_pemesan" id="namaPemesan" required readonly>
+										<small class="text-muted">Otomatis terisi dari data anggota</small>
+									</div>
+									<div class="col-md-4">
+										<label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
+										<textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required readonly></textarea>
+										<small class="text-muted">Otomatis terisi dari data anggota</small>
+									</div>
+									<div class="col-md-4">
+										<label class="form-label" style="font-weight: bold;">No. HP/WA</label>
+										<input type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required readonly>
+										<small class="text-muted">Otomatis terisi dari data anggota</small>
+									</div>
+								</div>
                                 <h6>Metode Pembayaran</h6>
                                 <div class="row mb-3">
                                     <div class="col-md-4">
