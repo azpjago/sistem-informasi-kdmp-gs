@@ -401,6 +401,8 @@ function getHariInfo($jam_kerja) {
                                             <!-- Hasil pencarian akan muncul di sini -->
                                         </div>
                                     </div>
+                                    <br>
+                                    <br>
                                     <div class="col-md-6">
                                         <div id="infoAnggota" style="display: none;">
                                             <h6>Info Anggota</h6>
