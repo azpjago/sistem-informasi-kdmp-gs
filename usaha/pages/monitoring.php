@@ -417,23 +417,23 @@ function getHariInfo($jam_kerja) {
                                     </div>
                                 </div>
                                 <h6>Data Pemesan</h6>
-								<div class="row mb-3">
-									<div class="col-md-4">
-										<label class="form-label" style="font-weight: bold;">Nama Pemesan</label>
-										<input type="text" class="form-control" name="nama_pemesan" id="namaPemesan" required readonly>
-										<small class="text-muted">Otomatis terisi dari data anggota</small>
-									</div>
-									<div class="col-md-4">
-										<label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
-										<textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required></textarea>
-										<small class="text-muted">Otomatis terisi dari data anggota</small>
-									</div>
-									<div class="col-md-4">
-										<label class="form-label" style="font-weight: bold;">No. HP/WA</label>
-										<input type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required>
-										<small class="text-muted">Otomatis terisi dari data anggota</small>
-									</div>
-								</div>
+                                <div class="row mb-3">
+                                    <div class="col-md-4">
+                                        <label class="form-label" style="font-weight: bold;">Nama Pemesan</label>
+                                        <input type="text" class="form-control" name="nama_pemesan" id="namaPemesan" required readonly>
+                                        <small class="text-muted">Otomatis terisi dari data anggota</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
+                                        <textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required readonly></textarea>
+                                        <small class="text-muted">Otomatis terisi dari data anggota</small>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <label class="form-label" style="font-weight: bold;">No. HP/WA</label>
+                                        <input type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required readonly>
+                                        <small class="text-muted">Otomatis terisi dari data anggota</small>
+                                    </div>
+                                </div>
                                 <h6>Metode Pembayaran</h6>
                                 <div class="row mb-3">
                                     <div class="col-md-4">
@@ -492,8 +492,8 @@ function getHariInfo($jam_kerja) {
 
                                                             if ($row_produk['is_paket'] == 1) {
                                                                 // Produk paket - stok berdasarkan komponen
-                                                                $stok_info = 'Paket (Stok: Cek Komponen)';
-                                                                $stok_class = 'text-warning';
+                                                                $stok_info = 'Paket (Stok komponen akan dicek)';
+                                                                $stok_class = 'text-info';
                                                                 $stok_produk = 999; // Nilai tinggi untuk paket
                                                             } else if ($row_produk['stok_tersedia'] !== null) {
                                                                 // Produk eceran - stok langsung dari inventory
@@ -649,7 +649,59 @@ function getHariInfo($jam_kerja) {
             </div>
         </div>
 
+        <style>
+.anggota-item {
+    cursor: pointer;
+    transition: background-color 0.2s;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+}
+.anggota-item:hover {
+    background-color: #f8f9fa !important;
+    border-color: #0d6efd;
+}
+.anggota-item:focus {
+    outline: 2px solid #0d6efd;
+    background-color: #f8f9fa !important;
+}
+</style>
+
         <script>
+            // ✅ PERBAIKAN: EVENT HANDLER UNTUK ENTER PADA SEMUA INPUT
+            $(document).ready(function() {
+                // Enter untuk search anggota
+                $('#cariAnggota').on('keypress', function(e) {
+                    if (e.which === 13) {
+                        e.preventDefault();
+                        cariDataAnggota();
+                    }
+                });
+
+                // Enter untuk pilih anggota dari hasil
+                $(document).on('keypress', '.anggota-item', function(e) {
+                    if (e.which === 13) {
+                        e.preventDefault();
+                        pilihAnggota(this);
+                    }
+                });
+
+                // Enter untuk tambah produk
+                $('#qtyProduk').on('keypress', function(e) {
+                    if (e.which === 13) {
+                        e.preventDefault();
+                        tambahProduk();
+                    }
+                });
+
+                // Enter untuk update quantity di tabel produk dipilih
+                $(document).on('keypress', '.qty-item', function(e) {
+                    if (e.which === 13) {
+                        e.preventDefault();
+                        $(this).trigger('change');
+                    }
+                });
+            });
+
             // Filter function
             function applyFilter() {
                 const tanggal = $('#filterTanggal').val();
@@ -897,7 +949,9 @@ function getHariInfo($jam_kerja) {
                                  data-nama="${anggota.nama}"
                                  data-nohp="${anggota.no_hp}"
                                  data-alamat="${anggota.alamat}"
-                                 onclick="pilihAnggota(this)">
+                                 onclick="pilihAnggota(this)"
+                                 tabindex="0"
+                                 style="cursor: pointer; transition: background-color 0.2s;">
                                 <strong>${anggota.nama}</strong> - ${anggota.no_anggota}<br>
                                 <small>${anggota.no_hp} - ${anggota.alamat.substring(0, 50)}...</small>
                             </div>
@@ -933,10 +987,13 @@ function getHariInfo($jam_kerja) {
                 $('#infoAnggota').show();
                 $('#hasilPencarian').hide();
                 
-                // Isi data anggota otomatis
+                // ✅ PERBAIKAN: Auto-fill data pemesan
                 $('#namaPemesan').val(nama);
-				$('#alamatPemesan').val(alamat);
-				$('#noHpPemesan').val(nohp);
+                $('#alamatPemesan').val(alamat);
+                $('#noHpPemesan').val(nohp);
+                
+                // ✅ PERBAIKAN: Auto focus ke jadwal kirim setelah memilih anggota
+                $('select[name="jadwal_kirim"]').focus();
             }
 
             // Variabel global untuk menyimpan info produk yang dipilih
@@ -1014,14 +1071,15 @@ function getHariInfo($jam_kerja) {
                     }
                 }
 
-                // Untuk produk paket, kita akan cek stok komponen saat simpan
+                // ✅ PERBAIKAN: Untuk produk paket, beri informasi yang lebih jelas
                 if (produkTerpilih.isPaket == 1) {
-                    pesanStok.text('Produk paket - stok akan dicek saat simpan')
-                    .removeClass('text-danger')
-                    .addClass('text-warning')
-                    .show();
-                    btnTambah.prop('disabled',false)
+                    pesanStok.text('Produk paket - stok komponen akan dicek saat simpan')
+                             .removeClass('text-danger')
+                             .addClass('text-warning')
+                             .show();
+                    btnTambah.prop('disabled', false); // Pastikan tetap bisa ditambah
                 }
+
                 return true;
             }
 
@@ -1126,10 +1184,12 @@ function getHariInfo($jam_kerja) {
                     alert('Pilih anggota terlebih dahulu');
                     return;
                 }
+
+                // ✅ PERBAIKAN: Validasi data pemesan
                 if (!$('#namaPemesan').val() || !$('#alamatPemesan').val() || !$('#noHpPemesan').val()) {
-					alert('Data pemesan belum terisi. Pastikan sudah memilih anggota.');
-					return;
-				}
+                    alert('Data pemesan belum terisi. Pastikan sudah memilih anggota.');
+                    return;
+                }
 
                 if ($('#tabelProdukDipilih tbody tr').length === 0) {
                     alert('Tambahkan minimal satu produk');
@@ -1246,6 +1306,35 @@ function getHariInfo($jam_kerja) {
                     infoTunai.show();
                 }
             }
+
+            // Reset form ketika modal ditutup
+            $('#inputPesananModal').on('hidden.bs.modal', function () {
+                // Reset form
+                $('#formInputPesanan')[0].reset();
+                $('#tabelProdukDipilih tbody').empty();
+                $('#totalHarga').text('Rp 0');
+                $('#inputTotalHarga').val('');
+                $('#inputItems').val('');
+                
+                // Reset info anggota
+                $('#infoAnggota').hide();
+                $('#hasilPencarian').hide();
+                $('#cariAnggota').val('');
+                
+                // Reset data pemesan
+                $('#namaPemesan').val('');
+                $('#alamatPemesan').val('');
+                $('#noHpPemesan').val('');
+                
+                // Reset produk
+                $('#pilihProduk').val('');
+                $('#hargaProduk').val('');
+                $('#qtyProduk').val(1);
+                $('#satuanProduk').val('');
+                $('#stokInfo').text('');
+                produkTerpilih = null;
+                $('#pesanStok').hide();
+            });
 
             // Panggil saat modal dibuka
             $('#inputPesananModal').on('shown.bs.modal', function () {
