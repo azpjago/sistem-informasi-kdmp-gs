@@ -1,23 +1,14 @@
 <?php
 session_start();
-
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-ini_set('log_errors', 1);
-ini_set('error_log', 'php_errors.log');
-
-// ✅ PASTIKAN HEADER JSON DI ATAS SEMUA OUTPUT
-header('Content-Type: application/json');
-
-// Debug langsung
-error_log("=== UPDATE_STATUS ACCESSED ===");
-
 require_once 'functions/history_log.php'; // Pastikan include history log
 
 $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
 
-// ✅ HAPUS HEADER JSON DUPLIKAT - sudah di atas
+if ($conn->connect_error) {
+    die("Connection failed: " . $conn->connect_error);
+}
+
+header('Content-Type: application/json');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     echo json_encode(['success' => false, 'error' => 'Invalid request method']);
@@ -26,13 +17,7 @@ if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
 
 $ids = $_POST['ids'] ?? [];
 $status = $_POST['status'] ?? '';
-$action_type = $_POST['action_type'] ?? 'single_update';
-
-// ✅ Validasi IDs
-if (!is_array($ids) || empty($ids)) {
-    echo json_encode(['success' => false, 'error' => 'Tidak ada pesanan yang dipilih']);
-    exit;
-}
+$action_type = $_POST['action_type'] ?? 'single_update'; // ✅ DAPATKAN ACTION_TYPE
 
 // ✅ FIX: Validasi dan sanitize user_type untuk history log
 $userType = $_SESSION['role'] ?? 'system';
@@ -47,16 +32,21 @@ error_log("Status: $status");
 error_log("Action Type: $action_type");
 error_log("User Type: $userType");
 
+if (empty($ids) || empty($status)) {
+    echo json_encode(['success' => false, 'error' => 'Data tidak lengkap']);
+    exit;
+}
+
 // Validasi status untuk SEMUA modul
 $allowed_statuses = [
     'Menunggu',
     'Disiapkan',
-    'Dibatalkan',
+    'Dibatalkan', // Monitoring
     'Belum Dikirim',
     'Assign Kurir',
     'Dalam Perjalanan',
     'Terkirim',
-    'Gagal'
+    'Gagal' // Pengiriman
 ];
 
 if (!in_array($status, $allowed_statuses)) {
@@ -64,7 +54,7 @@ if (!in_array($status, $allowed_statuses)) {
     exit;
 }
 
-// ✅ FIX: FUNGSI LOG YANG HILANG 
+// ✅ FIX: FUNGSI LOG YANG HILANG - Tambahkan fungsi ini
 function log_status_pemesanan_change($order_id, $old_status, $new_status, $description) {
     global $conn;
     
@@ -74,6 +64,23 @@ function log_status_pemesanan_change($order_id, $old_status, $new_status, $descr
     $stmt = $conn->prepare($query);
     if ($stmt) {
         $stmt->bind_param("isss", $order_id, $old_status, $new_status, $description);
+        $result = $stmt->execute();
+        $stmt->close();
+        return $result;
+    }
+    return false;
+}
+
+// ✅ FIX: FUNGSI LOG BULK ACTION - Tambahkan fungsi ini
+function log_bulk_action_activity($action, $count, $description) {
+    global $conn;
+    
+    $query = "INSERT INTO bulk_actions_log (action_type, item_count, description, created_at) 
+              VALUES (?, ?, ?, NOW())";
+    
+    $stmt = $conn->prepare($query);
+    if ($stmt) {
+        $stmt->bind_param("sis", $action, $count, $description);
         $result = $stmt->execute();
         $stmt->close();
         return $result;
@@ -185,27 +192,22 @@ function getPesananInfo($conn, $id_pemesanan) {
 }
 
 try {
-    // ✅ FIX: Definisikan variabel di luar loop
-    $kurir_id = $_POST['kurir_id'] ?? null;
-    $tanggal_pengiriman = $_POST['tanggal_pengiriman'] ?? date('Y-m-d');
-    $alasan_gagal = $_POST['alasan_gagal'] ?? 'Tidak disebutkan';
-
     $conn->begin_transaction();
 
     $updated = 0;
     $errors = [];
     $log_details = [];
 
+    // ✅ FIX: Definisikan variabel di luar loop
+    $kurir_id = $_POST['kurir_id'] ?? null;
+    $tanggal_pengiriman = $_POST['tanggal_pengiriman'] ?? date('Y-m-d');
+    $alasan_gagal = $_POST['alasan_gagal'] ?? 'Tidak disebutkan';
+
     foreach ($ids as $id) {
         $id = intval($id);
 
         // Ambil info pesanan sebelum update untuk log
         $pesanan_info = getPesananInfo($conn, $id);
-        if (!$pesanan_info) {
-            $errors[] = "Pesanan #$id tidak ditemukan";
-            continue;
-        }
-
         $old_status = $pesanan_info['old_status'] ?? 'Unknown';
         $nama_anggota = $pesanan_info['nama_anggota'] ?? 'Unknown';
         $total_harga = $pesanan_info['total_harga'] ?? 0;
@@ -262,7 +264,7 @@ try {
                     error_log("Assign Kurir - ID: $id, Kurir: $kurir_id, Tanggal: $tanggal_pengiriman");
                 } else {
                     $errors[] = "Kurir ID diperlukan untuk status Assign Kurir";
-                    continue 2;
+                    continue 2; // Skip ke pesanan berikutnya
                 }
                 break;
 
@@ -287,7 +289,7 @@ try {
 
                 $updated++;
 
-                // Log perubahan status
+                // ================== HISTORY LOG PER PESANAN ==================
                 $additional_info = '';
 
                 // Tambahkan info khusus berdasarkan status
@@ -309,9 +311,23 @@ try {
                     "Total: Rp " . number_format($total_harga, 0, ',', '.') .
                     $additional_info;
 
-                // Log status change
-                log_status_pemesanan_change($id, $old_status, $status, $log_description);
-                
+                // ✅ FIX: Gunakan fungsi history_log yang sudah ada
+                global $userType;
+                $log_result = log_activity(
+                    $_SESSION['user_id'] ?? 0,
+                    $userType,
+                    'update_status',
+                    $log_description,
+                    'pemesanan',
+                    $id
+                );
+
+                if ($log_result) {
+                    error_log("SUCCESS: Log status change for order #$id");
+                } else {
+                    error_log("WARNING: Failed to log status change for order #$id");
+                }
+
                 $log_details[] = "Pesanan #$id: $old_status → $status";
                 error_log("SUCCESS: Updated order #$id to status: $status");
 
@@ -331,6 +347,28 @@ try {
     $conn->commit();
 
     if ($updated > 0) {
+        // ================== HISTORY LOG BULK ACTION ==================
+        if ($updated > 1 && $action_type === 'bulk_update') {
+            // Log bulk action untuk multiple pesanan
+            $bulk_description = "Bulk update $updated pesanan ke status '$status' - " .
+                "Pesanan: " . implode(', ', array_slice($log_details, 0, 5)) .
+                (count($log_details) > 5 ? " dan " . (count($log_details) - 5) . " lainnya" : "");
+
+            // ✅ FIX: Gunakan fungsi history_log untuk bulk action
+            $bulk_log_result = log_activity(
+                $_SESSION['user_id'] ?? 0,
+                $userType,
+                'bulk_update',
+                $bulk_description,
+                'pemesanan',
+                null
+            );
+
+            if ($bulk_log_result) {
+                error_log("SUCCESS: Bulk action logged");
+            }
+        }
+
         echo json_encode([
             'success' => true,
             'updated' => $updated,
@@ -344,9 +382,18 @@ try {
     }
 
 } catch (Exception $e) {
-    if (isset($conn)) {
-        $conn->rollback();
-    }
+    $conn->rollback();
+
+    // HISTORY LOG: Error
+    $error_description = "Error update status: " . $e->getMessage() . " - Pesanan: " . implode(', ', $ids);
+    log_activity(
+        $_SESSION['user_id'] ?? 0,
+        $userType,
+        'error',
+        $error_description,
+        'pemesanan',
+        null
+    );
 
     error_log("TRANSACTION ERROR: " . $e->getMessage());
     echo json_encode([
@@ -355,8 +402,6 @@ try {
     ]);
 }
 
-if (isset($conn)) {
-    $conn->close();
-}
+$conn->close();
 exit;
 ?>
