@@ -102,7 +102,20 @@ function getHariInfo($jam_kerja) {
     return $info;
 }
 ?>
-
+<style>
+	.hasil-produk-item {
+		cursor: pointer;
+		padding: 5px 8px;
+		border-bottom: 1px solid #eee;
+		font-size: 0.85rem;
+	}
+	.hasil-produk-item:hover {
+		background-color: #f8f9fa;
+	}
+	.hasil-produk-item:last-child {
+		border-bottom: none;
+	}
+</style>
 <div class="card">
     <div class="card-header bg-primary text-white">
         <i class="fas fa-truck me-2"></i>Monitoring Pesanan - <?= date('d F Y', strtotime($filter_tanggal)) ?>
@@ -420,17 +433,17 @@ function getHariInfo($jam_kerja) {
                                 <div class="row mb-3">
                                     <div class="col-md-4">
                                         <label class="form-label" style="font-weight: bold;">Nama Pemesan</label>
-                                        <input type="text" class="form-control" name="nama_pemesan" id="namaPemesan" required readonly>
+                                        <textarea type="text" class="form-control" name="nama_pemesan" id="namaPemesan" required></textarea>
                                         <small class="text-muted">Otomatis terisi dari data anggota</small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
-                                        <textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required readonly></textarea>
+                                        <textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required></textarea>
                                         <small class="text-muted">Otomatis terisi dari data anggota</small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label" style="font-weight: bold;">No. HP/WA</label>
-                                        <input type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required readonly>
+                                        <textarea type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required></textarea>
                                         <small class="text-muted">Otomatis terisi dari data anggota</small>
                                     </div>
                                 </div>
@@ -472,66 +485,12 @@ function getHariInfo($jam_kerja) {
                                         <tbody>
                                             <tr>
                                                 <td>
-                                                    <select class="form-select form-select-sm" id="pilihProduk"
-                                                        onchange="updateProdukInfo()">
-                                                        <option value="">-- Pilih Produk --</option>
-                                                        <?php
-                                                        // PERBAIKAN: Query produk dengan informasi stok dari inventory_ready
-                                                        $query_produk = "SELECT p.*, 
-                                                            ir.nama_produk as nama_inventory,
-                                                            ir.jumlah_tersedia as stok_tersedia,
-                                                            ir.satuan_kecil as satuan_inventory
-                                                     FROM produk p 
-                                                     LEFT JOIN inventory_ready ir ON p.id_inventory = ir.id_inventory 
-                                                     WHERE p.status = 'aktif' 
-                                                     ORDER BY p.nama_produk";
-                                                        $produk = mysqli_query($conn, $query_produk);
-                                                        while ($row_produk = mysqli_fetch_assoc($produk)) {
-                                                            $stok_info = '';
-                                                            $stok_class = '';
-
-                                                            if ($row_produk['is_paket'] == 1) {
-                                                                // Produk paket - stok berdasarkan komponen
-                                                                $stok_info = 'Paket (Stok komponen akan dicek)';
-                                                                $stok_class = 'text-info';
-                                                                $stok_produk = 999; // Nilai tinggi untuk paket
-                                                            } else if ($row_produk['stok_tersedia'] !== null) {
-                                                                // Produk eceran - stok langsung dari inventory
-                                                                $stok_tersedia = floatval($row_produk['stok_tersedia']);
-                                                                $konversi = floatval($row_produk['jumlah']);
-                                                                $stok_produk = floor($stok_tersedia / $konversi);
-
-                                                                if ($stok_produk > 10) {
-                                                                    $stok_class = 'text-success';
-                                                                    $stok_info = $stok_produk . ' ' . $row_produk['satuan'];
-                                                                } else if ($stok_produk > 0) {
-                                                                    $stok_class = 'text-warning';
-                                                                    $stok_info = $stok_produk . ' ' . $row_produk['satuan'] . ' (Hampir Habis)';
-                                                                } else {
-                                                                    $stok_class = 'text-danger';
-                                                                    $stok_info = 'Stok Habis';
-                                                                }
-                                                            } else {
-                                                                $stok_class = 'text-danger';
-                                                                $stok_info = 'Stok Tidak Tersedia';
-                                                                $stok_produk = 0;
-                                                            }
-
-                                                            echo "<option value='{$row_produk['id_produk']}' 
-                                                        data-harga='{$row_produk['harga']}'
-                                                        data-satuan='{$row_produk['satuan']}'
-                                                        data-stok='" . ($stok_produk ?? 0) . "'
-                                                        data-is-paket='{$row_produk['is_paket']}'
-                                                        data-stok-info='{$stok_info}'
-                                                        data-stok-class='{$stok_class}'
-                                                        data-konversi='{$row_produk['jumlah']}'
-                                                        data-id-inventory='{$row_produk['id_inventory']}'>
-                                                        {$row_produk['nama_produk']}
-                                                </option>";
-                                                        }
-                                                        ?>
-                                                    </select>
-                                                </td>
+													<input type="text" class="form-control form-control-sm" id="cariProduk" 
+														   placeholder="Cari produk...">
+													<div id="hasilPencarianProduk" class="mt-1" style="display: none; max-height: 150px; overflow-y: auto;">
+														<!-- Hasil pencarian produk akan muncul di sini -->
+													</div>
+												</td>
                                                 <td>
                                                     <input type="text" class="form-control form-control-sm"
                                                         id="satuanProduk" readonly>
@@ -669,6 +628,10 @@ function getHariInfo($jam_kerja) {
         <script>
             // ✅ PERBAIKAN: EVENT HANDLER UNTUK ENTER PADA SEMUA INPUT
             $(document).ready(function() {
+				// Event handler untuk pencarian produk
+				$('#cariProduk').on('keyup', function() {
+					cariProduk(this.value);
+				});
                 // Enter untuk search anggota
                 $('#cariAnggota').on('keypress', function(e) {
                     if (e.which === 13) {
@@ -1292,6 +1255,89 @@ function getHariInfo($jam_kerja) {
                 });
             }
 
+			// Variabel global untuk menyimpan daftar produk
+			let semuaProduk = [];
+
+			// Fungsi untuk memuat semua produk saat modal dibuka
+			function muatSemuaProduk() {
+				$.get('pages/cari_produk.php', { keyword: '' })
+					.done(function(response) {
+						try {
+							semuaProduk = typeof response === 'object' ? response : JSON.parse(response);
+						} catch (error) {
+							console.error('Error loading products:', error);
+						}
+					});
+			}
+
+			// Fungsi pencarian produk real-time
+			function cariProduk(keyword) {
+				const hasilDiv = $('#hasilPencarianProduk');
+				
+				if (keyword.length < 1) {
+					hasilDiv.hide();
+					return;
+				}
+
+				// Filter produk berdasarkan keyword
+				const hasil = semuaProduk.filter(produk => 
+					produk.nama_produk.toLowerCase().includes(keyword.toLowerCase())
+				);
+
+				let html = '';
+				if (hasil.length > 0) {
+					hasil.forEach(produk => {
+						html += `
+							<div class="hasil-produk-item" 
+								 onclick="pilihProduk(${produk.id_produk}, '${produk.nama_produk}', ${produk.harga}, '${produk.satuan}', ${produk.is_paket}, ${produk.jumlah}, ${produk.id_inventory})">
+								<strong>${produk.nama_produk}</strong><br>
+								<small>Rp ${parseInt(produk.harga).toLocaleString('id-ID')} | ${produk.satuan} | Stok: ${produk.stok_info}</small>
+							</div>
+						`;
+					});
+				} else {
+					html = '<div class="text-muted p-2">Tidak ada produk ditemukan</div>';
+				}
+
+				hasilDiv.html(html).show();
+			}
+
+			// Fungsi untuk memilih produk dari hasil pencarian
+			function pilihProduk(id, nama, harga, satuan, isPaket, konversi, idInventory) {
+				produkTerpilih = {
+					id: id,
+					nama: nama,
+					harga: harga,
+					satuan: satuan,
+					stok: isPaket == 1 ? 999 : hitungStokProduk(id), // Untuk produk paket, set stok tinggi
+					isPaket: isPaket,
+					konversi: konversi,
+					idInventory: idInventory
+				};
+
+				// Isi informasi produk
+				$('#cariProduk').val(nama);
+				$('#hargaProduk').val('Rp ' + parseInt(harga).toLocaleString('id-ID'));
+				$('#satuanProduk').val(satuan);
+				
+				// Tampilkan info stok
+				const stokInfo = isPaket == 1 ? 'Paket (Stok komponen akan dicek)' : 'Stok tersedia';
+				const stokClass = isPaket == 1 ? 'text-info' : 'text-success';
+				$('#stokInfo').html(`<span class="${stokClass}">${stokInfo}</span>`);
+
+				// Sembunyikan hasil pencarian
+				$('#hasilPencarianProduk').hide();
+				
+				// Focus ke input quantity
+				$('#qtyProduk').focus().select();
+			}
+
+			// Fungsi helper untuk hitung stok (jika diperlukan)
+			function hitungStokProduk(idProduk) {
+				// Implementasi logika hitung stok di sini
+				return 10; // Contoh return
+			}
+
             // Fungsi untuk toggle bank tujuan berdasarkan metode pembayaran
             function toggleBankTujuan() {
                 const metode = $('#metodePembayaran').val();
@@ -1334,10 +1380,15 @@ function getHariInfo($jam_kerja) {
                 $('#stokInfo').text('');
                 produkTerpilih = null;
                 $('#pesanStok').hide();
+                
+                // Reset produk search
+				$('#cariProduk').val('');
+				$('#hasilPencarianProduk').hide().empty();
             });
 
             // Panggil saat modal dibuka
             $('#inputPesananModal').on('shown.bs.modal', function () {
                 toggleBankTujuan();
+                muatSemuaProduk();
             });
         </script>
