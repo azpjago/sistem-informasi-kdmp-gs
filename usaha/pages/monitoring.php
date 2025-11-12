@@ -1126,6 +1126,10 @@ function getHariInfo($jam_kerja) {
                     alert('Pilih anggota terlebih dahulu');
                     return;
                 }
+                if (!$('#namaPemesan').val() || !$('#alamatPemesan').val() || !$('#noHpPemesan').val()) {
+					alert('Data pemesan belum terisi. Pastikan sudah memilih anggota.');
+					return;
+				}
 
                 if ($('#tabelProdukDipilih tbody tr').length === 0) {
                     alert('Tambahkan minimal satu produk');
