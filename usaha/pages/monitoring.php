@@ -1016,9 +1016,12 @@ function getHariInfo($jam_kerja) {
 
                 // Untuk produk paket, kita akan cek stok komponen saat simpan
                 if (produkTerpilih.isPaket == 1) {
-                    pesanStok.text('Produk paket - stok akan dicek saat simpan').addClass('text-warning').show();
+                    pesanStok.text('Produk paket - stok akan dicek saat simpan')
+                    .removeClass('text-danger')
+                    .addClass('text-warning')
+                    .show();
+                    btnTambah.prop('disabled',false)
                 }
-
                 return true;
             }
 
