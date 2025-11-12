@@ -1105,6 +1105,7 @@ function getHariInfo($jam_kerja) {
 
                 // Update total
                 updateTotalHarga();
+                resetFormPencarianProduk();
 
                 // Reset form
                 $('#pilihProduk').val('');
@@ -1115,6 +1116,21 @@ function getHariInfo($jam_kerja) {
                 produkTerpilih = null;
                 $('#pesanStok').hide();
             }
+            
+            // ✅ FUNGSI BARU: Reset form pencarian produk
+			function resetFormPencarianProduk() {
+				$('#cariProduk').val(''); // Kosongkan field pencarian
+				$('#hasilPencarianProduk').hide().empty(); // Sembunyikan dan kosongkan hasil pencarian
+				$('#hargaProduk').val(''); // Kosongkan harga
+				$('#satuanProduk').val(''); // Kosongkan satuan
+				$('#stokInfo').text(''); // Kosongkan info stok
+				$('#qtyProduk').val(1); // Reset quantity ke 1
+				$('#pesanStok').hide(); // Sembunyikan pesan stok
+				produkTerpilih = null; // Reset produk yang dipilih
+				
+				// Focus kembali ke field pencarian untuk kemudahan input berikutnya
+				$('#cariProduk').focus();
+			}
 
             // Fungsi update subtotal
             function updateSubtotal(input, harga) {
