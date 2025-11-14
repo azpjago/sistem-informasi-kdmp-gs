@@ -282,16 +282,16 @@ while ($row = mysqli_fetch_assoc($grafik_query)) {
             <div class="card-body">
                 <div class="d-grid gap-2 d-md-flex">
                     <a href="dashboard.php?page=produk" class="btn btn-primary me-2">
-                        <i class="fas fa-box me-1"></i>Kelola Produk
+                        <i class="fas fa-box me-1"></i>Produk
                     </a>
-                    <a href="dashboard.php?page=pemesanan" class="btn btn-success me-2">
-                        <i class="fas fa-shopping-cart me-1"></i>Lihat Pesanan
+                    <a href="dashboard.php?page=monitoring" class="btn btn-success me-2">
+                        <i class="fas fa-shopping-cart me-1"></i>Pesanan
                     </a>
-                    <a href="dashboard.php?page=produk&tambah=1" class="btn btn-warning me-2">
-                        <i class="fas fa-plus me-1"></i>Tambah Produk
+                    <a href="dashboard.php?page=pengiriman" class="btn btn-warning me-2">
+                        <i class="fas fa-truck me-1"></i>Tracking
                     </a>
                     <a href="dashboard.php?page=laporan" class="btn btn-info">
-                        <i class="fas fa-chart-bar me-1"></i>Lihat Laporan
+                        <i class="fas fa-chart-bar me-1"></i>Laporan
                     </a>
                 </div>
             </div>
