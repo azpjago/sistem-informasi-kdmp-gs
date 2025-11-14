@@ -4,7 +4,7 @@ require_once 'dompdf/autoload.inc.php'; // Pastikan path ke autoload DOMPDF bena
 use Dompdf\Dompdf;
 use Dompdf\Options;
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
 }

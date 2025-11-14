@@ -2,7 +2,7 @@
 session_start();
 if ($_SESSION['role'] !== 'ketua') exit;
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 $id = intval($_GET['id']);
 
 $pemesanan = $conn->query("
