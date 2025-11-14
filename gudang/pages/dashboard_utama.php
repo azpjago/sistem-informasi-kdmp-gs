@@ -26,7 +26,7 @@
                             <h5 class="card-title">Total Produk</h5>
                             <h3>
                                 <?php
-                                $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+                                $conn = new mysqli('localhost', 'root', '', 'kdmpgs');
                                 if ($conn->connect_error)
                                     die("Connection failed: " . $conn->connect_error);
                                 $result = $conn->query("SELECT COUNT(*) as total FROM produk");

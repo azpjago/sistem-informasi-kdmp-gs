@@ -5,7 +5,7 @@ if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
     exit('Akses ditolak');
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
 

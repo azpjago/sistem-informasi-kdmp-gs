@@ -3,7 +3,7 @@ require_once 'dompdf/autoload.inc.php';
 use Dompdf\Dompdf;
 date_default_timezone_set("Asia/Jakarta");
 session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
 
