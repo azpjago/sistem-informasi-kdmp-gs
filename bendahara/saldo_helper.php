@@ -2,7 +2,7 @@
 // saldo_helper.php
 function updateSaldoRekening($rekening_id, $jumlah, $type = 'tambah')
 {
-    $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+    $conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 
     if ($conn->connect_error) {
         return false;

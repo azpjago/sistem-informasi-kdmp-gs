@@ -4,7 +4,7 @@ if (!isset($_GET['id']) || empty($_GET['id'])) {
   die("Error: ID Anggota tidak valid atau tidak ditemukan.");
 }
 $anggota_id = intval($_GET['id']);
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 if ($conn->connect_error) {
   die("Koneksi gagal: " . $conn->connect_error);
 }

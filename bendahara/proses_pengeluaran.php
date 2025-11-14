@@ -148,7 +148,7 @@ function getSaldoSumberDana($sumber_dana)
 }
 
 try {
-    $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+    $conn = new mysqli('localhost', 'root', '', 'kdmpgs');
     if ($conn->connect_error) {
         throw new Exception('Koneksi database gagal: ' . $conn->connect_error);
     }

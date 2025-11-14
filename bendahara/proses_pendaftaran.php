@@ -68,7 +68,7 @@ try {
         throw new Exception("File foto diri dan KTP wajib diunggah.");
     }
 
-    $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+    $conn = new mysqli('localhost', 'root', '', 'kdmpgs');
     if ($conn->connect_error)
         throw new Exception('Koneksi database gagal: ' . $conn->connect_error);
     $conn->begin_transaction();

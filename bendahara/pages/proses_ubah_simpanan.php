@@ -22,7 +22,7 @@ function alert_redirect(string $toUrl, string $message): void
   exit;
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 $conn->set_charset('utf8mb4');
 
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {

@@ -25,7 +25,7 @@ if (empty($id)) {
 }
 
 // Koneksi ke database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 if ($conn->connect_error) {
     die("Koneksi gagal: " . $conn->connect_error);
 }

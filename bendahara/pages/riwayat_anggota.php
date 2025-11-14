@@ -6,7 +6,7 @@ if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
 $anggota_id = intval($_GET['id']);
 
 // Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 if ($conn->connect_error) die("Connection failed: ". $conn->connect_error);
 
 // 1. Ambil info anggota
