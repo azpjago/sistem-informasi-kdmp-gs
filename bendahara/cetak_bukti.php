@@ -1,11 +1,7 @@
 <?php
-// Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) die("Connection failed: ". $conn->connect_error);
-
 // Set timezone ke Indonesia
 date_default_timezone_set('Asia/Jakarta');
-
+require 'koneksi/koneksi.php';
 // Load library DOMPDF
 require_once 'dompdf/autoload.inc.php';
 use Dompdf\Dompdf;

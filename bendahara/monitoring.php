@@ -1,10 +1,5 @@
 <?php
-// Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
+require 'koneksi/koneksi.php';
 // Mengambil data unik untuk dropdown filter
 $rws = $conn->query("SELECT DISTINCT rw FROM anggota WHERE rw IS NOT NULL AND rw != '' AND status_keanggotaan = 'Aktif' ORDER BY rw ASC");
 $rts = $conn->query("SELECT DISTINCT rt FROM anggota WHERE rt IS NOT NULL AND rt != '' AND status_keanggotaan = 'Aktif' ORDER BY rt ASC");$selected_rw = $_GET['rw'] ?? '';

@@ -9,11 +9,7 @@ if (session_status() === PHP_SESSION_NONE) {
 }
 require_once 'functions/history_log.php';
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    echo json_encode(['success' => false, 'message' => 'Koneksi database gagal.']);
-    exit();
-}
+require 'koneksi/koneksi.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
 

@@ -1,7 +1,3 @@
-<?php
-// Template ini dipanggil oleh proses_sukarela.php
-// Semua variabel seperti $transaksi_id, $no_anggota, dll. sudah tersedia di sini.
-?>
 <!DOCTYPE html>
 <html>
 <head>

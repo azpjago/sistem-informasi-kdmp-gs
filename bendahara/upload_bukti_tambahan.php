@@ -1,11 +1,6 @@
 <?php
 header('Content-Type: application/json');
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    http_response_code(500);
-    echo json_encode(['status' => 'error', 'message' => 'Koneksi database gagal.']);
-    exit();
-}
+require 'koneksi/koneksi.php';
 
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['pembayaran_id'])) {
     $pembayaran_id = intval($_POST['pembayaran_id']);

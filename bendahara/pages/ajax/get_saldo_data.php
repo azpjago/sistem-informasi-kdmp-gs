@@ -6,11 +6,8 @@ if (!isset($_SESSION['role'])) {
     exit;
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
-    exit;
-}
+require 'koneksi/koneksi.php';
+
 date_default_timezone_set('Asia/Jakarta');
 header('Content-Type: application/json');
 

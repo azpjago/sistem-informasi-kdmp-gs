@@ -2,16 +2,13 @@
 require_once 'dompdf/autoload.inc.php';
 use Dompdf\Dompdf;
 use Dompdf\Options;
-
+require 'koneksi/koneksi.php';
 if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
     die("Error: ID Anggota tidak valid.");
 }
 $anggota_id = intval($_GET['id']);
 
 date_default_timezone_set('Asia/Jakarta');
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) die("Connection failed: ". $conn->connect_error);
-
 // 1. Ambil data profil anggota (hanya untuk info, bukan saldo)
 $stmt_anggota = $conn->prepare("SELECT no_anggota, nama, alamat FROM anggota WHERE id = ?");
 $stmt_anggota->bind_param("i", $anggota_id);

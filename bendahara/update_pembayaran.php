@@ -11,11 +11,7 @@ error_log('Received anggota_id: ' . $_POST['anggota_id']);
 error_log('POST data: ' . print_r($_POST, true));
 
 // Koneksi database
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    echo json_encode(['status' => 'error', 'message' => 'Koneksi database gagal.']);
-    exit();
-}
+require 'koneksi/koneksi.php';
 
 // Helper untuk nama bulan
 $nama_bulan = [

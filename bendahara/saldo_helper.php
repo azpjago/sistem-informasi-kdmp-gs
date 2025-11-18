@@ -2,11 +2,7 @@
 // saldo_helper.php
 function updateSaldoRekening($rekening_id, $jumlah, $type = 'tambah')
 {
-    $conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-
-    if ($conn->connect_error) {
-        return false;
-    }
+    require 'koneksi/koneksi.php';
 
     // Update saldo_sekarang (manual)
     $operator = ($type === 'tambah') ? '+' : '-';

@@ -3,10 +3,8 @@ require_once 'dompdf/autoload.inc.php';
 
 use Dompdf\Dompdf;
 use Dompdf\Options;
-
+require 'koneksi/koneksi.php';
 $selected_year = isset($_GET['tahun']) ? intval($_GET['tahun']) : date('Y');
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) die("Connection failed: ". $conn->connect_error);
 $jumlah_simpanan_wajib = 20000;
 
 // ================== MESIN PENGOLAH DATA SEDERHANA ==================
