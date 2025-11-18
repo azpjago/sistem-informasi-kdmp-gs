@@ -442,7 +442,7 @@ function hitungBreakdownDetail($conn, $rekening_list)
 
     // Hitung dana operasional dan selisih
     $breakdown['dana_operasional'] = $breakdown['simpanan_pokok_wajib'] +
-        $breakdown['simpanan_sukarela'] +
+        //$breakdown['simpanan_sukarela'] +
         $breakdown['penjualan_sembako'] +
         $breakdown['hibah'] +
         $breakdown['total_angsuran'] -
@@ -452,7 +452,7 @@ function hitungBreakdownDetail($conn, $rekening_list)
     // Selisih seharusnya 0 jika perhitungan benar
     $breakdown['selisih'] = $breakdown['dana_operasional'] - 
         ($breakdown['simpanan_pokok_wajib'] +
-         $breakdown['simpanan_sukarela'] +
+         //$breakdown['simpanan_sukarela'] +
          $breakdown['penjualan_sembako'] +
          $breakdown['hibah'] +
          $breakdown['total_angsuran'] -
