@@ -1,7 +1,7 @@
 <?php
 function log_activity($user_id, $user_type, $activity_type, $description, $table_affected = null, $record_id = null)
 {
-    $conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+    $conn = new mysqli('localhost', 'root', '', 'kdmpgs');
     if ($conn->connect_error) {
         error_log("Connection failed: " . $conn->connect_error);
         return false;
