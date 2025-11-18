@@ -8,10 +8,7 @@ require_once 'dompdf/autoload.inc.php';
 use Dompdf\Dompdf;
 date_default_timezone_set("Asia/Jakarta");
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
+require 'koneksi/koneksi.php';
 // Ambil ID PO dari parameter URL
 $id_po = isset($_GET['id']) ? $conn->real_escape_string($_GET['id']) : 0;
 

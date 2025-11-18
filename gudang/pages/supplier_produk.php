@@ -1,5 +1,4 @@
 <?php
-// File: supplier_produk.php
 $id_supplier = $conn->real_escape_string($_GET['lihat_produk']);
 $query_supplier = "SELECT * FROM supplier WHERE id_supplier = '$id_supplier'";
 $result_supplier = $conn->query($query_supplier);

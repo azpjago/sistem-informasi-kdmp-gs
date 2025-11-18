@@ -1,6 +1,5 @@
 <?php
 require_once 'functions/history_log.php';
-
 // TAMBAH SUPPLIER
 if (isset($_POST['tambah'])) {
     $nama_supplier = $conn->real_escape_string($_POST['nama_supplier']);

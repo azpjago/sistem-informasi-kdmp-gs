@@ -5,9 +5,7 @@ if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
     exit('Akses ditolak');
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
+require 'koneksi/koneksi.php';
 
 if (isset($_GET['id_supplier'])) {
     $id_supplier = $conn->real_escape_string($_GET['id_supplier']);

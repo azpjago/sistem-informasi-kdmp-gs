@@ -3,10 +3,7 @@
 <?php
 session_start();
 date_default_timezone_set('Asia/Jakarta');
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require 'koneksi/koneksi.php';
 if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'gudang') {
     header('Location: ../index.php');
     exit;

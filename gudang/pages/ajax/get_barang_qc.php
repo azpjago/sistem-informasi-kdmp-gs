@@ -6,10 +6,7 @@ if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
 
 header('Content-Type: application/json');
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
+require 'koneksi/koneksi.php';
 if (isset($_GET['id_barang_masuk'])) {
     $id_barang_masuk = intval($_GET['id_barang_masuk']);
 

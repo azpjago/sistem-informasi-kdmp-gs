@@ -5,10 +5,7 @@ if (!isset($_SESSION['is_logged_in']) || $_SESSION['role'] != 'gudang') {
     exit;
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require 'koneksi/koneksi.php';
 
 // Include history log functions
 require_once 'functions/history_log.php';

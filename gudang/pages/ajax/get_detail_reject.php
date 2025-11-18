@@ -1,9 +1,6 @@
 <?php
 session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require 'koneksi/koneksi.php';
 require_once 'unctions/history_log.php'; // Tambahkan include history_log
 
 if (isset($_GET['id'])) {

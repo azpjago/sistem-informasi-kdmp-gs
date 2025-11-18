@@ -1,8 +1,5 @@
 <?php
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require 'koneksi/koneksi.php';
 error_log("=== DEBUG PO CHECK ===");
 
 // Cek data PO terakhir

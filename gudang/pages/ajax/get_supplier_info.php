@@ -1,11 +1,6 @@
 <?php
 session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
+require 'koneksi/koneksi.php';
 header('Content-Type: application/json; charset=utf-8');
 
 if (isset($_GET['id_supplier'])) {
