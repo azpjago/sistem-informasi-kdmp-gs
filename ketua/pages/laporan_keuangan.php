@@ -489,7 +489,7 @@ foreach ($rekening_data as $rek) {
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h6 class="card-title">TOTAL SIMPANAN</h6>
+                            <h6 class="card-title">TOTAL SIMPANAN WAJIB</h6>
                             <h3 class="text-success">Rp <?= number_format($total_simpanan, 0, ',', '.') ?></h3>
                             <small
                                 class="text-muted"><?= $conn->query("SELECT COUNT(*) as total FROM anggota WHERE status_keanggotaan = 'Aktif'")->fetch_assoc()['total'] ?>
@@ -567,7 +567,7 @@ foreach ($rekening_data as $rek) {
                         <div>
                             <h6 class="card-title">PENDAPATAN</h6>
                             <h3 class="text-success">Rp <?= number_format($pendapatan_penjualan, 0, ',', '.') ?></h3>
-                            <small class="text-muted">Penjualan Sembako</small>
+                            <small class="text-muted">Penjualan Sembako Bulan Ini</small>
                         </div>
                         <div class="metric-icon bg-success">
                             <i class="fas fa-shopping-cart"></i>
