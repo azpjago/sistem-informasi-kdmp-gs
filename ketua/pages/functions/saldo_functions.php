@@ -25,7 +25,7 @@ function getSaldoData($id_anggota)
             'last_update' => date('Y-m-d H:i:s')
         ];
 
-        // ✅ 1. Hitung Simpanan Pokok - FIX: Gunakan kolom status yang benar
+        // ✅ 1. Hitung Simpanan Pokok
         $stmt = $conn->prepare("
             SELECT COALESCE(SUM(jumlah), 0) as total 
             FROM pembayaran 
