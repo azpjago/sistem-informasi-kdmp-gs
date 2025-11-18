@@ -4,10 +4,7 @@ session_start();
 // Include file history log
 require_once 'functions/history_log.php';
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error)
-    die("Connection failed: " . $conn->connect_error);
-
+require 'koneksi/koneksi.php';
 // Pastikan hanya metode POST yang diproses
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     header("Location: index.php");
