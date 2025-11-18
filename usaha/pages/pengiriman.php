@@ -1,9 +1,4 @@
 <?php
-// TAMBAHKAN INI DI PALING ATAS FILE
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-
 // Filter
 $filter_tanggal = $_GET['tanggal'] ?? date('Y-m-d');
 $filter_kurir = $_GET['kurir'] ?? '';

@@ -3,7 +3,7 @@ session_start();
 if ($_SESSION['role'] !== 'usaha')
     exit;
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
+require 'koneksi/koneksi.php';
 $id_pinjaman = intval($_GET['id'] ?? 0);
 $id_cicilan = intval($_GET['id'] ?? 0);
 

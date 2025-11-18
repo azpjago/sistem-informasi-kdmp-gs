@@ -1,6 +1,6 @@
 <?php
 session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+require 'koneksi/koneksi.php';
 
 if ($conn->connect_error) {
     die(json_encode([]));

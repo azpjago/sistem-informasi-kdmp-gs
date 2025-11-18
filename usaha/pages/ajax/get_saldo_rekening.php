@@ -1,11 +1,7 @@
 <?php
 session_start();
 require_once 'functions/history_log.php';
-
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
-if ($conn->connect_error) {
-    die(json_encode(['error' => 'Connection failed']));
-}
+require 'koneksi/koneksi.php';
 
 function hitungSaldoSumberDana($sumber_dana, $conn)
 {
