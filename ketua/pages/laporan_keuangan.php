@@ -268,7 +268,8 @@ foreach ($rekening_data as $rek) {
 }
 
 // TOTAL ASET
-$total_aset = $total_simpanan + $total_kas_bank;
+//$total_aset = $total_simpanan + $total_kas_bank;
+$total_aset = $total_simpanan;
 
 // NET INCOME BULAN INI dengan CICILAN
 // NET INCOME & CASH FLOW YANG BENAR
@@ -489,7 +490,7 @@ foreach ($rekening_data as $rek) {
                 <div class="card-body">
                     <div class="d-flex justify-content-between">
                         <div>
-                            <h6 class="card-title">TOTAL SIMPANAN WAJIB</h6>
+                            <h6 class="card-title">TOTAL SIMPANAN</h6>
                             <h3 class="text-success">Rp <?= number_format($total_simpanan, 0, ',', '.') ?></h3>
                             <small
                                 class="text-muted"><?= $conn->query("SELECT COUNT(*) as total FROM anggota WHERE status_keanggotaan = 'Aktif'")->fetch_assoc()['total'] ?>
