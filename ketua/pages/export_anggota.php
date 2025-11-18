@@ -8,11 +8,7 @@ if ($_SESSION['role'] !== 'ketua') {
     exit;
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
-
+require 'koneksi/koneksi.php';
 // KUERI PERBAIKAN: Hitung total simpanan dari pembayaran
 $query = "
     SELECT 

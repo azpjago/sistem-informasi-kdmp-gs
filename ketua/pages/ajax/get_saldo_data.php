@@ -6,10 +6,7 @@ if (!isset($_SESSION['role'])) {
     exit;
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    die("Connection failed: " . $conn->connect_error);
-}
+require 'koneksi/koneksi.php';
 
 header('Content-Type: application/json');
 
@@ -25,7 +22,7 @@ try {
     $id_anggota = (int) $_POST['id_anggota'];
 
     // Include function
-    require_once '../functions/saldo_functions.php'; // Sesuaikan path
+    require_once '../functions/saldo_functions.php';
 
     // Get saldo data
     $result = getSaldoData($id_anggota);

@@ -1,9 +1,4 @@
 <?php
-/**
- * Function untuk mengambil data saldo anggota
- * @param int $id_anggota ID anggota
- * @return array Data saldo anggota
- */
 function getSaldoData($id_anggota)
 {
     global $conn;

@@ -10,11 +10,7 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'ketua') {
     exit;
 }
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
-if ($conn->connect_error) {
-    echo json_encode(['status' => 'error', 'message' => 'Database connection failed']);
-    exit;
-}
+require 'koneksi/koneksi.php';
 
 // Get parameters
 $start_date = $_GET['start_date'] ?? date('Y-m-01');
