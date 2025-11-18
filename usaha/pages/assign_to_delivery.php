@@ -1,6 +1,6 @@
 <?php
 // pages/assign_to_delivery.php
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 
 header('Content-Type: application/json');
 

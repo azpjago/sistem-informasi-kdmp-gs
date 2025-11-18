@@ -5,7 +5,7 @@ require_once 'functions/history_log.php';
 if (ob_get_length())
     ob_clean();
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 if ($conn->connect_error)
     die("Connection failed: " . $conn->connect_error);
 header('Content-Type: application/json');

@@ -1,7 +1,7 @@
 <?php
 // pages/proses_pengurangan_stok.php
 session_start();
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 
 function kurangiStokPesananTerkirim($conn, $id_pemesanan)
 {

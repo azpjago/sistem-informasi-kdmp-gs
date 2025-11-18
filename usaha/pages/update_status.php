@@ -13,7 +13,7 @@ ob_clean();
 header('Content-Type: application/json');
 require_once 'functions/history_log.php'; // Pastikan include history log
 
-$conn = new mysqli('localhost', 'root', '', 'kdmpgs - v2');
+$conn = new mysqli('localhost', 'root', '', 'kdmpgs');
 
 if ($conn->connect_error) {
     die("Connection failed: " . $conn->connect_error);
