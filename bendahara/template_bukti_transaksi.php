@@ -102,7 +102,7 @@
     <div class="separator"></div>
     
     <!-- Detail Pembayaran -->
-    <div class="line"><span class="label">Jenis Bayar:</span> <?= $transaksi['jenis_pembayaran'] ?></div>
+    <div class="line"><span class="label">Jenis Bayar:</span> <?= $transaksi['jenis_transaksi'] ?></div>
     <div class="line"><span class="label">Keterangan:</span> <?= $transaksi['keterangan'] ?></div>
     
     <div class="separator"></div>
