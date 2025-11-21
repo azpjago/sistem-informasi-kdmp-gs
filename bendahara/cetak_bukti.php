@@ -44,7 +44,10 @@ if ($result->num_rows > 0) {
     $transaksi['tanggal_bayar_format'] = date('d/m/Y, H:i:s', strtotime($transaksi['tanggal_bayar']));
     
     // Format jumlah bayar
-    $transaksi['jumlah_bayar_format'] = 'Rp ' . number_format($transaksi['jumlah_bayar'], 0, ',', '.');
+    $transaksi['jumlah_bayar_format'] = 'Rp ' . number_format($transaksi['jumlah'], 0, ',', '.');
+    
+    // Format terbilang
+    $transaksi['terbilang'] = terbilang($transaksi['jumlah']) . " RUPIAH";
     
     // Render HTML template
     ob_start();
