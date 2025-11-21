@@ -385,6 +385,7 @@ function hitungSimpananDariPembayaran($conn, $id_anggota)
                                     echo $total_result->fetch_assoc()['total'];
                                     ?>
                                 </h4>
+                               <small class="text-muted">Anggota aktif</small>
                             </div>
                             <div class="statistic-icon bg-primary bg-opacity-10 rounded-circle p-3">
                                 <i class="fas fa-users fa-lg text-primary"></i>
