@@ -11,17 +11,12 @@ use Dompdf\Options;
 // Ambil ID transaksi dari parameter URL
 $id = $_GET['id'] ?? 0;
 
-if ($id == 0) {
-    die("ID transaksi tidak valid.");
-}
-
-// Query untuk mengambil data transaksi dengan join yang lebih lengkap
+// Query untuk mengambil data transaksi
 $sql = "
     SELECT 
         p.*, 
         a.no_anggota, 
-        a.nama,
-        a.alamat
+        a.nama 
     FROM 
         pembayaran p 
     JOIN 
@@ -36,46 +31,43 @@ $result = $stmt->get_result();
 
 if ($result->num_rows > 0) {
     $transaksi = $result->fetch_assoc();
-    
-    // Format data untuk tampilan
-    $data = [
-        'id_transaksi' => $transaksi['id_transaksi'] ?? '-',
-        'no_anggota' => $transaksi['no_anggota'] ?? '-',
-        'nama' => $transaksi['nama'] ?? '-',
-        'alamat' => $transaksi['alamat'] ?? '-',
-        'jumlah_bayar' => number_format($transaksi['jumlah_bayar'] ?? 0, 0, ',', '.'),
-        'jenis_simpanan' => $transaksi['jenis_simpanan'] ?? '-',
-        'keterangan' => $transaksi['keterangan'] ?? '-',
-        'tanggal_bayar' => date('d/m/Y H:i:s', strtotime($transaksi['tanggal_bayar'])),
-        'waktu_cetak' => date('d/m/Y H:i:s'),
-        'metode_bayar' => $transaksi['metode_bayar'] ?? 'Tunai',
-        'status' => $transaksi['status'] ?? 'Sukses'
+    $anggota = [
+        'no_anggota' => $transaksi['no_anggota'],
+        'nama' => $transaksi['nama']
     ];
+    
+    // Tambahkan waktu server saat ini ke data transaksi
+    $transaksi['waktu_cetak'] = date('d/m/Y, H:i:s');
+    
+    // Format tanggal transaksi dengan jam
+    $transaksi['tanggal_bayar_format'] = date('d/m/Y, H:i:s', strtotime($transaksi['tanggal_bayar']));
+    
+    // Format jumlah bayar
+    $transaksi['jumlah_bayar_format'] = 'Rp ' . number_format($transaksi['jumlah_bayar'], 0, ',', '.');
     
     // Render HTML template
     ob_start();
-    include 'template_bukti_transaksi.php';
+    include 'template_bukti_thermal.php';
     $html = ob_get_clean();
     
-    // Setup dompdf dengan options
+    // Setup dompdf untuk thermal printer (lebar 80mm)
     $options = new Options();
     $options->set('isRemoteEnabled', true);
-    $options->set('defaultFont', 'Arial');
+    $options->set('defaultFont', 'Courier'); // Font monospace untuk thermal
     
     $dompdf = new Dompdf($options);
     $dompdf->loadHtml($html);
-    $dompdf->setPaper('A6', 'portrait');
-    $dompdf->set_option('isHtml5ParserEnabled', true);
     
-    // Render PDF
+    // Ukuran untuk thermal printer (80mm width)
+    $dompdf->setPaper([0, 0, 226.77, 841.89], 'portrait'); // 80mm x 297mm
+    
     $dompdf->render();
     
-    // Output PDF untuk di-download
-    $filename = "bukti_transaksi_{$data['id_transaksi']}.pdf";
-    $dompdf->stream($filename, array("Attachment" => true));
-    
+    // Output PDF
+    $dompdf->stream("bukti_transaksi_{$transaksi['id_transaksi']}.pdf", 
+                   array("Attachment" => true));
 } else {
-    echo "<script>alert('Transaksi tidak ditemukan.'); window.history.back();</script>";
+    echo "Transaksi tidak ditemukan.";
 }
 
 $stmt->close();
