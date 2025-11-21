@@ -2,6 +2,7 @@
 // Set timezone ke Indonesia
 date_default_timezone_set('Asia/Jakarta');
 require 'koneksi/koneksi.php';
+require 'functions/terbilang.php';
 
 // Load library DOMPDF
 require_once 'dompdf/autoload.inc.php';
