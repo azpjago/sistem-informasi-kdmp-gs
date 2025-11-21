@@ -221,10 +221,8 @@ $anggota = $stmt->get_result();
                             <div class="col-md-12">
                                 <div class="form-group">
                                     <label for="jenis_transaksi" class="form-label fw-bold">Jenis Transaksi</label>
-                                    <select class="form-control" id="jenis_transaksi" name="jenis_transaksi" required>
-                                        <option value="">-- Pilih Jenis Transaksi --</option>
+                                    <select class="form-control" id="jenis_transaksi" name="jenis_transaksi" required readonly>
                                         <option value="setor" selected>Setor</option>
-                                        <option value="tarik">Tarik</option>
                                     </select>
                                 </div>
                             </div>
