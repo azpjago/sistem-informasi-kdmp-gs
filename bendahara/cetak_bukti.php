@@ -60,8 +60,9 @@ if ($result->num_rows > 0) {
     $dompdf->loadHtml($html);
     
     // Ukuran untuk thermal printer (80mm width)
-    $dompdf->setPaper([0, 0, 226.77, 841.89], 'portrait'); // 80mm x 297mm
-    
+    // $dompdf->setPaper([0, 0, 226.77, 841.89], 'portrait'); // 80mm x 297mm
+    $dompdf->setPaper([0, 0, 226.77, 350], 'portrait'); // 
+        
     $dompdf->render();
     
     // Output PDF
