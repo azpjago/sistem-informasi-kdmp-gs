@@ -48,7 +48,7 @@ if ($result->num_rows > 0) {
     
     // Render HTML template
     ob_start();
-    include 'template_bukti_thermal.php';
+    include 'template_bukti_transaksi.php';
     $html = ob_get_clean();
     
     // Setup dompdf untuk thermal printer (lebar 80mm)
