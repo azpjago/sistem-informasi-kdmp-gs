@@ -231,7 +231,8 @@ $anggota = $stmt->get_result();
                             <div class="col-md-6">
                                 <div class="form-group mb-3"><label for="nama" class="form-label">Nama
                                         Lengkap</label><input type="text" class="form-control" id="nama" name="nama"
-                                        required></div>
+                                        required>
+                                 </div>
                             </div>
                             <div class="col-md-6">
                                 <div class="form-group mb-3"><label for="jenis_kelamin" class="form-label">Jenis

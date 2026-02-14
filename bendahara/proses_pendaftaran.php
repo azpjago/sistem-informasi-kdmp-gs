@@ -1,5 +1,5 @@
 <?php
-// proses_pendaftaran.php (VERSI PERBAIKAN - DENGAN LOG HISTORY)
+// proses_pendaftaran.php (VERSI PERBAIKAN - MENGGUNAKAN NIK SEBAGAI NO ANGGOTA)
 session_start();
 header('Content-Type: application/json');
 date_default_timezone_set('Asia/Jakarta');
@@ -41,14 +41,14 @@ try {
     // Ambil semua data dari POST
     error_log("Data POST: " . print_r($_POST, true));
     error_log("Data FILES: " . print_r($_FILES, true));
-
-    // Debug: Session info
     error_log("Session data: " . print_r($_SESSION, true));
+
+    // Ambil data dari form
     $nama = trim($_POST['nama'] ?? '');
     $jenis_kelamin = trim($_POST['jenis_kelamin'] ?? '');
     $tempat_lahir = trim($_POST['tempat_lahir'] ?? '');
     $tanggal_lahir = trim($_POST['tanggal_lahir'] ?? '');
-    $nik = trim($_POST['nik'] ?? '');
+    $nik = trim($_POST['nik'] ?? ''); // NIK akan digunakan sebagai no_anggota
     $npwp = trim($_POST['npwp'] ?? '');
     $agama = trim($_POST['agama'] ?? '');
     $alamat = trim($_POST['alamat'] ?? '');
@@ -64,26 +64,64 @@ try {
     if (empty($nama) || empty($pekerjaan) || empty($nik) || empty($simpanan_wajib_option) || empty($tanggal_join_str) || empty($jenis_transaksi)) {
         throw new Exception("Semua field yang wajib diisi harus lengkap.");
     }
+    
+    // Validasi NIK (minimal 16 digit untuk KTP)
+    if (strlen($nik) < 16) {
+        throw new Exception("NIK harus minimal 16 digit.");
+    }
+    
     if (!isset($_FILES['foto_diri']) || !isset($_FILES['foto_ktp'])) {
         throw new Exception("File foto diri dan KTP wajib diunggah.");
     }
-	require 'koneksi/koneksi.php';
+    
+    require 'koneksi/koneksi.php';
+    
+    // CEK DUPLIKASI NIK - Pastikan NIK belum terdaftar
+    $cek_nik = $conn->prepare("SELECT id FROM anggota WHERE nik = ?");
+    $cek_nik->bind_param("s", $nik);
+    $cek_nik->execute();
+    $result_nik = $cek_nik->get_result();
+    if ($result_nik->num_rows > 0) {
+        throw new Exception("NIK sudah terdaftar sebagai anggota.");
+    }
+    $cek_nik->close();
+    
+    // CEK DUPLIKASI NO ANGGOTA (NIK) - Pastikan no_anggota belum terdaftar
+    $cek_no_anggota = $conn->prepare("SELECT id FROM anggota WHERE no_anggota = ?");
+    $cek_no_anggota->bind_param("s", $nik);
+    $cek_no_anggota->execute();
+    $result_no_anggota = $cek_no_anggota->get_result();
+    if ($result_no_anggota->num_rows > 0) {
+        throw new Exception("Nomor anggota (NIK) sudah terdaftar.");
+    }
+    $cek_no_anggota->close();
+    
     $conn->begin_transaction();
 
-    // Generate No Anggota
-    $result = $conn->query("SELECT no_anggota FROM anggota ORDER BY id DESC LIMIT 1");
-    $lastNum = 0;
-    if ($result && $result->num_rows > 0) {
-        $lastNo = $result->fetch_assoc()['no_anggota'];
-        if (preg_match('/(\d{4})$/', $lastNo, $matches))
-            $lastNum = (int) $matches[1];
-    }
-    $no_anggota = '32041011' . str_pad($lastNum + 1, 4, '0', STR_PAD_LEFT);
+    // Gunakan NIK sebagai No Anggota (TIDAK DIGENERATE OTOMATIS)
+    $no_anggota = $nik; // NIK langsung digunakan sebagai no_anggota
 
     // Upload Dokumen
-    $foto_diri_path = handleUpload($_FILES['foto_diri'], 'foto_diri', 'diri_' . $no_anggota)['path'] ?? null;
-    $foto_ktp_path = handleUpload($_FILES['foto_ktp'], 'foto_ktp', 'ktp_' . $no_anggota)['path'] ?? null;
-    $foto_kk_path = (isset($_FILES['foto_kk']) && $_FILES['foto_kk']['error'] == UPLOAD_ERR_OK) ? (handleUpload($_FILES['foto_kk'], 'foto_kk', 'kk_' . $no_anggota)['path'] ?? null) : null;
+    $upload_foto_diri = handleUpload($_FILES['foto_diri'], 'foto_diri', 'diri_' . $no_anggota);
+    if (isset($upload_foto_diri['error'])) {
+        throw new Exception("Gagal upload foto diri: " . $upload_foto_diri['error']);
+    }
+    $foto_diri_path = $upload_foto_diri['path'] ?? null;
+    
+    $upload_foto_ktp = handleUpload($_FILES['foto_ktp'], 'foto_ktp', 'ktp_' . $no_anggota);
+    if (isset($upload_foto_ktp['error'])) {
+        throw new Exception("Gagal upload foto KTP: " . $upload_foto_ktp['error']);
+    }
+    $foto_ktp_path = $upload_foto_ktp['path'] ?? null;
+    
+    $foto_kk_path = null;
+    if (isset($_FILES['foto_kk']) && $_FILES['foto_kk']['error'] == UPLOAD_ERR_OK) {
+        $upload_foto_kk = handleUpload($_FILES['foto_kk'], 'foto_kk', 'kk_' . $no_anggota);
+        if (isset($upload_foto_kk['error'])) {
+            throw new Exception("Gagal upload foto KK: " . $upload_foto_kk['error']);
+        }
+        $foto_kk_path = $upload_foto_kk['path'] ?? null;
+    }
 
     // Logika Tanggal
     $tanggal_join = new DateTime($tanggal_join_str);
@@ -102,9 +140,34 @@ try {
 
     // Insert data anggota
     $stmt_anggota = $conn->prepare("INSERT INTO anggota (no_anggota, nama, jenis_kelamin, tempat_lahir, tanggal_lahir, nik, npwp, agama, alamat, rw, rt, no_hp, pekerjaan, simpanan_wajib, foto_diri, foto_ktp, foto_kk, tanggal_join, tanggal_jatuh_tempo, status, saldo_sukarela, saldo_total) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
-    $stmt_anggota->bind_param('sssssssssssssdssssssdd', $no_anggota, $nama, $jenis_kelamin, $tempat_lahir, $tanggal_lahir, $nik, $npwp, $agama, $alamat, $rw, $rt, $no_hp, $pekerjaan, $simpanan_wajib_option, $foto_diri_path, $foto_ktp_path, $foto_kk_path, $tanggal_join_str, $tanggal_jatuh_tempo_str, $status_anggota, $saldo_sukarela, $saldo_total);
-    if (!$stmt_anggota->execute())
+    $stmt_anggota->bind_param('sssssssssssssdssssssdd', 
+        $no_anggota, 
+        $nama, 
+        $jenis_kelamin, 
+        $tempat_lahir, 
+        $tanggal_lahir, 
+        $nik, 
+        $npwp, 
+        $agama, 
+        $alamat, 
+        $rw, 
+        $rt, 
+        $no_hp, 
+        $pekerjaan, 
+        $simpanan_wajib_option, 
+        $foto_diri_path, 
+        $foto_ktp_path, 
+        $foto_kk_path, 
+        $tanggal_join_str, 
+        $tanggal_jatuh_tempo_str, 
+        $status_anggota, 
+        $saldo_sukarela, 
+        $saldo_total
+    );
+    
+    if (!$stmt_anggota->execute()) {
         throw new Exception("Gagal menyimpan data anggota: " . $stmt_anggota->error);
+    }
     $anggota_id = $conn->insert_id;
 
     // LOG HISTORY: Pendaftaran anggota baru
@@ -118,7 +181,14 @@ try {
     );
 
     // Upload bukti pembayaran
-    $bukti_tunggal_path = (isset($_FILES['bukti_tunggal']) && $_FILES['bukti_tunggal']['error'] == 0) ? (handleUpload($_FILES['bukti_tunggal'], 'bukti_bayar', 'bukti_tunggal_' . $no_anggota)['path'] ?? null) : null;
+    $bukti_tunggal_path = null;
+    if (isset($_FILES['bukti_tunggal']) && $_FILES['bukti_tunggal']['error'] == UPLOAD_ERR_OK) {
+        $upload_bukti = handleUpload($_FILES['bukti_tunggal'], 'bukti_bayar', 'bukti_' . $no_anggota);
+        if (isset($upload_bukti['error'])) {
+            throw new Exception("Gagal upload bukti pembayaran: " . $upload_bukti['error']);
+        }
+        $bukti_tunggal_path = $upload_bukti['path'] ?? null;
+    }
 
     // Menyiapkan data pembayaran dalam array
     $pembayaran_data = [];
@@ -131,7 +201,8 @@ try {
 
     // LOGIKA ID TRANSAKSI GLOBAL
     $result = $conn->query("SELECT MAX(id) as max_id FROM pembayaran");
-    $last_payment_id = ($result->fetch_assoc()['max_id'] ?? 0);
+    $row = $result->fetch_assoc();
+    $last_payment_id = $row['max_id'] ?? 0;
 
     // Metode pembayaran dan bank tujuan
     $metode_pembayaran = $_POST['metode_pembayaran'] ?? 'cash';
@@ -140,7 +211,7 @@ try {
     // Siapkan statement untuk pembayaran
     $stmt_pembayaran = $conn->prepare("INSERT INTO pembayaran (anggota_id, id_transaksi, jenis_simpanan, jenis_transaksi, jumlah, nama_anggota, bulan_periode, metode, bank_tujuan, bukti, status, tanggal_bayar) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
 
-    // PERBAIKAN: HANYA SATU LOOP - tidak ada duplicate
+    // Loop untuk setiap jenis pembayaran
     foreach ($pembayaran_data as $data) {
         $last_payment_id++;
         $prefix = getTransactionPrefix($data['jenis_simpanan']);
@@ -172,7 +243,7 @@ try {
         log_pembayaran_activity(
             $pembayaran_id,
             'create',
-            "Mencatat pembayaran $data[jenis_simpanan] sebesar Rp " . number_format($data['jumlah'], 0, ',', '.') . " untuk anggota $nama ($no_anggota)",
+            "Mencatat pembayaran {$data['jenis_simpanan']} sebesar Rp " . number_format($data['jumlah'], 0, ',', '.') . " untuk anggota $nama ($no_anggota)",
             $user_role
         );
     }
@@ -187,7 +258,11 @@ try {
         $user_role
     );
 
-    echo json_encode(['status' => 'success', 'message' => 'Pendaftaran anggota ' . $no_anggota . ' berhasil!']);
+    echo json_encode([
+        'status' => 'success', 
+        'message' => 'Pendaftaran anggota ' . $no_anggota . ' berhasil!',
+        'no_anggota' => $no_anggota
+    ]);
 
 } catch (Exception $e) {
     // LOG HISTORY: Error
@@ -200,8 +275,11 @@ try {
         );
     }
 
-    if (isset($conn))
+    if (isset($conn)) {
         $conn->rollback();
+    }
+    
+    error_log("Error dalam pendaftaran: " . $e->getMessage());
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 } finally {
     if (isset($stmt_anggota))
