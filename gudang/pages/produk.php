@@ -162,6 +162,13 @@ if (isset($_POST['buat_paket'])) {
     $is_paket = 1;
     $jumlah = 0;
     $id_inventory = "NULL";
+    
+    $result = $conn->query("SELECT MAX(id_produk) as max_id FROM produk");
+	$row = $result->fetch_assoc();
+	$next_id = $row['max_id'] + 1;
+
+	$kode_produk = "PRD-KDMPGS-" . str_pad($next_id, 5, "0", STR_PAD_LEFT);
+
 
     // Upload gambar
     if (isset($_FILES['gambar']['name']) && $_FILES['gambar']['name'] != '') {
@@ -177,9 +184,9 @@ if (isset($_POST['buat_paket'])) {
 
     // Insert produk paket
     $query = "INSERT INTO produk 
-             (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan_paket, gambar, status, is_paket, id_inventory) 
+             (kode_produk, nama_produk, kategori, satuan, harga, jumlah, merk, keterangan_paket, gambar, status, is_paket, id_inventory) 
              VALUES 
-             ('$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', $id_inventory)";
+             ('$kode_produk', '$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', $id_inventory)";
 
     if ($conn->query($query)) {
         $id_produk_baru = $conn->insert_id;
@@ -231,6 +238,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
     $id_inventory = isset($_POST['id_inventory']) ? intval($_POST['id_inventory']) : 0;
     $jumlah = isset($_POST['jumlah']) ? floatval($_POST['jumlah']) : 0;
     $is_paket = 0;
+    
+    $result = $conn->query("SELECT MAX(id_produk) as max_id FROM produk");
+	$row = $result->fetch_assoc();
+	$next_id = $row['max_id'] + 1;
+
+	$kode_produk = "PRD-KDMPGS-" . str_pad($next_id, 5, "0", STR_PAD_LEFT);
+
 
     // VALIDASI
     if ($id_inventory == 0) {
@@ -291,14 +305,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
                  status='$status', is_paket='$is_paket', id_inventory='$id_inventory'
                  $gambar_sql 
                  WHERE id_produk=$id";
-                 logProdukActivity('edit_eceran', $produk_id, $nama);
+                 logProdukActivity('edit_eceran', $id, $nama);
     } else {
         // TAMBAH PRODUK BARU
         $query = "INSERT INTO produk 
-                 (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan, gambar, status, is_paket, id_inventory) 
+                 (kode_produk, nama_produk, kategori, satuan, harga, jumlah, merk, keterangan, gambar, status, is_paket, id_inventory) 
                  VALUES 
-                 ('$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', '$id_inventory')";
-                 logProdukActivity('tambah_eceran', $produk_id, $nama);
+                 ('$kode_produk', '$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', '$id_inventory')";
+                 logProdukActivity('tambah_eceran', $id, $nama);
             $_SESSION['success'] = "Produk berhasil ditambahkan";
     }
 
