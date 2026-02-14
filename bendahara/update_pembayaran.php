@@ -47,7 +47,7 @@ $nama_bulan = [
 if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['anggota_id'])) {
 
     $anggota_id = intval($_POST['anggota_id']);
-    $tanggal_bayar = date('Y-m-d H:i:s');
+    $tanggal_bayar = $_POST['tanggal_bayar'] ?? date('Y-m-d H:i:s');
     $metode = $_POST['metode'] ?? '';
     $bank_tujuan = ($metode === 'transfer') ? ($_POST['bank_tujuan'] ?? '') : null;
     $bukti_path = null;

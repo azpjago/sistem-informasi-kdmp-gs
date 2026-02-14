@@ -485,7 +485,7 @@ $anggota = $stmt->get_result();
                 <h5 class="modal-title" id="updateBayarModalLabel">Update Pembayaran Simpanan Wajib</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="formUpdateBayar" method="POST" enctype="multipart/form-data">
+            <form id="formUpdateBayar" method="POST" action="update_pembayaran.php" enctype="multipart/form-data">
                 <div class="modal-body">
                     <input type="hidden" id="anggotaIdModal" name="anggota_id">
                     
@@ -506,7 +506,7 @@ $anggota = $stmt->get_result();
                     
                     <div class="mb-3">
                         <label for="tanggal_bayar" class="form-label">Tanggal Bayar</label>
-                        <input type="date" class="form-control" id="tanggal_bayar" name="tanggal_bayar" value="<?= date('Y-m-d') ?>" required>
+                        <input type="datetime-local" class="form-control" id="tanggal_bayar" name="tanggal_bayar" value="<?= date('Y-m-d\TH:i') ?>" required>
                     </div>
                     
                     <div class="mb-3">
