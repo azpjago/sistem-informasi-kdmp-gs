@@ -22,7 +22,7 @@ function hapusDataKecualiPengurus($db_name)
 
     // Kosongkan setiap tabel KECUALI 'pengurus'
     foreach ($tables as $table) {
-        if ($table !== 'pengurus' && $table !== 'kategori_pengeluaran') {
+        if ($table !== 'pengurus' && $table !== 'kategori_pengeluaran' && $table !== 'kurir') {
             $conn->query("TRUNCATE TABLE `$table`");
             echo "✓ Tabel `$table` berhasil dikosongkan<br>";
         } else {
@@ -38,5 +38,5 @@ function hapusDataKecualiPengurus($db_name)
 }
 
 // Contoh penggunaan
-hapusDataKecualiPengurus('kdmpgs - v2');
+hapusDataKecualiPengurus('kdmpgs');
 ?>
