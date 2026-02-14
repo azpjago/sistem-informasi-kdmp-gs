@@ -314,7 +314,6 @@ if (isset($_GET['ubah_status'])) {
                                 </tr>";
                             }
                         } else {
-                            echo "<tr><td colspan='7' class='text-center py-4'>Tidak ada data order</td></tr>";
                         }
                         ?>
                     </tbody>

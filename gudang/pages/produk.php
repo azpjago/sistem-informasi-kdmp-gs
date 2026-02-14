@@ -28,9 +28,9 @@ if ($result_produk_eceran && $result_produk_eceran->num_rows > 0) {
 // Fungsi helper untuk mendapatkan path upload
 function getUploadPath()
 {
-    $upload_dir = realpath($_SERVER['DOCUMENT_ROOT'] . '/kdmpgs/uploads/produk/');
+    $upload_dir = realpath($_SERVER['DOCUMENT_ROOT'] . '/sikop/uploads/produk/');
     if (!$upload_dir) {
-        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/kdmpgs/uploads/produk/';
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/sikop/uploads/produk/';
         if (!file_exists($upload_dir)) {
             mkdir($upload_dir, 0777, true);
         }
