@@ -440,6 +440,7 @@ if (isset($_GET['hapus'])) {
                 <td>" . date('d/m/Y', strtotime($row['created_at'])) . "</td>
                 <td><span class='badge bg-success'>" . ($row['status_supplier'] ?? '-') . "</span></td>
                 <td>
+					<div class='btn-group btn-group-sm' role='group'>
                     <a href='dashboard.php?page=supplier&lihat_produk={$row['id_supplier']}' class='btn btn-sm btn-success btn-action' title='Lihat Produk'>
                         <i class='fas fa-box'></i>
                     </a>
@@ -469,6 +470,7 @@ if (isset($_GET['hapus'])) {
                             data-nama='{$row['nama_supplier']}'>
                         <i class='fas fa-trash'></i>
                     </button>
+                    </div>
                 </td>
             </tr>";
                                 $no++;
