@@ -304,56 +304,48 @@ if (!$supplier) {
     </div>
     <script>
         document.addEventListener("DOMContentLoaded", function () {
-            const chartData = <?php echo json_encode($chartData); ?>;
 
-            Object.keys(chartData).forEach(id_sp => {
-                const ctx = document.getElementById("chart_" + id_sp).getContext("2d");
-                new Chart(ctx, {
+    const chartData = <?php echo json_encode($chartData); ?>;
+
+    const renderCharts = () => {
+        Object.keys(chartData).forEach(id_sp => {
+            const canvas = document.getElementById("chart_" + id_sp);
+
+            // Hindari double render
+            if (canvas && !canvas.dataset.rendered) {
+
+                new Chart(canvas, {
                     type: "bar",
                     data: {
                         labels: chartData[id_sp].labels,
                         datasets: [{
-                            label: "Harga",
                             data: chartData[id_sp].data,
-                            backgroundColor: [
-                                "rgba(54, 162, 235, 0.7)",
-                                "rgba(255, 159, 64, 0.7)",
-                                "rgba(75, 192, 192, 0.7)"
-                            ],
-                            borderColor: [
-                                "rgba(54, 162, 235, 1)",
-                                "rgba(255, 159, 64, 1)",
-                                "rgba(75, 192, 192, 1)"
-                            ],
+                            backgroundColor: "rgba(54, 162, 235, 0.7)",
+                            borderColor: "rgba(54, 162, 235, 1)",
                             borderWidth: 1
                         }]
                     },
                     options: {
-                        plugins: {
-                            legend: { display: false },
-                            tooltip: {
-                                callbacks: {
-                                    label: function (context) {
-                                        return "Rp " + context.raw.toLocaleString("id-ID");
-                                    }
-                                }
-                            }
-                        },
                         responsive: true,
                         maintainAspectRatio: false,
+                        plugins: { legend: { display: false } },
                         scales: {
-                            x: {
-                                display: false
-                            },
-                            y: {
-                                beginAtZero: false,
-                                display: false
-                            }
+                            x: { display: false },
+                            y: { display: false }
                         }
                     }
                 });
-            });
+
+                canvas.dataset.rendered = true;
+            }
         });
+    };
+
+    // Render saat tab riwayat diklik
+    const riwayatTab = document.getElementById('riwayat-tab');
+    riwayatTab.addEventListener('shown.bs.tab', renderCharts);
+});
+
     </script>
 </body>
 
