@@ -59,7 +59,7 @@ if (!$supplier) {
         }
 
         .chart-container {
-            height: 100px;
+            height: 130px;
             width: 100%;
         }
 
@@ -221,7 +221,7 @@ if (!$supplier) {
 
                         // Pastikan kita selalu memiliki 3 data untuk grafik
                         while (count($hargaArr) < 3) {
-                            array_unshift($hargaArr, null);
+                            array_unshift($hargaArr, 0);
                             array_unshift($tanggalArr, '');
                         }
 
