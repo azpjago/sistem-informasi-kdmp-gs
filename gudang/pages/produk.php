@@ -42,11 +42,10 @@ function getUploadPath()
 function getProductImageUrl($filename)
 {
     if (empty($filename))
-        return '/kdmpgs/assets/img/no-image.jpg';
-    return '/kdmpgs/uploads/produk/' . $filename;
+        return '/sikop/assets/img/no-image.png';
+    return '/sikop/uploads/produk/' . $filename;
 }
 
-// Menangani aksi hapus
 // Menangani aksi hapus
 if (isset($_GET['hapus'])) {
     $id = intval($_GET['hapus']);
