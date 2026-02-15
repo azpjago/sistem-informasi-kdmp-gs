@@ -28,9 +28,9 @@ if ($result_produk_eceran && $result_produk_eceran->num_rows > 0) {
 // Fungsi helper untuk mendapatkan path upload
 function getUploadPath()
 {
-    $upload_dir = realpath($_SERVER['DOCUMENT_ROOT'] . '/kdmpgs2/uploads/produk/');
+    $upload_dir = realpath($_SERVER['DOCUMENT_ROOT'] . '/sikop/uploads/produk/');
     if (!$upload_dir) {
-        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/kdmpgs2/uploads/produk/';
+        $upload_dir = $_SERVER['DOCUMENT_ROOT'] . '/sikop/uploads/produk/';
         if (!file_exists($upload_dir)) {
             mkdir($upload_dir, 0777, true);
         }
@@ -42,8 +42,8 @@ function getUploadPath()
 function getProductImageUrl($filename)
 {
     if (empty($filename))
-        return '/kdmpgs2/assets/img/no-image.jpg';
-    return '/kdmpgs2/uploads/produk/' . $filename;
+        return '/sikop/assets/img/no-image.jpg';
+    return '/sikop/uploads/produk/' . $filename;
 }
 
 // Menangani aksi hapus
