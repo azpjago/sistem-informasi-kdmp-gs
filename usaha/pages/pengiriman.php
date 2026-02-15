@@ -634,28 +634,43 @@ async function generateStrukPrint(data) {
     const doc = new jsPDF('p', 'mm', 'a4');
 
     const pageHeight = 297;
-    const strukHeight = pageHeight / 2; // 2 struk per halaman
+    const halfPageHeight = pageHeight / 2; // default 2 struk
     let currentY = 0;
     let strukCount = 0;
 
     for (let i = 0; i < data.length; i++) {
 
-        if (strukCount === 2) {
+        const pesanan = data[i];
+
+        // 🔥 CEK JUMLAH ITEM
+        const isLongOrder = pesanan.items.length > 5;
+
+        // Jika > 5 item → pakai 1 halaman penuh
+        const strukHeight = isLongOrder ? pageHeight : halfPageHeight;
+
+        // Kalau bukan full page dan sudah 2 struk → tambah halaman
+        if (!isLongOrder && strukCount === 2) {
+            doc.addPage();
+            currentY = 0;
+            strukCount = 0;
+        }
+
+        // Kalau full page → selalu halaman baru kecuali pertama
+        if (isLongOrder && i !== 0) {
             doc.addPage();
             currentY = 0;
             strukCount = 0;
         }
 
         const startY = currentY + 10;
-        const pesanan = data[i];
 
         // =========================
         // LOGO + HEADER
         // =========================
         const img = new Image();
-        img.src = "pages/assets/logo.jpeg"; // GANTI sesuai lokasi logo kamu
+        img.src = "pages/assets/logo.jpeg";
 
-        doc.addImage(img, "PNG", 15, startY, 20, 20);
+        doc.addImage(img, "JPEG", 15, startY, 20, 20);
 
         doc.setFontSize(14);
         doc.text("STRUK PENGIRIMAN BARANG", 105, startY + 10, { align: "center" });
@@ -671,35 +686,34 @@ async function generateStrukPrint(data) {
         // DATA PENGIRIMAN
         // =========================
         doc.setFontSize(8);
-		const detailData = [
-			["No Pesanan", `#${pesanan.id_pemesanan}`],
-			["Tanggal", pesanan.tanggal_pengiriman],
-			["Kurir", pesanan.nama_kurir],
-			["Penerima", pesanan.nama_anggota],
-			["Alamat", pesanan.alamat]
-		];
 
-		const xLabel = 15;
-		const xColon = 45;
-		const xValue = 50;
-		const maxWidth = 140; // lebar maksimal teks value
+        const detailData = [
+            ["No Pesanan", `#${pesanan.id_pemesanan}`],
+            ["Tanggal", pesanan.tanggal_pengiriman],
+            ["Kurir", pesanan.nama_kurir],
+            ["Penerima", pesanan.nama_anggota],
+            ["Alamat", pesanan.alamat]
+        ];
 
-		detailData.forEach(item => {
+        const xLabel = 15;
+        const xColon = 45;
+        const xValue = 50;
+        const maxWidth = 140;
 
-			doc.text(item[0], xLabel, y);
-			doc.text(":", xColon, y);
+        detailData.forEach(item => {
 
-			// 🔥 Jika alamat, pecah jadi beberapa baris
-			if (item[0] === "Alamat") {
-				const textLines = doc.splitTextToSize(String(item[1]), maxWidth);
-				doc.text(textLines, xValue, y);
-				y += textLines.length * 4; // tinggi mengikuti jumlah baris
-			} else {
-				doc.text(String(item[1]), xValue, y);
-				y += 4;
-			}
+            doc.text(item[0], xLabel, y);
+            doc.text(":", xColon, y);
 
-		});
+            if (item[0] === "Alamat") {
+                const textLines = doc.splitTextToSize(String(item[1]), maxWidth);
+                doc.text(textLines, xValue, y);
+                y += textLines.length * 4;
+            } else {
+                doc.text(String(item[1]), xValue, y);
+                y += 4;
+            }
+        });
 
         // =========================
         // TABEL PRODUK
@@ -721,6 +735,7 @@ async function generateStrukPrint(data) {
 
         y = doc.lastAutoTable.finalY + 5;
 
+        doc.setFontSize(10);
         doc.text(
             `TOTAL COD : Rp ${formatNumber(pesanan.total_pembayaran)}`,
             15,
@@ -745,9 +760,9 @@ async function generateStrukPrint(data) {
         y += 5;
 
         // =========================
-        // GARIS GUNTING
+        // GARIS GUNTING (HANYA JIKA 2 STRUK)
         // =========================
-        if (strukCount === 0) {
+        if (!isLongOrder && strukCount === 0) {
             doc.setLineDash([2, 2], 0);
             doc.line(10, strukHeight, 200, strukHeight);
             doc.setLineDash([]);
@@ -770,9 +785,6 @@ async function generateStrukPrint(data) {
         doc.save(`Struk_Bulk_${today}_${data.length}_data.pdf`);
     }
 }
-
-
-
 
         // Fungsi format number
         function formatNumber(number) {
