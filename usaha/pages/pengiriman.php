@@ -629,58 +629,127 @@ function getNamaKurir($conn, $id_kurir)
         }
 
         // Fungsi generate struk untuk print
-        async function generateStrukPrint(data) {
+async function generateStrukPrint(data) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF('p', 'mm', 'a4');
 
-    let yPosition = 10;
-    let strukPerHalaman = 0;
+    const pageHeight = 297;
+    const strukHeight = pageHeight / 2; // 2 struk per halaman
+    let currentY = 0;
+    let strukCount = 0;
 
-    data.forEach((pesanan, index) => {
+    for (let i = 0; i < data.length; i++) {
 
-        if (strukPerHalaman === 2) {
+        if (strukCount === 2) {
             doc.addPage();
-            yPosition = 10;
-            strukPerHalaman = 0;
+            currentY = 0;
+            strukCount = 0;
         }
 
-        doc.setFontSize(12);
-        doc.text("STRUK PENGIRIMAN", 105, yPosition, { align: "center" });
+        const startY = currentY + 10;
+        const pesanan = data[i];
 
-        yPosition += 8;
+        // =========================
+        // LOGO + HEADER
+        // =========================
+        const img = new Image();
+        img.src = "pages/assets/logo.jpeg"; // GANTI sesuai lokasi logo kamu
+
+        doc.addImage(img, "PNG", 15, startY, 20, 20);
+
+        doc.setFontSize(14);
+        doc.text("STRUK PENGIRIMAN BARANG", 105, startY + 10, { align: "center" });
+
         doc.setFontSize(10);
-        doc.text(`No: #${pesanan.id_pemesanan}`, 10, yPosition);
-        yPosition += 6;
-        doc.text(`Tanggal: ${pesanan.tanggal_pengiriman}`, 10, yPosition);
-        yPosition += 6;
-        doc.text(`Kurir: ${pesanan.nama_kurir}`, 10, yPosition);
-        yPosition += 6;
-        doc.text(`Penerima: ${pesanan.nama_anggota}`, 10, yPosition);
-        yPosition += 6;
-        doc.text(`Alamat: ${pesanan.alamat}`, 10, yPosition);
+        doc.text("Unit Usaha Koperasi", 105, startY + 16, { align: "center" });
 
-        yPosition += 8;
-        doc.text("Produk:", 10, yPosition);
-        yPosition += 6;
+        doc.line(10, startY + 25, 200, startY + 25);
 
-        pesanan.items.forEach(item => {
-            doc.text(
-                `${item.nama_produk} x${item.jumlah} - Rp ${formatNumber(item.subtotal)}`,
-                10,
-                yPosition
-            );
-            yPosition += 6;
+        let y = startY + 32;
+
+        // =========================
+        // DATA PENGIRIMAN
+        // =========================
+        doc.setFontSize(10);
+        doc.text(`No Pesanan : #${pesanan.id_pemesanan}`, 15, y); y += 6;
+        doc.text(`Tanggal    : ${pesanan.tanggal_pengiriman}`, 15, y); y += 6;
+        doc.text(`Kurir      : ${pesanan.nama_kurir}`, 15, y); y += 6;
+        doc.text(`Penerima   : ${pesanan.nama_anggota}`, 15, y); y += 6;
+        doc.text(`Alamat     : ${pesanan.alamat}`, 15, y);
+
+        y += 8;
+
+        // =========================
+        // TABEL PRODUK
+        // =========================
+        const tableData = pesanan.items.map(item => [
+            item.nama_produk,
+            item.jumlah,
+            "Rp " + formatNumber(item.subtotal)
+        ]);
+
+        doc.autoTable({
+            startY: y,
+            head: [["Produk", "Qty", "Subtotal"]],
+            body: tableData,
+            theme: "grid",
+            styles: { fontSize: 9 },
+            margin: { left: 15, right: 15 }
         });
 
-        yPosition += 4;
-        doc.text(`TOTAL COD: Rp ${formatNumber(pesanan.total_pembayaran)}`, 10, yPosition);
+        y = doc.lastAutoTable.finalY + 5;
 
-        yPosition += 15; // Jarak antar struk
-        strukPerHalaman++;
-    });
+        doc.text(
+            `TOTAL COD : Rp ${formatNumber(pesanan.total_pembayaran)}`,
+            15,
+            y
+        );
 
-    doc.save("struk-pengiriman.pdf");
+        y += 15;
+
+        // =========================
+        // TANDA TANGAN
+        // =========================
+        doc.text("WK. Bid Usaha", 20, y);
+        doc.text("Kurir", 90, y);
+        doc.text("Penerima", 160, y);
+
+        y += 20;
+
+        doc.line(15, y, 60, y);
+        doc.line(75, y, 120, y);
+        doc.line(145, y, 190, y);
+
+        y += 5;
+
+        // =========================
+        // GARIS GUNTING
+        // =========================
+        if (strukCount === 0) {
+            doc.setLineDash([2, 2], 0);
+            doc.line(10, strukHeight, 200, strukHeight);
+            doc.setLineDash([]);
+        }
+
+        currentY += strukHeight;
+        strukCount++;
+    }
+
+    // =========================
+    // NAMA FILE OTOMATIS
+    // =========================
+    if (data.length === 1) {
+        const namaFile = data[0].nama_anggota
+            .replace(/[^a-zA-Z0-9]/g, "_");
+
+        doc.save(`Struk_${namaFile}.pdf`);
+    } else {
+        const today = new Date().toISOString().slice(0,10);
+        doc.save(`Struk_Bulk_${today}_${data.length}_data.pdf`);
+    }
 }
+
+
 
 
         // Fungsi format number
