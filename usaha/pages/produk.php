@@ -162,7 +162,12 @@ if (isset($_POST['buat_paket'])) {
     $is_paket = 1;
     $jumlah = 0;
     $id_inventory = "NULL";
+    
+	$result = $conn->query("SELECT MAX(id_produk) as max_id FROM produk");
+	$row = $result->fetch_assoc();
+	$next_id = $row['max_id'] + 1;
 
+	$kode_produk = "PRD-KDMPGS-" . str_pad($next_id, 5, "0", STR_PAD_LEFT);
     // Upload gambar
     if (isset($_FILES['gambar']['name']) && $_FILES['gambar']['name'] != '') {
         $ext = pathinfo($_FILES['gambar']['name'], PATHINFO_EXTENSION);
@@ -177,9 +182,9 @@ if (isset($_POST['buat_paket'])) {
 
     // Insert produk paket
     $query = "INSERT INTO produk 
-             (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan_paket, gambar, status, is_paket, id_inventory) 
+             (kode_produk, nama_produk, kategori, satuan, harga, jumlah, merk, keterangan_paket, gambar, status, is_paket, id_inventory) 
              VALUES 
-             ('$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', $id_inventory)";
+             ('$kode_produk', '$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', $id_inventory)";
 
     if ($conn->query($query)) {
         $id_produk_baru = $conn->insert_id;
@@ -295,9 +300,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' && isset($_POST['simpan_produk'])) {
     } else {
         // TAMBAH PRODUK BARU
         $query = "INSERT INTO produk 
-                 (nama_produk, kategori, satuan, harga, jumlah, merk, keterangan, gambar, status, is_paket, id_inventory) 
+                 (kode_produk, nama_produk, kategori, satuan, harga, jumlah, merk, keterangan, gambar, status, is_paket, id_inventory) 
                  VALUES 
-                 ('$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', '$id_inventory')";
+                 ('$kode_produk', '$nama', '$kategori', '$satuan', $harga, $jumlah, '$merk', '$keterangan', '$gambar','$status', '$is_paket', '$id_inventory')";
         logProdukActivity('tambah_eceran', $produk_id, $nama);
         $_SESSION['success'] = "Produk berhasil ditambahkan";
     }
