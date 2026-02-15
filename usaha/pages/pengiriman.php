@@ -661,7 +661,7 @@ async function generateStrukPrint(data) {
         doc.text("STRUK PENGIRIMAN BARANG", 105, startY + 10, { align: "center" });
 
         doc.setFontSize(10);
-        doc.text("Unit Usaha Koperasi", 105, startY + 16, { align: "center" });
+        doc.text("Unit Usaha Koperasi Desa Merah Putih Ganjar Sabar", 105, startY + 16, { align: "center" });
 
         doc.line(10, startY + 25, 200, startY + 25);
 
@@ -670,14 +670,26 @@ async function generateStrukPrint(data) {
         // =========================
         // DATA PENGIRIMAN
         // =========================
-        doc.setFontSize(10);
-        doc.text(`No Pesanan : #${pesanan.id_pemesanan}`, 15, y); y += 6;
-        doc.text(`Tanggal    : ${pesanan.tanggal_pengiriman}`, 15, y); y += 6;
-        doc.text(`Kurir      : ${pesanan.nama_kurir}`, 15, y); y += 6;
-        doc.text(`Penerima   : ${pesanan.nama_anggota}`, 15, y); y += 6;
-        doc.text(`Alamat     : ${pesanan.alamat}`, 15, y);
+        doc.setFontSize(8);
+		const detailData = [
+    ["No Pesanan", `#${pesanan.id_pemesanan}`],
+    ["Tanggal", pesanan.tanggal_pengiriman],
+    ["Kurir", pesanan.nama_kurir],
+    ["Penerima", pesanan.nama_anggota],
+    ["Alamat", pesanan.alamat]
+		];
 
-        y += 8;
+		const xLabel = 15;
+		const xColon = 45;
+		const xValue = 50;
+
+		detailData.forEach(item => {
+			doc.text(item[0], xLabel, y);
+			doc.text(":", xColon, y);
+			doc.text(String(item[1]), xValue, y);
+			y += 4;
+		});
+
 
         // =========================
         // TABEL PRODUK
