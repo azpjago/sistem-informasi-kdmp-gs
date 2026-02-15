@@ -672,24 +672,34 @@ async function generateStrukPrint(data) {
         // =========================
         doc.setFontSize(8);
 		const detailData = [
-    ["No Pesanan", `#${pesanan.id_pemesanan}`],
-    ["Tanggal", pesanan.tanggal_pengiriman],
-    ["Kurir", pesanan.nama_kurir],
-    ["Penerima", pesanan.nama_anggota],
-    ["Alamat", pesanan.alamat]
+			["No Pesanan", `#${pesanan.id_pemesanan}`],
+			["Tanggal", pesanan.tanggal_pengiriman],
+			["Kurir", pesanan.nama_kurir],
+			["Penerima", pesanan.nama_anggota],
+			["Alamat", pesanan.alamat]
 		];
 
 		const xLabel = 15;
 		const xColon = 45;
 		const xValue = 50;
+		const maxWidth = 140; // lebar maksimal teks value
 
 		detailData.forEach(item => {
+
 			doc.text(item[0], xLabel, y);
 			doc.text(":", xColon, y);
-			doc.text(String(item[1]), xValue, y);
-			y += 4;
-		});
 
+			// 🔥 Jika alamat, pecah jadi beberapa baris
+			if (item[0] === "Alamat") {
+				const textLines = doc.splitTextToSize(String(item[1]), maxWidth);
+				doc.text(textLines, xValue, y);
+				y += textLines.length * 4; // tinggi mengikuti jumlah baris
+			} else {
+				doc.text(String(item[1]), xValue, y);
+				y += 4;
+			}
+
+		});
 
         // =========================
         // TABEL PRODUK
