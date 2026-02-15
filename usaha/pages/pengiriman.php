@@ -203,6 +203,9 @@ function getNamaKurir($conn, $id_kurir)
             box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
         }
     </style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
 </head>
 
 <body>
@@ -626,132 +629,59 @@ function getNamaKurir($conn, $id_kurir)
         }
 
         // Fungsi generate struk untuk print
-        function generateStrukPrint(data) {
-            let strukHTML = '';
+        async function generateStrukPrint(data) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'mm', 'a4');
 
-            data.forEach((pesanan, index) => {
-                strukHTML += `
-                    <div class="struk-print" style="page-break-after: ${index < data.length - 1 ? 'always' : 'auto'};">
-                        <div style="text-align: center; margin-bottom: 10px;">
-                            <h3 style="margin: 0; font-size: 16px;">STRUK PENGIRIMAN</h3>
-                            <p style="margin: 0; font-size: 11px;">${pesanan.toko_nama || 'TOKO KOPERASI'}</p>
-                            <p style="margin: 0; font-size: 10px;">${pesanan.toko_alamat || ''}</p>
-                        </div>
-                        
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        
-                        <table style="width: 100%; font-size: 11px; margin-bottom: 10px;">
-                            <tr>
-                                <td><strong>No. Pesanan</strong></td>
-                                <td>:</td>
-                                <td>#${pesanan.id_pemesanan}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Tanggal</strong></td>
-                                <td>:</td>
-                                <td>${pesanan.tanggal_pengiriman}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Kurir</strong></td>
-                                <td>:</td>
-                                <td>${pesanan.nama_kurir}</td>
-                            </tr>
-                        </table>
-                        
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        
-                        <table style="width: 100%; font-size: 11px; margin-bottom: 10px;">
-                            <tr>
-                                <td><strong>Penerima</strong></td>
-                                <td>:</td>
-                                <td>${pesanan.nama_anggota}</td>
-                            </tr>
-                            <tr>
-                                <td><strong>Telepon</strong></td>
-                                <td>:</td>
-                                <td>${pesanan.no_hp}</td>
-                            </tr>
-                            <tr>
-                                <td style="vertical-align: top;"><strong>Alamat</strong></td>
-                                <td style="vertical-align: top;">:</td>
-                                <td>${pesanan.alamat}</td>
-                            </tr>
-                        </table>
-                        
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        
-                        <table class="struk-table" style="margin-bottom: 10px;">
-                            <thead>
-                                <tr>
-                                    <th>Produk</th>
-                                    <th width="60">Qty</th>
-                                    <th width="80">Subtotal</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${pesanan.items.map(item => `
-                                    <tr>
-                                        <td>${item.nama_produk}</td>
-                                        <td style="text-align: center;">${item.jumlah}</td>
-                                        <td style="text-align: right;">Rp ${formatNumber(item.subtotal)}</td>
-                                    </tr>
-                                `).join('')}
-                            </tbody>
-                        </table>
-                        
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        
-                        <table style="width: 100%; font-size: 12px; font-weight: bold;">
-                            <tr>
-                                <td>TOTAL COD</td>
-                                <td style="text-align: right;">Rp ${formatNumber(pesanan.total_pembayaran)}</td>
-                            </tr>
-                        </table>
-                        
-                        <hr style="border-top: 1px dashed #000; margin: 10px 0;">
-                        
-                        <div style="text-align: center; margin-top: 20px; font-size: 10px;">
-                            <p style="margin: 5px 0;">** TERIMA KASIH **</p>
-                            <p style="margin: 5px 0;">Barang yang sudah dibeli tidak dapat ditukar/dikembalikan</p>
-                        </div>
-                        
-                        <div style="margin-top: 30px; border-top: 1px dashed #000; padding-top: 10px;">
-                            <table style="width: 100%; font-size: 10px;">
-                                <tr>
-                                    <td style="text-align: center; width: 50%;">
-                                        <strong>Tanda Terima</strong><br>
-                                        (Penerima)
-                                    </td>
-                                    <td style="text-align: center; width: 50%;">
-                                        <strong>Hormat Kami</strong><br>
-                                        (Kurir)
-                                    </td>
-                                </tr>
-                                <tr>
-                                    <td style="height: 60px; vertical-align: bottom; text-align: center;">
-                                        _________________________
-                                    </td>
-                                    <td style="height: 60px; vertical-align: bottom; text-align: center;">
-                                        _________________________
-                                    </td>
-                                </tr>
-                            </table>
-                        </div>
-                    </div>
-                `;
-            });
+    let yPosition = 10;
+    let strukPerHalaman = 0;
 
-            // Tampilkan di area print
-            $('#strukPrintArea').html(strukHTML).show();
+    data.forEach((pesanan, index) => {
 
-            // Print
-            window.print();
-
-            // Sembunyikan kembali setelah print
-            setTimeout(() => {
-                $('#strukPrintArea').hide().empty();
-            }, 500);
+        if (strukPerHalaman === 2) {
+            doc.addPage();
+            yPosition = 10;
+            strukPerHalaman = 0;
         }
+
+        doc.setFontSize(12);
+        doc.text("STRUK PENGIRIMAN", 105, yPosition, { align: "center" });
+
+        yPosition += 8;
+        doc.setFontSize(10);
+        doc.text(`No: #${pesanan.id_pemesanan}`, 10, yPosition);
+        yPosition += 6;
+        doc.text(`Tanggal: ${pesanan.tanggal_pengiriman}`, 10, yPosition);
+        yPosition += 6;
+        doc.text(`Kurir: ${pesanan.nama_kurir}`, 10, yPosition);
+        yPosition += 6;
+        doc.text(`Penerima: ${pesanan.nama_anggota}`, 10, yPosition);
+        yPosition += 6;
+        doc.text(`Alamat: ${pesanan.alamat}`, 10, yPosition);
+
+        yPosition += 8;
+        doc.text("Produk:", 10, yPosition);
+        yPosition += 6;
+
+        pesanan.items.forEach(item => {
+            doc.text(
+                `${item.nama_produk} x${item.jumlah} - Rp ${formatNumber(item.subtotal)}`,
+                10,
+                yPosition
+            );
+            yPosition += 6;
+        });
+
+        yPosition += 4;
+        doc.text(`TOTAL COD: Rp ${formatNumber(pesanan.total_pembayaran)}`, 10, yPosition);
+
+        yPosition += 15; // Jarak antar struk
+        strukPerHalaman++;
+    });
+
+    doc.save("struk-pengiriman.pdf");
+}
+
 
         // Fungsi format number
         function formatNumber(number) {

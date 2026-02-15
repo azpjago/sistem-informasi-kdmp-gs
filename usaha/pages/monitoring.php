@@ -14,13 +14,13 @@ if (!$jam_kerja) {
     
     // Default jam kerja berdasarkan hari
     $default_jam_kerja = [
-        'monday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
-        'tuesday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
-        'wednesday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
-        'thursday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
-        'friday' => ['buka' => '07:00:00', 'tutup' => '15:00:00', 'is_libur' => false],
-        'saturday' => ['buka' => '08:00:00', 'tutup' => '12:00:00', 'is_libur' => false], // Sabtu setengah hari
-        'sunday' => ['buka' => '08:00:00', 'tutup' => '12:00:00', 'is_libur' => false]  // Minggu libur
+        'monday' => ['buka' => '07:00:00', 'tutup' => '17:00:00', 'is_libur' => false],
+        'tuesday' => ['buka' => '07:00:00', 'tutup' => '17:00:00', 'is_libur' => false],
+        'wednesday' => ['buka' => '07:00:00', 'tutup' => '17:00:00', 'is_libur' => false],
+        'thursday' => ['buka' => '07:00:00', 'tutup' => '17:00:00', 'is_libur' => false],
+        'friday' => ['buka' => '07:00:00', 'tutup' => '17:00:00', 'is_libur' => false],
+        'saturday' => ['buka' => '08:00:00', 'tutup' => '17:00:00', 'is_libur' => false], // Sabtu setengah hari
+        'sunday' => ['buka' => '08:00:00', 'tutup' => '17:00:00', 'is_libur' => false]  // Minggu libur
     ];
     
     $hari_key = strtolower(date('l'));
