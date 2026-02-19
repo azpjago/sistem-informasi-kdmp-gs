@@ -6,6 +6,35 @@ $years = range($current_year - 2, $current_year + 5);
 
 // ================== BLOK LOGIKA PENGAMBILAN DATA BARU ==================
 
+// AMBIL DATA RINGKASAN UNTUK TAHUN TERPILIH
+$sql_summary = "
+    SELECT 
+        jenis_simpanan,
+        SUM(jumlah) as total,
+        COUNT(DISTINCT anggota_id) as jumlah_anggota
+    FROM pembayaran 
+    WHERE YEAR(tanggal_bayar) = ?
+    GROUP BY jenis_simpanan
+";
+$stmt_summary = $conn->prepare($sql_summary);
+$stmt_summary->bind_param("i", $selected_year);
+$stmt_summary->execute();
+$result_summary = $stmt_summary->get_result();
+
+$summary_data = [
+    'Simpanan Wajib' => ['total' => 0, 'anggota' => 0],
+    'Simpanan Pokok' => ['total' => 0, 'anggota' => 0],
+    'Simpanan Sukarela' => ['total' => 0, 'anggota' => 0]
+];
+
+while ($row = $result_summary->fetch_assoc()) {
+    if (isset($summary_data[$row['jenis_simpanan']])) {
+        $summary_data[$row['jenis_simpanan']]['total'] = $row['total'];
+        $summary_data[$row['jenis_simpanan']]['anggota'] = $row['jumlah_anggota'];
+    }
+}
+$stmt_summary->close();
+
 // 1. Ambil semua anggota
 $anggota_list = $conn->query("SELECT id, no_anggota, nama FROM anggota ORDER BY no_anggota ASC")->fetch_all(MYSQLI_ASSOC);
 
@@ -48,6 +77,47 @@ $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'S
         📄 Export ke PDF
     </a>
 </div>
+
+<!-- ========== BLOK RINGKASAN DATA ========== -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h6 class="card-title">Simpanan Wajib</h6>
+                <h5>Rp <?= number_format($summary_data['Simpanan Wajib']['total'], 2, ',', '.') ?></h5>
+                <small><?= $summary_data['Simpanan Wajib']['anggota'] ?> Anggota</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h6 class="card-title">Simpanan Pokok</h6>
+                <h5>Rp <?= number_format($summary_data['Simpanan Pokok']['total'], 2, ',', '.') ?></h5>
+                <small><?= $summary_data['Simpanan Pokok']['anggota'] ?> Anggota</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h6 class="card-title">Simpanan Sukarela</h6>
+                <h5>Rp <?= number_format($summary_data['Simpanan Sukarela']['total'], 2, ',', '.') ?></h5>
+                <small><?= $summary_data['Simpanan Sukarela']['anggota'] ?> Anggota</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h6 class="card-title">Total Anggota</h6>
+                <h5><?= count($anggota_list) ?> Orang</h5>
+                <small>Aktif</small>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- ========== AKHIR BLOK RINGKASAN DATA ========== -->
 
 <div class="card mb-4 no-print">
     <div class="card-header"><strong>Pilih Tahun</strong></div>
