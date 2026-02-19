@@ -634,147 +634,134 @@ async function generateStrukPrint(data) {
     const doc = new jsPDF('p', 'mm', 'a4');
 
     const pageHeight = 297;
-    const halfPageHeight = pageHeight / 2; // default 2 struk
-    let currentY = 0;
-    let strukCount = 0;
+    const halfPage = pageHeight / 2;
 
     for (let i = 0; i < data.length; i++) {
 
         const pesanan = data[i];
-
-        // 🔥 CEK JUMLAH ITEM
         const isLongOrder = pesanan.items.length > 5;
 
-        // Jika > 5 item → pakai 1 halaman penuh
-        const strukHeight = isLongOrder ? pageHeight : halfPageHeight;
+        const totalCopy = 2;
 
-        // Kalau bukan full page dan sudah 2 struk → tambah halaman
-        if (!isLongOrder && strukCount === 2) {
-            doc.addPage();
-            currentY = 0;
-            strukCount = 0;
-        }
+        for (let copy = 0; copy < totalCopy; copy++) {
 
-        // Kalau full page → selalu halaman baru kecuali pertama
-        if (isLongOrder && i !== 0) {
-            doc.addPage();
-            currentY = 0;
-            strukCount = 0;
-        }
+            // ==========================
+            // ATUR HALAMAN
+            // ==========================
 
-        const startY = currentY + 10;
-
-        // =========================
-        // LOGO + HEADER
-        // =========================
-        const img = new Image();
-        img.src = "pages/assets/logo.jpeg";
-
-        doc.addImage(img, "JPEG", 15, startY, 20, 20);
-
-        doc.setFontSize(14);
-        doc.text("STRUK PENGIRIMAN BARANG", 105, startY + 10, { align: "center" });
-
-        doc.setFontSize(10);
-        doc.text("Unit Usaha Koperasi Desa Merah Putih Ganjar Sabar", 105, startY + 16, { align: "center" });
-
-        doc.line(10, startY + 25, 200, startY + 25);
-
-        let y = startY + 32;
-
-        // =========================
-        // DATA PENGIRIMAN
-        // =========================
-        doc.setFontSize(8);
-
-        const detailData = [
-            ["No Pesanan", `#${pesanan.id_pemesanan}`],
-            ["Tanggal", pesanan.tanggal_pengiriman],
-            ["Kurir", pesanan.nama_kurir],
-            ["Penerima", pesanan.nama_anggota],
-            ["Alamat", pesanan.alamat]
-        ];
-
-        const xLabel = 15;
-        const xColon = 45;
-        const xValue = 50;
-        const maxWidth = 140;
-
-        detailData.forEach(item => {
-
-            doc.text(item[0], xLabel, y);
-            doc.text(":", xColon, y);
-
-            if (item[0] === "Alamat") {
-                const textLines = doc.splitTextToSize(String(item[1]), maxWidth);
-                doc.text(textLines, xValue, y);
-                y += textLines.length * 4;
-            } else {
-                doc.text(String(item[1]), xValue, y);
-                y += 4;
+            if (i !== 0 || copy !== 0) {
+                doc.addPage();
             }
-        });
 
-        // =========================
-        // TABEL PRODUK
-        // =========================
-        const tableData = pesanan.items.map(item => [
-            item.nama_produk,
-            item.jumlah,
-            "Rp " + formatNumber(item.subtotal)
-        ]);
+            // Jika item sedikit dan copy kedua,
+            // geser ke setengah bawah halaman
+            let startY = 10;
 
-        doc.autoTable({
-            startY: y,
-            head: [["Produk", "Qty", "Subtotal"]],
-            body: tableData,
-            theme: "grid",
-            styles: { fontSize: 9 },
-            margin: { left: 15, right: 15 }
-        });
+            if (!isLongOrder && copy === 1) {
+                startY = halfPage + 10;
+            }
 
-        y = doc.lastAutoTable.finalY + 5;
+            // ================= HEADER =================
+            doc.setFontSize(14);
+            doc.text("STRUK PENGIRIMAN BARANG", 105, startY, { align: "center" });
 
-        doc.setFontSize(10);
-        doc.text(
-            `TOTAL COD : Rp ${formatNumber(pesanan.total_pembayaran)}`,
-            15,
-            y
-        );
+            doc.setFontSize(9);
+            doc.text(
+                copy === 0 ? "(UNTUK PEMESAN)" : "(ARSIP)",
+                105,
+                startY + 6,
+                { align: "center" }
+            );
 
-        y += 15;
+            doc.line(10, startY + 10, 200, startY + 10);
 
-        // =========================
-        // TANDA TANGAN
-        // =========================
-        doc.text("WK. Bid Usaha", 20, y);
-        doc.text("Kurir", 90, y);
-        doc.text("Penerima", 160, y);
+            let y = startY + 17;
 
-        y += 20;
+            // ================= DETAIL DATA =================
+            doc.setFontSize(8);
 
-        doc.line(15, y, 60, y);
-        doc.line(75, y, 120, y);
-        doc.line(145, y, 190, y);
+            const detailData = [
+                ["No Pesanan", `#${pesanan.id_pemesanan}`],
+                ["Tanggal", pesanan.tanggal_pengiriman],
+                ["Kurir", pesanan.nama_kurir],
+                ["Penerima", pesanan.nama_anggota],
+                ["Alamat", pesanan.alamat]
+            ];
 
-        y += 5;
+            const xLabel = 15;
+            const xColon = 45;
+            const xValue = 50;
+            const maxWidth = 140;
 
-        // =========================
-        // GARIS GUNTING (HANYA JIKA 2 STRUK)
-        // =========================
-        if (!isLongOrder && strukCount === 0) {
-            doc.setLineDash([2, 2], 0);
-            doc.line(10, strukHeight, 200, strukHeight);
-            doc.setLineDash([]);
+            detailData.forEach(item => {
+                doc.text(item[0], xLabel, y);
+                doc.text(":", xColon, y);
+
+                if (item[0] === "Alamat") {
+                    const lines = doc.splitTextToSize(String(item[1]), maxWidth);
+                    doc.text(lines, xValue, y);
+                    y += lines.length * 4;
+                } else {
+                    doc.text(String(item[1]), xValue, y);
+                    y += 4;
+                }
+            });
+
+            y += 3;
+
+            // ================= TABEL =================
+            const tableData = pesanan.items.map(item => [
+                item.nama_produk,
+                item.jumlah,
+                "Rp " + formatNumber(item.subtotal)
+            ]);
+
+            doc.autoTable({
+                startY: y,
+                head: [["Produk", "Qty", "Subtotal"]],
+                body: tableData,
+                theme: "grid",
+                styles: { fontSize: 8 },
+                margin: { left: 15, right: 15 },
+                pageBreak: 'auto'
+            });
+
+            y = doc.lastAutoTable.finalY + 5;
+
+            // ================= TOTAL =================
+            doc.setFontSize(9);
+            doc.text(
+                `TOTAL COD : Rp ${formatNumber(pesanan.total_pembayaran)}`,
+                15,
+                y
+            );
+
+            y += 12;
+
+            // ================= TTD =================
+            doc.setFontSize(8);
+
+            doc.text("WK. Bid Usaha", 20, y);
+            doc.text("Kurir", 90, y);
+            doc.text("Penerima", 160, y);
+
+            y += 15;
+
+            doc.line(15, y, 60, y);
+            doc.line(75, y, 120, y);
+            doc.line(145, y, 190, y);
+
+            // ================= GARIS PEMISAH =================
+            // Hanya jika item sedikit & copy pertama
+            if (!isLongOrder && copy === 0) {
+                doc.setLineDash([2, 2], 0);
+                doc.line(10, halfPage, 200, halfPage);
+                doc.setLineDash([]);
+            }
         }
-
-        currentY += strukHeight;
-        strukCount++;
     }
 
-    // =========================
-    // NAMA FILE OTOMATIS
-    // =========================
+    // ================= NAMA FILE =================
     if (data.length === 1) {
         const namaFile = data[0].nama_anggota
             .replace(/[^a-zA-Z0-9]/g, "_");
