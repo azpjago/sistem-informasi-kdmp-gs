@@ -675,7 +675,7 @@ $total_kategori = mysqli_fetch_assoc(mysqli_query($conn, "SELECT COUNT(DISTINCT 
                             <label>Status</label>
                             <select name="status" class="form-select" required>
                                 <option value="">Status</option>
-                                <option value="aktif" <?= (isset($edit['status']) && $edit['status'] == 'aktif') ? 'selected' : '' ?>>Aktif</option>
+                                <option value="aktif" <?= (isset($edit['status']) && $edit['status'] == 'aktif') ? 'selected' : '' ?> selected>Aktif</option>
                                 <option value="non-aktif" <?= (isset($edit['status']) && $edit['status'] == 'non-aktif') ? 'selected' : '' ?>>Non-Aktif</option>
                             </select>
                         </div>
