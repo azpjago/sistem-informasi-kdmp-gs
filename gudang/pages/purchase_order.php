@@ -47,6 +47,7 @@ if (isset($_POST['buat_order'])) {
 
     try {
         $id_supplier = $conn->real_escape_string($_POST['id_supplier']);
+        $tanggal_order = $conn->real_escape_string($_POST['tanggal_order']);
         $tanggal_pengiriman = $conn->real_escape_string($_POST['tanggal_pengiriman']);
         $status_po = $conn->real_escape_string($_POST['status_po'] ?? '');
         $keterangan = $conn->real_escape_string($_POST['keterangan'] ?? '');
@@ -334,7 +335,7 @@ if (isset($_GET['ubah_status'])) {
             <form method="POST" id="formOrder">
                 <div class="modal-body">
                     <div class="row">
-                        <div class="col-md-6 mb-3">
+                        <div class="col-md-4 mb-3">
                             <label class="form-label">Supplier <span class="text-danger">*</span></label>
                             <select class="form-select" name="id_supplier" id="selectSupplier" required>
                                 <option value="">Pilih Supplier</option>
@@ -350,9 +351,12 @@ if (isset($_GET['ubah_status'])) {
                             </select>
                         </div>
                         <div class="col-md-2 mb-3">
+                            <label class="form-label">Tanggal Order <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" name="tanggal_order" required>
+                        </div>
+                        <div class="col-md-2 mb-3">
                             <label class="form-label">Tanggal Pengiriman <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" name="tanggal_pengiriman" required
-                                min="<?= date('Y-m-d') ?>">
+                            <input type="date" class="form-control" name="tanggal_pengiriman" required>
                         </div>
                         <div class="col-md-2 mb-3">
                             <label class="form-label">Discount (%)</label>
