@@ -433,19 +433,24 @@ function getHariInfo($jam_kerja) {
                                 </div>
                                 <h6>Data Pemesan</h6>
                                 <div class="row mb-3">
-                                    <div class="col-md-4">
-                                        <label class="form-label" style="font-weight: bold;">Nama Pemesan</label>
-                                        <textarea type="text" class="form-control" name="nama_pemesan" id="namaPemesan" required></textarea>
+									<div class="col-md-4">
+                                        <label class="form-label" style="font-weight: bold;">No. Anggota</label>
+                                        <input type="text" class="form-control" name="no_anggota" id="noAnggota" required>
                                         <small class="text-muted">Otomatis terisi dari data anggota</small>
                                     </div>
                                     <div class="col-md-4">
-                                        <label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
-                                        <textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required></textarea>
+                                        <label class="form-label" style="font-weight: bold;">Nama Pemesan</label>
+                                        <input type="text" class="form-control" name="nama_pemesan" id="namaPemesan" required>
                                         <small class="text-muted">Otomatis terisi dari data anggota</small>
                                     </div>
                                     <div class="col-md-4">
                                         <label class="form-label" style="font-weight: bold;">No. HP/WA</label>
-                                        <textarea type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required></textarea>
+                                        <input type="text" class="form-control" name="no_hp_pemesan" id="noHpPemesan" required>
+                                        <small class="text-muted">Otomatis terisi dari data anggota</small>
+                                    </div>
+                                    <div class="col-md-12">
+                                        <label class="form-label" style="font-weight: bold;">Alamat Pemesan</label>
+                                        <textarea class="form-control" name="alamat_pemesan" id="alamatPemesan" required></textarea>
                                         <small class="text-muted">Otomatis terisi dari data anggota</small>
                                     </div>
                                 </div>
@@ -956,6 +961,7 @@ function getHariInfo($jam_kerja) {
                 $('#hasilPencarian').hide();
                 
                 // ✅ PERBAIKAN: Auto-fill data pemesan
+                $('#noAnggota').val(noanggota);
                 $('#namaPemesan').val(nama);
                 $('#alamatPemesan').val(alamat);
                 $('#noHpPemesan').val(nohp);
