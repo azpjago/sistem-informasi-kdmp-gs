@@ -21,6 +21,7 @@ try {
     $id_anggota = $_POST['id_anggota'] ?? '';
     $jadwal_kirim = $_POST['jadwal_kirim'] ?? '';
     $nama_pemesan = $_POST['nama_pemesan'] ?? '';
+    $no_anggota = $_POST['no_anggota'] ?? '';
     $alamat_pemesan = $_POST['alamat_pemesan'] ?? '';
     $no_hp = $_POST['no_hp_pemesan'] ?? '';
     $tanggal_pesan = $_POST['tanggal_pesan'] ?? '';
@@ -60,14 +61,14 @@ try {
     mysqli_begin_transaction($conn);
 
     // 1. Insert ke tabel pemesanan - DENGAN METODE & BANK TUJUAN
-    $query_pemesanan = "INSERT INTO pemesanan (id_anggota, jadwal_kirim, tanggal_pesan, nama_pemesan, alamat_pemesan, no_hp_pemesan, total_harga, status, metode, bank_tujuan)
-                        VALUES (?, ?, ?, ?, ?, ?, ?, 'Menunggu', ?, ?)";
+    $query_pemesanan = "INSERT INTO pemesanan (id_anggota, jadwal_kirim, tanggal_pesan, no_anggota, nama_pemesan, alamat_pemesan, no_hp_pemesan, total_harga, status, metode, bank_tujuan)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'Menunggu', ?, ?)";
 
     $stmt = mysqli_prepare($conn, $query_pemesanan);
     if (!$stmt)
         throw new Exception('Prepare failed: ' . mysqli_error($conn));
 
-    mysqli_stmt_bind_param($stmt, 'isssssdss', $id_anggota, $jadwal_kirim, $tanggal_pesan, $nama_pemesan, $alamat_pemesan, $no_hp, $total_harga, $metode, $bank_tujuan);
+    mysqli_stmt_bind_param($stmt, 'issssssdss', $id_anggota, $jadwal_kirim, $tanggal_pesan, $no_anggota, $nama_pemesan, $alamat_pemesan, $no_hp, $total_harga, $metode, $bank_tujuan);
 
     if (!mysqli_stmt_execute($stmt))
         throw new Exception('Execute failed: ' . mysqli_error($conn));
