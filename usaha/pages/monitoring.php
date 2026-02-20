@@ -397,16 +397,16 @@ function getHariInfo($jam_kerja) {
                                                 <i class="fas fa-search"></i>
                                             </button>
                                         </div>
+                                        <br>
                                         <div id="hasilPencarian" class="mt-2" style="display: none;">
                                             <!-- Hasil pencarian akan muncul di sini -->
                                         </div>
                                     </div>
-                                    <br>
-                                    <br>
-                                    <div class="col-md-6">
+                                    <div class="col-md-12">
                                         <div id="infoAnggota" style="display: none;">
                                             <h6>Info Anggota</h6>
                                             <p><strong>Nama:</strong> <span id="selectedNama"></span></p>
+                                            <p><strong>Nomor Anggota:</strong> <span id="selectedNoanggota"></span></p>
                                             <p><strong>No. HP:</strong> <span id="selectedNoHp"></span></p>
                                             <p><strong>Alamat:</strong> <span id="selectedAlamat"></span></p>
                                             <input type="hidden" id="selectedIdAnggota" name="id_anggota">
@@ -912,6 +912,7 @@ function getHariInfo($jam_kerja) {
                             <div class="card mb-2 p-2 anggota-item" 
                                  data-id="${anggota.id}" 
                                  data-nama="${anggota.nama}"
+                                 data-noanggota="${anggota.no_anggota}"
                                  data-nohp="${anggota.no_hp}"
                                  data-alamat="${anggota.alamat}"
                                  onclick="pilihAnggota(this)"
@@ -942,11 +943,13 @@ function getHariInfo($jam_kerja) {
             function pilihAnggota(element) {
                 const id = $(element).data('id');
                 const nama = $(element).data('nama');
+                const noanggota = $(element).data('noanggota');
                 const nohp = $(element).data('nohp');
                 const alamat = $(element).data('alamat');
 
                 $('#selectedIdAnggota').val(id);
                 $('#selectedNama').text(nama);
+                $('#selectedNoanggota').text(noanggota);
                 $('#selectedNoHp').text(nohp);
                 $('#selectedAlamat').text(alamat);
                 $('#infoAnggota').show();
@@ -1291,15 +1294,11 @@ function getHariInfo($jam_kerja) {
 			// Fungsi pencarian produk real-time
 			function cariProduk(keyword) {
 				const hasilDiv = $('#hasilPencarianProduk');
-				
-				if (keyword.length < 1) {
-					hasilDiv.hide();
-					return;
-				}
 
 				// Filter produk berdasarkan keyword
 				const hasil = semuaProduk.filter(produk => 
-					produk.nama_produk.toLowerCase().includes(keyword.toLowerCase())
+					produk.nama_produk.toLowerCase().includes(keyword.toLowerCase()) &&
+					produk.jumlah > 0
 				);
 
 				let html = '';
@@ -1314,14 +1313,14 @@ function getHariInfo($jam_kerja) {
 						`;
 					});
 				} else {
-					html = '<div class="text-muted p-2">Tidak ada produk ditemukan</div>';
+					html = '<div class="text-muted p-2">Tidak ada produk ditemukan atau stok habis</div>';
 				}
 
 				hasilDiv.html(html).show();
 			}
 
 			// Fungsi untuk memilih produk dari hasil pencarian
-			function pilihProduk(id, nama, harga, satuan, isPaket, konversi, idInventory) {
+			function pilihProduk(id, nama, harga, satuan, isPaket, stok, konversi, idInventory) {
 				produkTerpilih = {
 					id: id,
 					nama: nama,
