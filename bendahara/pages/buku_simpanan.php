@@ -4,22 +4,7 @@ $current_year = date('Y');
 $selected_year = isset($_GET['tahun']) ? intval($_GET['tahun']) : $current_year;
 $years = range($current_year - 2, $current_year + 5);
 
-// ================== BLOK LOGIKA PENGAMBILAN DATA BARU ==================
-
-// AMBIL DATA RINGKASAN UNTUK TAHUN TERPILIH
-$sql_summary = "
-    SELECT 
-        jenis_simpanan,
-        SUM(jumlah) as total,
-        COUNT(DISTINCT anggota_id) as jumlah_anggota
-    FROM pembayaran 
-    WHERE YEAR(tanggal_bayar) = ?
-    GROUP BY jenis_simpanan
-";
-$stmt_summary = $conn->prepare($sql_summary);
-$stmt_summary->bind_param("i", $selected_year);
-$stmt_summary->execute();
-$result_summary = $stmt_summary->get_result();
+// ================== BLOK RINGKASAN ==================
 
 $summary_data = [
     'Simpanan Wajib' => ['total' => 0, 'anggota' => 0],
@@ -27,47 +12,101 @@ $summary_data = [
     'Simpanan Sukarela' => ['total' => 0, 'anggota' => 0]
 ];
 
-while ($row = $result_summary->fetch_assoc()) {
-    if (isset($summary_data[$row['jenis_simpanan']])) {
-        $summary_data[$row['jenis_simpanan']]['total'] = $row['total'];
-        $summary_data[$row['jenis_simpanan']]['anggota'] = $row['jumlah_anggota'];
-    }
-}
-$stmt_summary->close();
+/* =========================
+   1️⃣ SIMPANAN WAJIB (bulan_periode)
+   ========================= */
+$sql_wajib = "
+    SELECT 
+        SUM(jumlah) as total,
+        COUNT(DISTINCT anggota_id) as jumlah_anggota
+    FROM pembayaran
+    WHERE jenis_simpanan = 'Simpanan Wajib'
+    AND YEAR(bulan_periode) = ?
+";
+$stmt_wajib = $conn->prepare($sql_wajib);
+$stmt_wajib->bind_param("i", $selected_year);
+$stmt_wajib->execute();
+$result_wajib = $stmt_wajib->get_result()->fetch_assoc();
 
-// 1. Ambil semua anggota
-$anggota_list = $conn->query("SELECT id, no_anggota, nama FROM anggota ORDER BY no_anggota ASC")->fetch_all(MYSQLI_ASSOC);
+$summary_data['Simpanan Wajib']['total'] = $result_wajib['total'] ?? 0;
+$summary_data['Simpanan Wajib']['anggota'] = $result_wajib['jumlah_anggota'] ?? 0;
 
-// 2. Ambil data pembayaran WAJIB untuk tahun yang dipilih dengan cara yang efisien
+$stmt_wajib->close();
+
+/* =========================
+   2️⃣ SIMPANAN POKOK (bulan_periode)
+   ========================= */
+$sql_pokok = "
+    SELECT 
+        SUM(jumlah) as total,
+        COUNT(DISTINCT anggota_id) as jumlah_anggota
+    FROM pembayaran
+    WHERE jenis_simpanan = 'Simpanan Pokok'
+    AND YEAR(bulan_periode) = ?
+";
+$stmt_pokok = $conn->prepare($sql_pokok);
+$stmt_pokok->bind_param("i", $selected_year);
+$stmt_pokok->execute();
+$result_pokok = $stmt_pokok->get_result()->fetch_assoc();
+
+$summary_data['Simpanan Pokok']['total'] = $result_pokok['total'] ?? 0;
+$summary_data['Simpanan Pokok']['anggota'] = $result_pokok['jumlah_anggota'] ?? 0;
+
+$stmt_pokok->close();
+
+/* =========================
+   3️⃣ SIMPANAN SUKARELA (tanggal_bayar)
+   ========================= */
+$sql_sukarela = "
+    SELECT 
+        SUM(jumlah) as total,
+        COUNT(DISTINCT anggota_id) as jumlah_anggota
+    FROM pembayaran
+    WHERE jenis_simpanan = 'Simpanan Sukarela'
+    AND YEAR(tanggal_bayar) = ?
+";
+$stmt_sukarela = $conn->prepare($sql_sukarela);
+$stmt_sukarela->bind_param("i", $selected_year);
+$stmt_sukarela->execute();
+$result_sukarela = $stmt_sukarela->get_result()->fetch_assoc();
+
+$summary_data['Simpanan Sukarela']['total'] = $result_sukarela['total'] ?? 0;
+$summary_data['Simpanan Sukarela']['anggota'] = $result_sukarela['jumlah_anggota'] ?? 0;
+
+$stmt_sukarela->close();
+
+// ================== AMBIL DATA ANGGOTA ==================
+$anggota_list = $conn->query("
+    SELECT id, no_anggota, nama 
+    FROM anggota 
+    ORDER BY no_anggota ASC
+")->fetch_all(MYSQLI_ASSOC);
+
+// ================== DATA SIMPANAN WAJIB PER BULAN ==================
 $payments_map = [];
 
-// Kueri dioptimalkan untuk langsung menggunakan fungsi YEAR() dan MONTH() pada kolom 'bulan_periode'
 $sql_payments = "
     SELECT 
-        anggota_id, 
-        MONTH(bulan_periode) as bulan, 
+        anggota_id,
+        MONTH(bulan_periode) as bulan,
         SUM(jumlah) as total_bayar
-    FROM pembayaran 
-    WHERE 
-        jenis_simpanan = 'Simpanan Wajib' 
-        AND YEAR(bulan_periode) = ?
-    GROUP BY 
-        anggota_id, MONTH(bulan_periode)
+    FROM pembayaran
+    WHERE jenis_simpanan = 'Simpanan Wajib'
+    AND YEAR(bulan_periode) = ?
+    GROUP BY anggota_id, MONTH(bulan_periode)
 ";
 $stmt_payments = $conn->prepare($sql_payments);
 $stmt_payments->bind_param("i", $selected_year);
 $stmt_payments->execute();
 $result_payments = $stmt_payments->get_result();
 
-// 3. Petakan pembayaran ke dalam format yang mudah dibaca: [id_anggota][nomor_bulan] = jumlah
 while ($p = $result_payments->fetch_assoc()) {
     $payments_map[$p['anggota_id']][$p['bulan']] = $p['total_bayar'];
 }
+
 $stmt_payments->close();
 
-// ================== AKHIR DARI BLOK LOGIKA BARU ==================
-
-// Array nama bulan untuk header tabel
+// ================== NAMA BULAN ==================
 $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'SEP', 'OKT', 'NOV', 'DES'];
 ?>
 
@@ -89,6 +128,7 @@ $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'S
             </div>
         </div>
     </div>
+
     <div class="col-md-3">
         <div class="card text-white bg-success">
             <div class="card-body">
@@ -98,6 +138,7 @@ $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'S
             </div>
         </div>
     </div>
+
     <div class="col-md-3">
         <div class="card text-white bg-warning">
             <div class="card-body">
@@ -107,6 +148,7 @@ $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'S
             </div>
         </div>
     </div>
+
     <div class="col-md-3">
         <div class="card text-white bg-info">
             <div class="card-body">
@@ -117,7 +159,6 @@ $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'S
         </div>
     </div>
 </div>
-<!-- ========== AKHIR BLOK RINGKASAN DATA ========== -->
 
 <div class="card mb-4 no-print">
     <div class="card-header"><strong>Pilih Tahun</strong></div>
@@ -146,9 +187,9 @@ $nama_bulan_header = ['JAN', 'FEB', 'MAR', 'APR', 'MEI', 'JUN', 'JUL', 'AGU', 'S
     <table class="table table-bordered table-striped text-center align-middle" style="font-size: 0.9rem;">
         <thead class="table-dark">
             <tr>
-                <th rowspan="2" class="align-middle">No Anggota</th>
-                <th rowspan="2" class="align-middle" style="min-width: 200px;">Nama Anggota</th>
-                <th rowspan="2" class="align-middle">Tahun</th>
+                <th rowspan="2">No Anggota</th>
+                <th rowspan="2" style="min-width: 200px;">Nama Anggota</th>
+                <th rowspan="2">Tahun</th>
                 <th colspan="12">Iuran Anggota Setiap Bulan</th>
             </tr>
             <tr>
