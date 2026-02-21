@@ -45,12 +45,14 @@ if (!isset($_SESSION['role']) || $_SESSION['role'] !== 'bendahara') {
                         <span>Riwayat Transaksi</span></a></li>
                 <li class="nav-item"><a href="?page=sukarela" class="nav-link"><i class="fas fa-dollar"></i>
                         <span>Sukarela</span></a></li>
+                        <!--
                 <li class="nav-item"><a href="?page=buku_simpanan" class="nav-link"><i class="fas fa-book"></i>
                         <span>Buku Simpanan Wajib</span></a></li>
                 <li class="nav-item"><a href="?page=buku_simpanan_sukarela" class="nav-link"><i class="fas fa-book"></i>
                         <span>Buku Simpanan Sukarela</span></a></li>
+                        -->
                 <li class="nav-item"><a href="?page=buku_besar" class="nav-link"><i class="fas fa-book"></i>
-                        <span>Buku Besar Simpanan</span></a></li>
+                        <span>Buku Simpanan</span></a></li>
                 <li class="nav-item"><a href="?page=nota" class="nav-link"><i class="fas fa-sticky-note"></i>
                         <span>Kartu Nota</span></a></li>
                 <li class="nav-item"><a href="?page=saldo_dashboard" class="nav-link"><i
